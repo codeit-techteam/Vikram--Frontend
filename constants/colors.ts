@@ -1,0 +1,25 @@
+export const colors = {
+  primary: '#FF6B00',
+  primaryLight: '#FF8533',
+  primaryDark: '#E55D00',
+  secondary: '#1A73E8',
+  secondaryLight: '#4285F4',
+  secondaryDark: '#1557B0',
+  background: '#F5F5F5',
+  surface: '#FFFFFF',
+  text: '#1A1A1A',
+  textSecondary: '#666666',
+  textInverse: '#FFFFFF',
+  border: '#E0E0E0',
+  inputBg: '#F5F5F5',
+  disabled: '#B8C4D4',
+  error: '#D32F2F',
+  success: '#388E3C',
+  warning: '#F57C00',
+  transparent: 'transparent',
+  logoBg: '#FFF0E6',
+  timerBg: '#EEF2FF',
+  trustBg: '#F0F4FF',
+} as const;
+
+export type ColorKey = keyof typeof colors;

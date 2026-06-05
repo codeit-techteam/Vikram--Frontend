@@ -1,0 +1,66 @@
+import { Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+import { formatINR } from '@utils/formatCurrency';
+
+interface PricingSummaryProps {
+  unitLabel: string;
+  baseRate: number;
+  subtotal: number;
+  gst: number;
+  estimatedTotal: number;
+}
+
+function DottedRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <View className="mb-2 flex-row items-center justify-between">
+      <Text className="text-sm text-text-secondary">{label}</Text>
+      <Text className="text-sm font-semibold" style={{ color: valueColor ?? '#1A1A1A' }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+export function PricingSummary({
+  unitLabel,
+  baseRate,
+  subtotal,
+  gst,
+  estimatedTotal,
+}: PricingSummaryProps) {
+  return (
+    <View className="mx-5 mt-6 rounded-card border border-border bg-surface p-4 shadow-sm">
+      <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
+        PRICING SUMMARY
+      </Text>
+
+      <View className="mt-4">
+        <DottedRow label={`Base Rate (per ${unitLabel.toLowerCase()})`} value={formatINR(baseRate)} />
+        <DottedRow label="Subtotal" value={formatINR(subtotal)} />
+        <DottedRow label="Logistics (Express)" value="FREE" valueColor="#2E7D32" />
+        <DottedRow label="GST (18%)" value={formatINR(gst)} />
+      </View>
+
+      <View className="my-4 h-px bg-border" />
+
+      <View className="flex-row items-center justify-between">
+        <View>
+          <Text className="text-[10px] font-bold tracking-wider text-primary">ESTIMATED TOTAL</Text>
+          <Text className="mt-1 text-2xl font-bold text-text">{formatINR(estimatedTotal)}</Text>
+        </View>
+        <View className="rounded-full bg-primary px-3 py-1.5">
+          <Text className="text-[10px] font-bold text-text-inverse">QUICK QUOTE</Text>
+        </View>
+      </View>
+
+      <View className="mt-4 flex-row items-start gap-2 rounded-lg bg-primary/10 p-3">
+        <Ionicons name="information-circle-outline" size={16} color="#FF6B00" />
+        <Text className="flex-1 text-xs leading-4 text-text-secondary">
+          Prices are dynamic and locked for 15 minutes. Final weight bridge certificate provided at
+          site.
+        </Text>
+      </View>
+    </View>
+  );
+}
