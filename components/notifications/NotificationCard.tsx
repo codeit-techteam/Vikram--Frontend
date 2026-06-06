@@ -1,14 +1,6 @@
-import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 
 import {
   NOTIFICATION_TYPE_META,
@@ -18,26 +10,14 @@ import { useNotificationStore } from '@store/notificationStore';
 
 interface NotificationCardProps {
   item: AppNotification;
-  index: number;
 }
 
-export function NotificationCard({ item, index }: NotificationCardProps) {
+export function NotificationCard({ item }: NotificationCardProps) {
   const config = NOTIFICATION_TYPE_META[item.type];
   const markAsRead = useNotificationStore((s) => s.markAsRead);
   const isRead = useNotificationStore((s) => s.isRead(item.id));
 
-  const translateY = useSharedValue(20);
-  const opacity = useSharedValue(0);
-
-  useEffect(() => {
-    translateY.value = withDelay(index * 80, withSpring(0, { damping: 18, stiffness: 120 }));
-    opacity.value = withDelay(index * 80, withTiming(1, { duration: 250 }));
-  }, [index, opacity, translateY]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
+  const showUnread = item.unread && !isRead;
 
   const handlePress = () => {
     markAsRead(item.id);
@@ -50,15 +30,17 @@ export function NotificationCard({ item, index }: NotificationCardProps) {
     }
   };
 
-  const showUnread = item.unread && !isRead;
-
   return (
-    <Animated.View
-      style={[styles.card, { borderLeftColor: config.borderColor }, animStyle]}>
+    <View
+      style={[
+        styles.card,
+        showUnread ? styles.cardUnread : styles.cardRead,
+        { borderLeftColor: showUnread ? config.borderColor : 'transparent' },
+      ]}>
       <Pressable onPress={handlePress}>
         <View style={styles.topRow}>
           <View style={[styles.iconWrap, { backgroundColor: config.iconBg }]}>
-            <Ionicons name={config.iconName} size={18} color={config.iconColor} />
+            <Ionicons name={config.iconName} size={17} color={config.iconColor} />
           </View>
           <Text style={[styles.typeLabel, { color: config.labelColor }]}>{item.label}</Text>
           <View style={styles.timeRow}>
@@ -67,7 +49,9 @@ export function NotificationCard({ item, index }: NotificationCardProps) {
           </View>
         </View>
 
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={[styles.title, showUnread ? styles.titleUnread : styles.titleRead]}>
+          {item.title}
+        </Text>
         <Text style={[styles.body, { marginBottom: item.action ? 12 : 0 }]}>{item.body}</Text>
 
         {item.action ? (
@@ -87,21 +71,26 @@ export function NotificationCard({ item, index }: NotificationCardProps) {
           </Pressable>
         ) : null}
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 14,
     borderLeftWidth: 3.5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardUnread: {
+    backgroundColor: '#FFFAF5',
+  },
+  cardRead: {
+    backgroundColor: '#FFFFFF',
   },
   topRow: {
     flexDirection: 'row',
@@ -110,8 +99,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconWrap: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -120,40 +109,47 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   time: {
     fontSize: 12,
-    color: '#999',
+    color: '#AAA',
   },
   unreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: '#FF6B00',
   },
   title: {
     fontSize: 15,
+    marginBottom: 5,
+    lineHeight: 21,
+  },
+  titleUnread: {
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 6,
-    lineHeight: 21,
+  },
+  titleRead: {
+    fontWeight: '600',
+    color: '#444',
   },
   body: {
     fontSize: 13,
-    color: '#666',
+    color: '#777',
     lineHeight: 19,
   },
   actionButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 18,
   },
   actionFilled: {
     backgroundColor: '#FF6B00',

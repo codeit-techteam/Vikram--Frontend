@@ -10,6 +10,7 @@ import { DrawerShell } from '@components/DrawerShell';
 import { PulseDot } from '@components/orders/PulseDot';
 import { OrdersScreenHeader } from '@components/orders/OrdersScreenHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { safeGoBack } from '@utils/navigation';
 
@@ -26,6 +27,8 @@ const INITIAL_REGION: Region = {
 };
 
 export default function OrderDetailsScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => s.getOrder(orderId ?? ''));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -48,9 +51,9 @@ export default function OrderDetailsScreen() {
   if (!order) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-text-secondary">Order not found.</Text>
+        <Text className="text-text-secondary">{t('productNotFound')}</Text>
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/orders')} className="mt-4">
-          <Text className="font-bold text-primary">Go Back</Text>
+          <Text className="font-bold text-primary">{t('goBack')}</Text>
         </ScaledPressable>
       </SafeAreaView>
     );
@@ -63,12 +66,14 @@ export default function OrderDetailsScreen() {
       onClose={() => setDrawerOpen(false)}>
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <OrdersScreenHeader onMenuPress={() => setDrawerOpen(true)} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView key={language} contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-5 pt-2">
           <View className="self-start rounded-full bg-success/15 px-3 py-1">
-            <Text className="text-[10px] font-bold text-success">ACTIVE DELIVERY</Text>
+            <Text className="text-[10px] font-bold text-success">{t('activeDelivery')}</Text>
           </View>
-          <Text className="mt-3 text-2xl font-bold text-text">Order: {order.id}</Text>
+          <Text className="mt-3 text-2xl font-bold text-text">
+            {t('orderDetails')}: {order.id}
+          </Text>
         </View>
 
         <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card border border-border bg-trust p-4">
@@ -83,7 +88,7 @@ export default function OrderDetailsScreen() {
 
         <View className="mx-5 mt-5 rounded-card border border-border bg-surface p-4">
           <Text className="mb-4 text-[10px] font-bold tracking-widest text-text-secondary">
-            TRACKING TIMELINE
+            {t('trackingTimeline')}
           </Text>
           {order.trackingTimeline.map((step, i) => (
             <View key={step.label} className="flex-row gap-3">
@@ -107,7 +112,7 @@ export default function OrderDetailsScreen() {
                 </Text>
                 {step.active && step.time === 'LIVE' && (
                   <View className="rounded-full bg-success px-2 py-0.5">
-                    <Text className="text-[9px] font-bold text-text-inverse">LIVE</Text>
+                    <Text className="text-[9px] font-bold text-text-inverse">{t('live')}</Text>
                   </View>
                 )}
                 {!step.active && step.time ? (
@@ -120,8 +125,8 @@ export default function OrderDetailsScreen() {
 
         <View className="mx-5 mt-2 overflow-hidden rounded-card" style={{ height: 200 }}>
           <MapView style={{ flex: 1 }} initialRegion={INITIAL_REGION}>
-            <Marker coordinate={WAREHOUSE} title="Warehouse" pinColor="#1A73E8" />
-            <Marker coordinate={DESTINATION} title="Site" pinColor="#FF6B00" />
+            <Marker coordinate={WAREHOUSE} title={t('warehouse')} pinColor="#1A73E8" />
+            <Marker coordinate={DESTINATION} title={t('deliverySite')} pinColor="#FF6B00" />
             <Marker coordinate={truckPos} title="Truck">
               <Ionicons name="bus" size={24} color="#FF6B00" />
             </Marker>
@@ -138,7 +143,9 @@ export default function OrderDetailsScreen() {
             <Image source={{ uri: DRIVER_AVATAR }} style={{ width: 48, height: 48, borderRadius: 24 }} />
             <View className="flex-1">
               <Text className="text-base font-bold text-text">{order.driverName}</Text>
-              <Text className="text-xs text-text-secondary">Vehicle: {order.vehicleNumber}</Text>
+              <Text className="text-xs text-text-secondary">
+                {t('vehicle')}: {order.vehicleNumber}
+              </Text>
             </View>
           </View>
           <View className="mt-4 flex-row gap-3">
@@ -146,12 +153,12 @@ export default function OrderDetailsScreen() {
               onPress={() => Linking.openURL('tel:+919999999999')}
               className="flex-1 flex-row items-center justify-center rounded-lg bg-primary py-3">
               <Ionicons name="call" size={18} color="#FFF" />
-              <Text className="ml-2 font-bold text-text-inverse">Call Driver</Text>
+              <Text className="ml-2 font-bold text-text-inverse">{t('callDriver')}</Text>
             </ScaledPressable>
             <ScaledPressable
               onPress={() => router.push('/support')}
               className="flex-1 items-center rounded-lg border border-border py-3">
-              <Text className="font-semibold text-text-secondary">Support</Text>
+              <Text className="font-semibold text-text-secondary">{t('support')}</Text>
             </ScaledPressable>
           </View>
         </View>

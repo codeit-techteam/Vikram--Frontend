@@ -1,145 +1,154 @@
-import { useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useRef } from 'react';
+import { FlatList, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActiveFilterSummaryBar } from '@components/ActiveFilterSummaryBar';
 import { AppHeader } from '@components/AppHeader';
+import {
+  FilterBottomSheet,
+  type FilterBottomSheetRef,
+} from '@components/FilterBottomSheet';
+import { FilterBar } from '@components/FilterBar';
+import {
+  QuickFilterSheet,
+  type QuickFilterSheetRef,
+} from '@components/QuickFilterSheet';
+import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { ProductCard } from '@components/ProductCard';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { PRODUCTS_BY_CATEGORY } from '@constants/catalogData';
-import { useStrings } from '@hooks/useStrings';
-
-type FilterType = 'grade' | 'eta' | 'brand' | null;
-
-const FILTER_OPTIONS: Record<Exclude<FilterType, null>, string[]> = {
-  grade: ['All Grades', 'Grade 53', 'Fe500', 'Fe550', 'Zone 2', 'Class A'],
-  eta: ['Any ETA', '90 min', 'Same Day', 'Next Day'],
-  brand: ['All Brands', 'UltraTech', 'ACC', 'TATA', 'JSW'],
-};
+import { CATALOG_CATEGORIES, PRODUCTS_BY_CATEGORY } from '@constants/catalogData';
+import { useFilterState } from '@hooks/useFilterState';
+import { useTranslation } from '@store/languageStore';
+import type { FilterKey } from '@/types/filter.types';
 
 export default function ProductListingScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
   const { categoryId, categoryName } = useLocalSearchParams<{
     categoryId: string;
     categoryName: string;
   }>();
 
-  const [activeFilter, setActiveFilter] = useState<FilterType>('grade');
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [selectedOption, setSelectedOption] = useState('All Grades');
+  const fullSheetRef = useRef<FilterBottomSheetRef>(null);
+  const quickSheetRef = useRef<QuickFilterSheetRef>(null);
 
+  const category = CATALOG_CATEGORIES.find((c) => c.id === (categoryId ?? '1'));
   const products = PRODUCTS_BY_CATEGORY[categoryId ?? '1'] ?? [];
-  const title = categoryName ?? 'Products';
+  const title = category ? t(category.labelKey) : (categoryName ?? t('catalogLabel'));
 
-  const openFilter = (filter: FilterType) => {
-    setActiveFilter(filter);
-    setShowFilterModal(true);
+  const {
+    config,
+    activeFilters,
+    draftFilters,
+    filteredProducts,
+    draftFilteredCount,
+    activeCount,
+    clearFilter,
+    clearAll,
+    applyDraft,
+    resetDraft,
+    syncDraft,
+    setDraft,
+    updateFilters,
+  } = useFilterState({ products, categoryId: categoryId ?? '1' });
+
+  const openQuickFilterSheet = (key: FilterKey) => {
+    syncDraft();
+    quickSheetRef.current?.open(key);
   };
 
-  const filters: { key: FilterType; label: string; icon?: string }[] = [
-    { key: 'grade', label: 'Grade ▾' },
-    { key: 'eta', label: 'ETA ▾' },
-    { key: 'brand', label: 'Brand ▾' },
-    { key: null, label: 'Filters', icon: 'options-outline' },
-  ];
+  const openFullFilterSheet = () => {
+    syncDraft();
+    fullSheetRef.current?.open();
+  };
+
+  const handleRemoveTag = (key: FilterKey, value?: string) => {
+    if (key === 'grade' && value) {
+      updateFilters({
+        ...activeFilters,
+        grade: activeFilters.grade.filter((g) => g !== value),
+      });
+      return;
+    }
+    if (key === 'availability' && value) {
+      updateFilters({
+        ...activeFilters,
+        availability: activeFilters.availability.filter((a) => a !== value),
+      });
+      return;
+    }
+    clearFilter(key);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <AppHeader showBack title={title} />
 
       <View className="mx-5 mt-4 flex-row items-center rounded-input border border-border bg-surface px-4 py-3">
-        <Ionicons name="search" size={20} color="#FF6B00" />
-        <Text className="ml-3 flex-1 text-sm text-text-secondary">{s.searchProducts}</Text>
-        <Ionicons name="mic-outline" size={20} color="#FF6B00" />
+        <Ionicons name="search" size={20} color="#FF6A00" />
+        <Text className="ml-3 flex-1 text-sm text-text-secondary">{t('searchCatalog')}</Text>
+        <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
+          <Ionicons name="mic-outline" size={20} color="#FF6A00" />
+        </ScaledPressable>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mt-4 px-5"
-        contentContainerClassName="gap-2">
-        {filters.map((f) => {
-          const isActive = activeFilter === f.key && f.key !== null;
-          return (
-            <ScaledPressable
-              key={f.label}
-              onPress={() => (f.key ? openFilter(f.key) : setShowFilterModal(true))}
-              className={`flex-row items-center rounded-full px-4 py-2 ${
-                isActive
-                  ? 'bg-primary'
-                  : 'border border-border bg-surface'
-              }`}>
-              {f.icon && (
-                <Ionicons
-                  name={f.icon as keyof typeof Ionicons.glyphMap}
-                  size={14}
-                  color={isActive ? '#FFFFFF' : '#666666'}
-                  style={{ marginRight: 4 }}
-                />
-              )}
-              <Text
-                className={`text-sm font-semibold ${
-                  isActive ? 'text-text-inverse' : 'text-text-secondary'
-                }`}>
-                {f.label}
-              </Text>
-            </ScaledPressable>
-          );
-        })}
-      </ScrollView>
+      <FilterBar
+        activeFilters={activeFilters}
+        config={config}
+        onChipPress={openQuickFilterSheet}
+        onOpenAll={openFullFilterSheet}
+        onClearChip={clearFilter}
+      />
+
+      {activeCount > 0 && (
+        <ActiveFilterSummaryBar
+          activeFilters={activeFilters}
+          config={config}
+          resultCount={filteredProducts.length}
+          onClearAll={clearAll}
+          onRemoveTag={handleRemoveTag}
+        />
+      )}
 
       <FlatList
-        data={products}
+        data={filteredProducts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInDown.delay(index * 80).duration(400)}>
-            <ProductCard
-              product={item}
-              categoryId={categoryId}
-              categoryName={categoryName}
-            />
+            <ProductCard product={item} categoryId={categoryId} categoryName={title} />
           </Animated.View>
         )}
         ListEmptyComponent={
-          <Text className="mt-8 text-center text-text-secondary">No products found.</Text>
+          <Text className="mt-8 text-center text-text-secondary">{t('noProductsFound')}</Text>
         }
       />
 
-      <Modal visible={showFilterModal} transparent animationType="fade">
-        <Pressable
-          className="flex-1 justify-end bg-black/40"
-          onPress={() => setShowFilterModal(false)}>
-          <Pressable className="rounded-t-2xl bg-surface p-5" onPress={(e) => e.stopPropagation()}>
-            <Text className="mb-4 text-lg font-bold text-text">
-              {activeFilter ? `${activeFilter.charAt(0).toUpperCase()}${activeFilter.slice(1)}` : 'Filters'}
-            </Text>
-            {(activeFilter ? FILTER_OPTIONS[activeFilter] : ['All', 'In Stock', 'Ready for Dispatch']).map(
-              (opt) => (
-                <ScaledPressable
-                  key={opt}
-                  onPress={() => {
-                    setSelectedOption(opt);
-                    setShowFilterModal(false);
-                  }}
-                  className={`mb-2 rounded-lg px-4 py-3 ${
-                    selectedOption === opt ? 'bg-primary/10' : 'bg-background'
-                  }`}>
-                  <Text
-                    className={`text-sm ${
-                      selectedOption === opt ? 'font-bold text-primary' : 'text-text'
-                    }`}>
-                    {opt}
-                  </Text>
-                </ScaledPressable>
-              ),
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <FilterBottomSheet
+        ref={fullSheetRef}
+        draft={draftFilters}
+        config={config}
+        products={products}
+        resultCount={draftFilteredCount}
+        onChange={setDraft}
+        onApply={applyDraft}
+        onReset={resetDraft}
+        onClearAll={resetDraft}
+      />
+
+      <QuickFilterSheet
+        ref={quickSheetRef}
+        draft={draftFilters}
+        config={config}
+        products={products}
+        resultCount={draftFilteredCount}
+        onChange={setDraft}
+        onApply={applyDraft}
+        onClearSection={clearFilter}
+      />
     </SafeAreaView>
   );
 }

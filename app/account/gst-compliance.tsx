@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
@@ -14,13 +13,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@components/PrimaryButton';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
+import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
 import { buildGstCertificateHtml } from '@utils/gstCertificateHtml';
 import { safeGoBack } from '@utils/navigation';
 
 export default function GstComplianceScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
   const user = useUserStore((st) => st.user);
   const progress = useSharedValue(0);
 
@@ -39,7 +38,7 @@ export default function GstComplianceScreen() {
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
-        dialogTitle: 'GST Certificate',
+        dialogTitle: t('gstCertificate'),
       });
     }
   };
@@ -54,7 +53,7 @@ export default function GstComplianceScreen() {
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-base font-bold text-text">{s.accountBusinessVerification}</Text>
+        <Text className="text-base font-bold text-text">{t('businessVerification')}</Text>
         <Ionicons name="information-circle" size={22} color="#FF6B00" />
       </View>
 
@@ -63,12 +62,12 @@ export default function GstComplianceScreen() {
           <View className="h-12 w-12 items-center justify-center rounded-full bg-success">
             <Ionicons name="checkmark" size={28} color="#FFFFFF" />
           </View>
-          <Text className="mt-3 text-lg font-bold text-text">{s.accountGstVerified}</Text>
+          <Text className="mt-3 text-lg font-bold text-text">{t('gstVerified')}</Text>
           <Text className="mt-1 text-xs text-text-secondary">
             Verified as of {user.gstVerifiedAt}
           </Text>
           <View className="mt-4 flex-row items-center justify-between">
-            <Text className="text-sm font-semibold text-primary">{s.accountComplianceScore}</Text>
+            <Text className="text-sm font-semibold text-primary">{t('complianceScore')}</Text>
             <Text className="text-lg font-bold text-primary">{user.complianceScore}%</Text>
           </View>
           <View className="mt-2 h-2 overflow-hidden rounded-full bg-border">
@@ -78,30 +77,30 @@ export default function GstComplianceScreen() {
 
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-base font-bold text-text">{s.accountEntityInfo}</Text>
+            <Text className="text-base font-bold text-text">{t('entityInformation')}</Text>
             <View className="flex-row items-center gap-1 rounded-full bg-success/15 px-2.5 py-1">
               <View className="h-1.5 w-1.5 rounded-full bg-success" />
-              <Text className="text-[10px] font-bold text-success">Active</Text>
+              <Text className="text-[10px] font-bold text-success">{t('active')}</Text>
             </View>
           </View>
-          <EntityRow label="LEGAL ENTITY NAME" value={user.legalEntityName} />
+          <EntityRow label={t('legalEntity')} value={user.legalEntityName} />
           <View className="mt-3">
             <Text className="text-[10px] font-semibold uppercase text-text-secondary">GSTIN</Text>
             <View className="mt-1 flex-row items-center gap-2">
               <Text className="text-sm text-text">{user.gstNumber}</Text>
               <View className="rounded bg-success/15 px-2 py-0.5">
-                <Text className="text-[10px] font-bold text-success">VERIFIED</Text>
+                <Text className="text-[10px] font-bold text-success">{t('verified')}</Text>
               </View>
             </View>
           </View>
-          <EntityRow label="PAN" value={user.pan} />
-          <EntityRow label="REGISTRATION DATE" value={user.establishmentDate} />
-          <EntityRow label="BUSINESS TYPE" value="Private Limited Company" />
-          <EntityRow label="JURISDICTION" value={user.jurisdiction} />
+          <EntityRow label={t('pan')} value={user.pan} />
+          <EntityRow label={t('registrationDate')} value={user.establishmentDate} />
+          <EntityRow label={t('businessType')} value="Private Limited Company" />
+          <EntityRow label={t('jurisdiction')} value={user.jurisdiction} />
         </View>
 
         <View className="mb-3 flex-row items-center justify-between">
-          <Text className="text-base font-bold text-text">{s.accountGstCertificate}</Text>
+          <Text className="text-base font-bold text-text">{t('gstCertificate')}</Text>
           <Text className="text-xs text-text-secondary">REG-06</Text>
         </View>
 
@@ -126,7 +125,7 @@ export default function GstComplianceScreen() {
 
         <View className="flex-row gap-3">
           <View className="flex-1">
-            <PrimaryButton title={s.accountDownloadPdf} onPress={downloadPdf} />
+            <PrimaryButton title={t('downloadPdf')} onPress={downloadPdf} />
           </View>
           <ScaledPressable
             onPress={sharePdf}

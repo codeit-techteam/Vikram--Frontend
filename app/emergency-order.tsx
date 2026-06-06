@@ -1,14 +1,14 @@
 import { Text, View } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
+import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
+import { useTranslation } from '@store/languageStore';
 import { safeGoBack } from '@utils/navigation';
 
 export default function EmergencyOrderScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -16,15 +16,15 @@ export default function EmergencyOrderScreen() {
         <ScaledPressable onPress={() => safeGoBack()} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">Emergency Order</Text>
+        <Text className="text-xl font-bold text-primary">{t('emergencyOrder')}</Text>
       </View>
       <View className="mx-5 rounded-card bg-[#1A2332] p-6">
-        <Text className="text-lg font-bold text-text-inverse">{s.criticalShortage}</Text>
-        <Text className="mt-3 text-sm leading-5 text-text-inverse/80">{s.emergencySubtitle}</Text>
+        <Text className="text-lg font-bold text-text-inverse">{t('criticalShortage')}</Text>
+        <Text className="mt-3 text-sm leading-5 text-text-inverse/80">{t('criticalSubtitle')}</Text>
         <ScaledPressable
-          onPress={() => router.push('/voice-assistant')}
+          onPress={openVoiceAssistant}
           className="mt-6 items-center rounded-pill bg-primary py-4">
-          <Text className="text-base font-bold text-text-inverse">⚡ {s.emergencyOrder}</Text>
+          <Text className="text-base font-bold text-text-inverse">⚡ {t('emergencyOrder')}</Text>
         </ScaledPressable>
       </View>
     </SafeAreaView>

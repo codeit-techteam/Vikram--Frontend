@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { useTranslation } from '@store/languageStore';
 import type { DeliverySite } from '@store/deliveryStore';
 
 interface SiteSelectorProps {
@@ -11,13 +12,15 @@ interface SiteSelectorProps {
 }
 
 export function SiteSelector({ sites, selectedSiteId, onSelect }: SiteSelectorProps) {
+  const { t } = useTranslation();
+
   return (
     <View className="mt-6 px-5">
       <View className="mb-3 flex-row items-center gap-2">
         <View className="h-8 w-8 items-center justify-center rounded-lg bg-primary">
           <Ionicons name="business" size={16} color="#FFFFFF" />
         </View>
-        <Text className="text-base font-bold text-text">Project Site Selection</Text>
+        <Text className="text-base font-bold text-text">{t('projectSiteSelection')}</Text>
       </View>
 
       {sites.map((site) => {

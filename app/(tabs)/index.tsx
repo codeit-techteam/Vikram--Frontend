@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   ImageBackground,
@@ -17,35 +17,47 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withSequence,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedProgressBar } from '@components/AnimatedProgressBar';
 import { AppHeader } from '@components/AppHeader';
+import { SearchBar } from '@components/SearchBar';
+import { SearchOverlay } from '@components/SearchOverlay';
+import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
 import { Toast } from '@components/Toast';
 import { getProductById } from '@constants/catalogData';
 import { images } from '@constants/images';
-import { useStrings } from '@hooks/useStrings';
+import type { StringKey } from '@constants/strings';
+import { useTranslation } from '@store/languageStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
+import { useSearch } from '@hooks/useSearch';
 import { useCartStore } from '@store/cartStore';
 import type { Order } from '@store/orderStore';
 import { useOrderStore } from '@store/orderStore';
 import { productToCartItem } from '@utils/cartHelpers';
 
-const CATEGORIES = [
-  { id: 'cement', routeId: '1', label: 'Cement', image: images.categoryCement },
-  { id: 'steel', routeId: '2', label: 'Steel', image: images.categorySteel },
-  { id: 'stone', routeId: '6', label: 'Stone Chips', image: images.categoryStone },
-  { id: 'sand', routeId: '3', label: 'Sand', image: images.categorySand },
-  { id: 'bricks', routeId: '4', label: 'Bricks', image: images.categoryBricks },
-] as const;
+const CATEGORIES: {
+  id: string;
+  routeId: string;
+  labelKey: StringKey;
+  image: number;
+}[] = [
+  { id: 'cement', routeId: '1', labelKey: 'cement', image: images.categoryCement },
+  { id: 'steel', routeId: '2', labelKey: 'steel', image: images.categorySteel },
+  { id: 'stone', routeId: '6', labelKey: 'stoneChip', image: images.categoryStone },
+  { id: 'sand', routeId: '3', labelKey: 'sand', image: images.categorySand },
+  { id: 'bricks', routeId: '4', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
+];
 
 const REORDER_ITEMS = [
-  { id: 's2', subtitleKey: 'tmtOrdered' as const },
-  { id: 'c1', subtitleKey: 'pvcOrdered' as const },
+  { id: 's2', subtitleKey: 'lastOrdered' as const },
+  { id: 'c1', subtitleKey: 'lastOrdered' as const },
 ];
 
 function CategoryCard({
@@ -85,7 +97,7 @@ function CategoryCard({
 }
 
 function LiveDeliveryCard({ order }: { order: Order }) {
-  const s = useStrings();
+  const { t } = useTranslation();
 
   const handleCallDriver = async (e: { stopPropagation?: () => void }) => {
     e.stopPropagation?.();
@@ -97,11 +109,11 @@ function LiveDeliveryCard({ order }: { order: Order }) {
     <View className="rounded-card bg-surface p-4 shadow-sm">
       <View className="flex-row items-center justify-between">
         <View className="rounded-full bg-success/15 px-3 py-1">
-          <Text className="text-[10px] font-bold text-success">{s.enRoute}</Text>
+          <Text className="text-[10px] font-bold text-success">{t('enRoute')}</Text>
         </View>
         <Text className="text-xs text-text-secondary">{order.id}</Text>
       </View>
-      <Text className="mt-3 text-xl font-bold text-text">{s.deliveryIn}</Text>
+      <Text className="mt-3 text-xl font-bold text-text">{t('deliveryIn')}</Text>
       <Text className="mt-1 text-sm text-text-secondary">{order.quantitySummary}</Text>
       <View className="mt-3">
         <AnimatedProgressBar progress={0.7} height={8} />
@@ -110,7 +122,7 @@ function LiveDeliveryCard({ order }: { order: Order }) {
         onPress={handleCallDriver}
         hitSlop={12}
         className="mt-3 items-center rounded-lg border border-secondary py-2.5">
-        <Text className="text-sm font-semibold text-secondary">{s.callDriver}</Text>
+        <Text className="text-sm font-semibold text-secondary">{t('callDriver')}</Text>
       </Pressable>
       <View className="mt-3 overflow-hidden rounded-card">
         <Image
@@ -128,10 +140,27 @@ function LiveDeliveryCard({ order }: { order: Order }) {
 }
 
 export default function HomeScreen() {
-  const s = useStrings();
+  const { t, language } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+
+  const screenOpacity = useSharedValue(1);
+  const prevLang = useRef(language);
+
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: screenOpacity.value,
+  }));
+
+  useEffect(() => {
+    if (prevLang.current !== language) {
+      screenOpacity.value = withSequence(
+        withTiming(0, { duration: 150 }),
+        withTiming(1, { duration: 150 }),
+      );
+      prevLang.current = language;
+    }
+  }, [language, screenOpacity]);
 
   const addItem = useCartStore((s) => s.addItem);
   const orders = useOrderStore((s) => s.orders);
@@ -155,6 +184,8 @@ export default function HomeScreen() {
     () => setDrawerOpen(false),
   );
 
+  const search = useSearch();
+
   useEffect(() => {
     if (!drawerOpen) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -163,6 +194,15 @@ export default function HomeScreen() {
     });
     return () => sub.remove();
   }, [drawerOpen, closeDrawer]);
+
+  useEffect(() => {
+    if (!search.isActive) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      search.deactivateSearch();
+      return true;
+    });
+    return () => sub.remove();
+  }, [search.isActive, search.deactivateSearch]);
 
   const toggleDrawer = () => {
     if (drawerOpen) closeDrawer();
@@ -175,13 +215,16 @@ export default function HomeScreen() {
     setTimeout(() => setToastVisible(false), 2200);
   }, []);
 
-  const onCategoryPress = useCallback(async (category: (typeof CATEGORIES)[number]) => {
-    await Haptics.selectionAsync();
-    router.push({
-      pathname: '/products/[categoryId]',
-      params: { categoryId: category.routeId, categoryName: category.label },
-    } as Href);
-  }, []);
+  const onCategoryPress = useCallback(
+    async (category: (typeof CATEGORIES)[number]) => {
+      await Haptics.selectionAsync();
+      router.push({
+        pathname: '/products/[categoryId]',
+        params: { categoryId: category.routeId, categoryName: t(category.labelKey) },
+      } as Href);
+    },
+    [t],
+  );
 
   const onViewAllCategories = useCallback(async () => {
     await Haptics.selectionAsync();
@@ -214,20 +257,10 @@ export default function HomeScreen() {
     router.push('/emergency-order' as Href);
   }, []);
 
-  const goSearch = useCallback(async () => {
-    await Haptics.selectionAsync();
-    router.push('/search' as Href);
-  }, []);
-
-  const goVoice = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/voice-assistant' as Href);
-  }, []);
-
   const heroSlides = [
-    { badge: s.twoHourDelivery, title: s.heroTitle, shopNow: s.shopNow, bulkInquiry: s.bulkInquiry },
-    { badge: s.twoHourDelivery, title: s.heroTitle, shopNow: s.shopNow, bulkInquiry: s.bulkInquiry },
-    { badge: s.twoHourDelivery, title: s.heroTitle, shopNow: s.shopNow, bulkInquiry: s.bulkInquiry },
+    { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
+    { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
+    { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
   ];
 
   const reorderRows = REORDER_ITEMS.map((item) => {
@@ -236,8 +269,8 @@ export default function HomeScreen() {
       ...item,
       product,
       title: product?.name ?? item.id,
-      subtitle: item.subtitleKey === 'tmtOrdered' ? s.tmtOrdered : s.pvcOrdered,
-      icon: item.subtitleKey === 'tmtOrdered' ? ('cube-outline' as const) : ('home-outline' as const),
+      subtitle: t(item.subtitleKey),
+      icon: item.id === 's2' ? ('cube-outline' as const) : ('home-outline' as const),
     };
   });
 
@@ -250,7 +283,7 @@ export default function HomeScreen() {
           <Pressable style={StyleSheet.absoluteFill} onPress={closeDrawer} />
         </Animated.View>
 
-        <Animated.View style={[styles.content, contentStyle]}>
+        <Animated.View style={[styles.content, contentStyle, fadeStyle]}>
           <SafeAreaView className="flex-1 bg-background" edges={['top']}>
             <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
               <AppHeader
@@ -260,19 +293,22 @@ export default function HomeScreen() {
               />
 
               <View className="px-5">
-                <Text className="text-2xl font-bold text-text">{s.goodMorning}</Text>
-                <Text className="mt-0.5 text-sm text-text-secondary">{s.readyToScale}</Text>
+                <Text className="text-2xl font-bold text-text">{t('goodMorning')}</Text>
+                <Text className="mt-0.5 text-sm text-text-secondary">{t('homeSubtitle')}</Text>
               </View>
 
-              <View style={styles.searchBar}>
-                <Pressable onPress={goSearch} style={styles.searchPressable} hitSlop={4}>
-                  <Ionicons name="search-outline" size={18} color="#AAAAAA" />
-                  <Text style={styles.searchPlaceholder}>{s.searchMaterials}</Text>
-                </Pressable>
-                <Pressable onPress={goVoice} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="mic-outline" size={20} color="#FF6B00" />
-                </Pressable>
-              </View>
+              <SearchBar
+                query={search.query}
+                isActive={false}
+                onChangeText={search.setQuery}
+                onFocus={search.activateSearch}
+                onSubmit={() => search.submitSearch()}
+                onClear={search.clearQuery}
+                onVoicePress={() => {
+                  search.deactivateSearch();
+                  openVoiceAssistant();
+                }}
+              />
 
               <View className="mt-5 px-5">
                 <HeroCarousel
@@ -285,22 +321,22 @@ export default function HomeScreen() {
               <Pressable onPress={goLoyalty} style={styles.loyaltyCard}>
                 <View style={styles.loyaltyTopRow}>
                   <View style={styles.tierBadge}>
-                    <Text style={styles.tierText}>{s.platinumTier}</Text>
+                    <Text style={styles.tierText}>{t('platinumTier')}</Text>
                   </View>
-                  <Text style={styles.pointsText}>{s.loyaltyPoints}</Text>
+                  <Text style={styles.pointsText}>12,450 {t('points')}</Text>
                 </View>
                 <View style={styles.loyaltyMidRow}>
-                  <Text style={styles.loyaltyTitle}>{s.loyaltyProgress}</Text>
-                  <Text style={styles.loyaltyNext}>{s.platinumNext} →</Text>
+                  <Text style={styles.loyaltyTitle}>{t('loyaltyProgress')}</Text>
+                  <Text style={styles.loyaltyNext}>{t('platinumNext')} →</Text>
                 </View>
                 <AnimatedProgressBar progress={10 / 600} height={5} />
-                <Text style={styles.earnText}>{s.earnPoints}</Text>
+                <Text style={styles.earnText}>{t('earnPoints')}</Text>
               </Pressable>
 
               <View className="mt-5 flex-row items-center justify-between px-5">
-                <Text className="text-base font-bold text-text">{s.materialCategories}</Text>
+                <Text className="text-base font-bold text-text">{t('materialCategories')}</Text>
                 <Pressable onPress={onViewAllCategories} hitSlop={12}>
-                  <Text className="text-sm font-semibold text-primary">{s.viewCatalog}</Text>
+                  <Text className="text-sm font-semibold text-primary">{t('viewCat')}</Text>
                 </Pressable>
               </View>
 
@@ -311,7 +347,7 @@ export default function HomeScreen() {
                 {CATEGORIES.map((cat) => (
                   <CategoryCard
                     key={cat.id}
-                    label={cat.label}
+                    label={t(cat.labelKey)}
                     image={cat.image}
                     onPress={() => onCategoryPress(cat)}
                   />
@@ -325,11 +361,11 @@ export default function HomeScreen() {
                   imageStyle={{ borderRadius: 16 }}>
                   <View style={styles.emergencyOverlay} />
                   <View style={styles.emergencyContent}>
-                    <Text style={styles.emergencyTitle}>{s.criticalShortage}</Text>
-                    <Text style={styles.emergencySubtitle}>{s.emergencySubtitle}</Text>
+                    <Text style={styles.emergencyTitle}>{t('criticalShortage')}</Text>
+                    <Text style={styles.emergencySubtitle}>{t('criticalSubtitle')}</Text>
                     <View style={styles.emergencyButton}>
                       <Text style={styles.emergencyEmoji}>⚡</Text>
-                      <Text style={styles.emergencyButtonText}>{s.emergencyOrder}</Text>
+                      <Text style={styles.emergencyButtonText}>{t('emergencyOrder')}</Text>
                     </View>
                   </View>
                 </ImageBackground>
@@ -346,7 +382,7 @@ export default function HomeScreen() {
                 </Pressable>
               ) : null}
 
-              <Text className="mx-5 mt-6 text-base font-bold text-text">{s.smartReorder}</Text>
+              <Text className="mx-5 mt-6 text-base font-bold text-text">{t('smartReorder')}</Text>
               <View className="mx-5 mt-3 gap-3">
                 {reorderRows.map((item) => (
                   <Pressable
@@ -376,20 +412,20 @@ export default function HomeScreen() {
               <Pressable onPress={goLoyalty} className="mx-5 mt-5 mb-8 rounded-card bg-[#1A2332] p-5">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-[10px] font-bold tracking-wider text-text-secondary">
-                    {s.proStatus}
+                    {t('proStatus')}
                   </Text>
                   <Ionicons name="medal-outline" size={18} color="#FFFFFF" />
                 </View>
-                <Text className="mt-2 text-3xl font-bold text-text-inverse">{s.points}</Text>
+                <Text className="mt-2 text-3xl font-bold text-text-inverse">{t('points')}</Text>
                 <View className="mt-3 flex-row items-center justify-between">
-                  <Text className="text-xs text-text-inverse/70">{s.progressToPlatinum}</Text>
+                  <Text className="text-xs text-text-inverse/70">{t('progressToPlatinum')}</Text>
                   <Text className="text-xs font-bold text-text-inverse">85%</Text>
                 </View>
                 <View className="mt-2">
                   <AnimatedProgressBar progress={0.85} height={5} trackColor="#333" />
                 </View>
                 <View className="mt-4 items-center rounded-lg border border-white/30 py-3">
-                  <Text className="text-sm font-bold text-text-inverse">{s.redeemRewards}</Text>
+                  <Text className="text-sm font-bold text-text-inverse">{t('redeemRewards')}</Text>
                 </View>
               </Pressable>
             </ScrollView>
@@ -403,6 +439,10 @@ export default function HomeScreen() {
           pointerEvents={drawerOpen ? 'auto' : 'none'}>
           <DrawerMenu isOpen={drawerOpen} onClose={closeDrawer} />
         </Animated.View>
+
+        {search.isActive ? (
+          <SearchOverlay {...search} onClose={search.deactivateSearch} />
+        ) : null}
       </View>
     </GestureDetector>
   );
@@ -419,35 +459,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     zIndex: 1,
-  },
-  searchBar: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchPressable: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  searchPlaceholder: {
-    flex: 1,
-    fontSize: 14,
-    color: '#AAAAAA',
   },
   loyaltyCard: {
     marginHorizontal: 16,

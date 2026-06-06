@@ -3,13 +3,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountTabIcon } from '@components/account/AccountTabIcon';
-import { useStrings } from '@hooks/useStrings';
+import { useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 
 const TAB_BAR_CONTENT_HEIGHT = 52;
 
 export default function TabLayout() {
-  const s = useStrings();
+  const { t, language } = useTranslation();
   const insets = useSafeAreaInsets();
   const tabBarBottomInset = Math.max(insets.bottom, 10);
   const activeOrders = useOrderStore(
@@ -18,6 +18,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      key={language}
       screenOptions={{
         headerShown: false,
         animation: 'fade',
@@ -49,7 +50,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: s.tabHome,
+          title: t('tabHome'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
           ),
@@ -58,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="catalog"
         options={{
-          title: s.tabCatalog,
+          title: t('tabCatalog'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'cube' : 'cube-outline'} size={22} color={color} />
           ),
@@ -73,7 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: s.tabOrders,
+          title: t('tabOrders'),
           tabBarBadge: activeOrders > 0 ? activeOrders : undefined,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'car' : 'car-outline'} size={22} color={color} />
@@ -83,7 +84,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: s.tabAccount,
+          title: t('tabAccount'),
           tabBarIcon: ({ color, focused }) => (
             <AccountTabIcon focused={focused} color={color} />
           ),

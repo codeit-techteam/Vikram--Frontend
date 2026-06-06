@@ -20,6 +20,7 @@ import { PulseDot } from '@components/orders/PulseDot';
 import { OrdersScreenHeader } from '@components/orders/OrdersScreenHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { safeGoBack } from '@utils/navigation';
 import { getOrderImageSource } from '@utils/orderHelpers';
@@ -29,6 +30,8 @@ const DRIVER_AVATAR =
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&q=80';
 
 export default function ViewOrderScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => s.getOrder(orderId ?? ''));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -45,9 +48,9 @@ export default function ViewOrderScreen() {
   if (!order) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <Text className="text-text-secondary">Order not found.</Text>
+        <Text className="text-text-secondary">{t('productNotFound')}</Text>
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/orders')} className="mt-4">
-          <Text className="font-bold text-primary">Go Back</Text>
+          <Text className="font-bold text-primary">{t('goBack')}</Text>
         </ScaledPressable>
       </SafeAreaView>
     );
@@ -82,16 +85,21 @@ export default function ViewOrderScreen() {
       onClose={() => setDrawerOpen(false)}>
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <OrdersScreenHeader onMenuPress={() => setDrawerOpen(true)} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        key={language}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-5 pt-2">
           <View className="flex-row items-center justify-between">
-            <Text className="text-xs text-text-secondary">ORDER ID: {order.id}</Text>
+            <Text className="text-xs text-text-secondary">
+              {t('orderId')}: {order.id}
+            </Text>
             <View className="rounded-full bg-primary/10 px-3 py-1">
               <Text className="text-[10px] font-bold text-primary">{order.statusLabel} 🔵</Text>
             </View>
           </View>
           <Text className="mt-2 text-2xl font-bold text-text">
-            Arriving by {order.arrivingBy}
+            {t('arrivingBy')} {order.arrivingBy}
           </Text>
           <View className="mt-1 flex-row items-center gap-1">
             <Ionicons name="star-outline" size={14} color="#666" />
@@ -114,7 +122,7 @@ export default function ViewOrderScreen() {
 
         <View className="mx-5 mt-5 rounded-card border border-border bg-surface p-4">
           <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
-            DELIVERY TIMELINE
+            {t('deliveryTimeline')}
           </Text>
           {order.timeline.map((step, i) =>
             i < visibleSteps ? (
@@ -151,7 +159,7 @@ export default function ViewOrderScreen() {
         <View className="mx-5 mt-5">
           <View className="mb-3 flex-row items-center gap-2">
             <Ionicons name="cube-outline" size={18} color="#FF6B00" />
-            <Text className="text-base font-bold text-text">Ordered Materials</Text>
+            <Text className="text-base font-bold text-text">{t('orderedMaterials')}</Text>
           </View>
           {order.materials.map((mat) => (
             <View key={mat.id} className="mb-4 overflow-hidden rounded-card border border-border bg-surface">
@@ -168,10 +176,10 @@ export default function ViewOrderScreen() {
                 <Text className="mt-1 text-xs text-text-secondary">{mat.description}</Text>
                 <View className="mt-3 flex-row flex-wrap gap-3">
                   <Text className="text-[10px] font-bold text-text">
-                    QUANTITY: {mat.quantityLabel}
+                    {t('quantity')}: {mat.quantityLabel}
                   </Text>
                   <Text className="text-[10px] font-bold text-text">
-                    UNIT PRICE: {mat.unitPriceLabel}
+                    {t('unitPrice')}: {mat.unitPriceLabel}
                   </Text>
                 </View>
                 <View className="mt-2 self-end rounded-full bg-trust px-2 py-1">
@@ -185,7 +193,7 @@ export default function ViewOrderScreen() {
         </View>
 
         <View className="mx-5 mt-2 rounded-card border border-border bg-trust p-4">
-          <Text className="text-[10px] font-bold text-text-secondary">DELIVERY SITE</Text>
+          <Text className="text-[10px] font-bold text-text-secondary">{t('deliverySite')}</Text>
           <View className="mt-2 flex-row items-start gap-2">
             <Ionicons name="location" size={20} color="#1A73E8" />
             <View>
@@ -196,13 +204,15 @@ export default function ViewOrderScreen() {
         </View>
 
         <View className="mx-5 mt-4 rounded-card border border-border bg-surface p-4">
-          <Text className="text-[10px] font-bold text-text-secondary">LOGISTICS LEAD</Text>
+          <Text className="text-[10px] font-bold text-text-secondary">{t('logisticsLead')}</Text>
           <View className="mt-3 flex-row items-center justify-between">
             <View className="flex-row items-center gap-3">
               <Image source={{ uri: DRIVER_AVATAR }} style={{ width: 44, height: 44, borderRadius: 22 }} />
               <View>
                 <Text className="text-sm font-bold text-text">{order.driverName}</Text>
-                <Text className="text-xs text-text-secondary">Vehicle: {order.vehicleNumber}</Text>
+                <Text className="text-xs text-text-secondary">
+                  {t('vehicle')}: {order.vehicleNumber}
+                </Text>
               </View>
             </View>
             <View className="flex-row gap-2">
@@ -223,9 +233,9 @@ export default function ViewOrderScreen() {
         <View className="mx-5 mt-4 overflow-hidden rounded-card">
           <View className="bg-primary px-4 py-4">
             <View className="flex-row items-center justify-between">
-              <Text className="text-[10px] font-bold text-text-inverse/80">TOTAL PAYABLE</Text>
+              <Text className="text-[10px] font-bold text-text-inverse/80">{t('totalPayable')}</Text>
               <View className="rounded bg-success px-2 py-0.5">
-                <Text className="text-[10px] font-bold text-text-inverse">PAID</Text>
+                <Text className="text-[10px] font-bold text-text-inverse">{t('paid')}</Text>
               </View>
             </View>
             <Text className="mt-1 text-3xl font-bold text-text-inverse">
@@ -235,16 +245,16 @@ export default function ViewOrderScreen() {
           <View className="bg-surface p-4">
             <View className="gap-2">
               <View className="flex-row justify-between">
-                <Text className="text-sm text-text-secondary">Subtotal</Text>
+                <Text className="text-sm text-text-secondary">{t('subtotal')}</Text>
                 <Text className="text-sm font-semibold">{formatINR(order.subtotal, false)}</Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-text-secondary">Total GST</Text>
+                <Text className="text-sm text-text-secondary">{t('totalGst')}</Text>
                 <Text className="text-sm font-semibold">{formatINR(order.gst, false)}</Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-text-secondary">Delivery Fee</Text>
-                <Text className="text-sm font-bold text-success">FREE</Text>
+                <Text className="text-sm text-text-secondary">{t('deliveryFee')}</Text>
+                <Text className="text-sm font-bold text-success">{t('free')}</Text>
               </View>
             </View>
             <View className="mt-3 flex-row items-center gap-2 border-t border-border pt-3">
@@ -256,7 +266,7 @@ export default function ViewOrderScreen() {
 
         <View className="mx-5 mt-4 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-[10px] font-bold text-text-secondary">GST INVOICE</Text>
+            <Text className="text-[10px] font-bold text-text-secondary">{t('gstInvoice')}</Text>
             <Ionicons name="settings-outline" size={18} color="#FF6B00" />
           </View>
           <View className="mt-3 flex-row items-center gap-3">
@@ -264,7 +274,7 @@ export default function ViewOrderScreen() {
             <View className="flex-1">
               <Text className="text-sm font-bold text-text">{order.invoiceFileName}</Text>
               <Text className="text-xs text-text-secondary">
-                {order.invoiceFileSize} • Generated 2h ago
+                {order.invoiceFileSize} • {t('generated')} 2h ago
               </Text>
             </View>
           </View>
@@ -278,7 +288,7 @@ export default function ViewOrderScreen() {
               ) : (
                 <>
                   <Ionicons name="download-outline" size={18} color="#FFF" />
-                  <Text className="ml-2 font-bold text-text-inverse">Download</Text>
+                  <Text className="ml-2 font-bold text-text-inverse">{t('download')}</Text>
                 </>
               )}
             </ScaledPressable>
@@ -287,7 +297,7 @@ export default function ViewOrderScreen() {
               className="flex-1 flex-row items-center justify-center rounded-lg py-3"
               style={{ backgroundColor: '#25D366' }}>
               <Ionicons name="share-social-outline" size={18} color="#FFF" />
-              <Text className="ml-2 font-bold text-text-inverse">WhatsApp</Text>
+              <Text className="ml-2 font-bold text-text-inverse">{t('whatsapp')}</Text>
             </ScaledPressable>
           </View>
         </View>
@@ -297,7 +307,7 @@ export default function ViewOrderScreen() {
             <Ionicons name="star" size={20} color="#FF6B00" />
           </View>
           <View>
-            <Text className="text-[10px] font-bold text-text-secondary">LOYALTY POINTS EARNED</Text>
+            <Text className="text-[10px] font-bold text-text-secondary">{t('loyaltyPointsEarned')}</Text>
             <Text className="text-base font-bold text-primary">
               {order.loyaltyPointsEarned.toLocaleString('en-IN')} CIQ Points
             </Text>
@@ -308,12 +318,12 @@ export default function ViewOrderScreen() {
           <ScaledPressable
             onPress={() => router.push('/support')}
             className="items-center rounded-pill border-2 border-primary py-4">
-            <Text className="font-bold text-primary">⚠ Raise a Logistics Issue</Text>
+            <Text className="font-bold text-primary">⚠ {t('raiseLogisticsIssue')}</Text>
           </ScaledPressable>
           <Text className="mt-4 text-center text-sm text-text-secondary">
-            Need immediate help?{' '}
+            {t('needImmediateHelp')}{' '}
             <Text className="font-bold text-primary" onPress={() => router.push('/support')}>
-              Contact Support
+              {t('contactSupport')}
             </Text>
           </Text>
         </View>

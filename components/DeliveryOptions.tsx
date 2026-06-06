@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
 
 export type DeliveryType = 'priority' | 'standard' | 'scheduled';
@@ -51,28 +52,30 @@ function DeliveryCard({
 }
 
 export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOptionsProps) {
+  const { t } = useTranslation();
+
   return (
     <View className="mx-5 mt-6">
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-bold text-text">Delivery & Logistics</Text>
+        <Text className="text-base font-bold text-text">{t('deliveryLogistics')}</Text>
         <View className="flex-row items-center gap-1 rounded-full bg-success/15 px-2.5 py-1">
           <View className="h-1.5 w-1.5 rounded-full bg-success" />
-          <Text className="text-[10px] font-bold text-success">Available Now</Text>
+          <Text className="text-[10px] font-bold text-success">{t('availableNow')}</Text>
         </View>
       </View>
 
       <View className="mt-3 flex-row items-center gap-2">
         <Ionicons name="time-outline" size={16} color="#FF6B00" />
-        <Text className="text-sm font-bold text-text">Delivery in 2–4 Hours</Text>
+        <Text className="text-sm font-bold text-text">{t('deliveryIn24')}</Text>
       </View>
       <Text className="mt-1 text-xs text-text-secondary">
-        Nearest warehouse: 4.2 km (Thane West)
+        {t('nearestWarehouse')}: 4.2 km (Thane West)
       </Text>
 
       <View className="mt-4 flex-row gap-2">
         <DeliveryCard
           type="priority"
-          title="Priority"
+          title={t('priority')}
           time="2–4 Hours"
           price={formatINR(250, false)}
           priceColor="#FF6B00"
@@ -81,18 +84,18 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
         />
         <DeliveryCard
           type="standard"
-          title="Standard"
+          title={t('standard')}
           time="6–8 Hours"
-          price="FREE"
+          price={t('free')}
           priceColor="#2E7D32"
           selected={selected === 'standard'}
           onSelect={onSelect}
         />
         <DeliveryCard
           type="scheduled"
-          title="Scheduled"
-          time="Choose slot"
-          price="Site-ready"
+          title={t('scheduled')}
+          time={t('chooseSlot')}
+          price={t('siteReady')}
           priceColor="#666666"
           selected={selected === 'scheduled'}
           onSelect={onSelect}
@@ -101,19 +104,19 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
 
       <View className="mt-4 rounded-card border border-border bg-trust p-4">
         <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
-          LOGISTICS BREAKDOWN
+          {t('logisticsBreakdown')}
         </Text>
         <View className="mt-3 gap-2">
           <View className="flex-row justify-between">
-            <Text className="text-sm text-text-secondary">Heavy Load</Text>
+            <Text className="text-sm text-text-secondary">{t('heavyLoad')}</Text>
             <Text className="text-sm font-semibold text-text">{formatINR(400, false)}</Text>
           </View>
           <View className="flex-row justify-between">
-            <Text className="text-sm text-text-secondary">Distance (4.2km)</Text>
+            <Text className="text-sm text-text-secondary">{t('distance')} (4.2km)</Text>
             <Text className="text-sm font-bold text-success">INCLUDED</Text>
           </View>
           <View className="flex-row justify-between">
-            <Text className="text-sm text-text-secondary">Unloading Help</Text>
+            <Text className="text-sm text-text-secondary">{t('unloadingHelp')}</Text>
             <Text className="text-sm font-semibold text-text">{formatINR(150, false)}</Text>
           </View>
         </View>
@@ -122,7 +125,7 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
       <View className="mt-4 flex-row items-center gap-2 rounded-card bg-primary px-4 py-3">
         <Ionicons name="flash" size={16} color="#FFFFFF" />
         <Text className="flex-1 text-xs font-medium text-text-inverse">
-          Fastest delivery to {siteName}. Materials available at Thane West warehouse.
+          {t('fastestDelivery')} {siteName}. {t('materialsAvailable')} Thane West {t('warehouse').toLowerCase()}.
         </Text>
       </View>
 
@@ -143,14 +146,14 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
 
       <View className="mt-4 flex-row gap-3">
         <View className="flex-1 rounded-card border border-border bg-surface p-3">
-          <Text className="text-[10px] font-bold text-text-secondary">WAREHOUSE</Text>
+          <Text className="text-[10px] font-bold text-text-secondary">{t('warehouse')}</Text>
           <View className="mt-2 flex-row items-center gap-2">
             <Ionicons name="home-outline" size={18} color="#FF6B00" />
             <Text className="text-sm font-bold text-text">Thane West</Text>
           </View>
         </View>
         <View className="flex-1 rounded-card border border-border bg-surface p-3">
-          <Text className="text-[10px] font-bold text-text-secondary">VEHICLE</Text>
+          <Text className="text-[10px] font-bold text-text-secondary">{t('vehicle')}</Text>
           <View className="mt-2 flex-row items-center gap-2">
             <Ionicons name="bus-outline" size={18} color="#FF6B00" />
             <Text className="text-sm font-bold text-text">10-Ton Tipper</Text>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,28 +15,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PulseDot } from '@components/orders/PulseDot';
 import { ScaledPressable } from '@components/ScaledPressable';
+import type { StringKey } from '@constants/strings';
+import { useTranslation } from '@store/languageStore';
 import { safeGoBack } from '@utils/navigation';
+
 type DisputeType = 'wrong_item' | 'damaged' | 'missing' | 'refund';
 
-const DISPUTE_TYPES: { id: DisputeType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'wrong_item', label: 'Report Wrong Item', icon: 'cube-outline' },
-  { id: 'damaged', label: 'Damaged Goods', icon: 'warning-outline' },
-  { id: 'missing', label: 'Missing Quantity', icon: 'scale-outline' },
-  { id: 'refund', label: 'Refund Request', icon: 'return-down-back-outline' },
+const DISPUTE_TYPES: { id: DisputeType; labelKey: StringKey; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'wrong_item', labelKey: 'reportWrongItem', icon: 'cube-outline' },
+  { id: 'damaged', labelKey: 'damagedGoods', icon: 'warning-outline' },
+  { id: 'missing', labelKey: 'missingQuantity', icon: 'scale-outline' },
+  { id: 'refund', labelKey: 'refundRequest', icon: 'return-down-back-outline' },
 ];
 
-const RESOLUTION_STEPS = [
-  { label: 'Ticket Raised', time: 'Oct 24, 09:15 AM', done: true },
-  { label: 'Evidence Received', time: 'Oct 24, 11:30 AM', done: true },
-  { label: 'Under Investigation', time: 'In Progress', done: false, active: true },
-  { label: 'Resolution Pending', time: 'ETA: 4 Hours', done: false },
+const RESOLUTION_STEP_KEYS: StringKey[] = [
+  'ticketRaised',
+  'evidenceReceived',
+  'underInvestigation',
+  'resolutionPending',
+];
+
+const RESOLUTION_TIMES = [
+  'Oct 24, 09:15 AM',
+  'Oct 24, 11:30 AM',
+  'In Progress',
+  'ETA: 4 Hours',
 ];
 
 export default function SupportScreen() {
+  const { t } = useTranslation();
   const [selectedDispute, setSelectedDispute] = useState<DisputeType>('damaged');
   const [uploads, setUploads] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
   const borderOpacity = useSharedValue(1);
+
+  const resolutionSteps = useMemo(
+    () =>
+      RESOLUTION_STEP_KEYS.map((labelKey, i) => ({
+        label: t(labelKey),
+        time: RESOLUTION_TIMES[i],
+        done: i < 2,
+        active: i === 2,
+      })),
+    [t],
+  );
 
   useEffect(() => {
     if (picking) {
@@ -73,7 +95,7 @@ export default function SupportScreen() {
         <ScaledPressable onPress={() => safeGoBack()}>
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">Support & Disputes</Text>
+        <Text className="text-xl font-bold text-primary">{t('supportDisputes')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
@@ -84,20 +106,20 @@ export default function SupportScreen() {
         <View className="mt-4 flex-row gap-2">
           <ScaledPressable className="flex-row items-center rounded-full border-2 border-primary px-4 py-2">
             <Ionicons name="time-outline" size={14} color="#FF6B00" />
-            <Text className="ml-1 text-sm font-semibold text-primary">History</Text>
+            <Text className="ml-1 text-sm font-semibold text-primary">{t('history')}</Text>
           </ScaledPressable>
           <ScaledPressable className="rounded-full bg-primary px-4 py-2">
-            <Text className="text-sm font-bold text-text-inverse">+ New Ticket</Text>
+            <Text className="text-sm font-bold text-text-inverse">{t('newTicket')}</Text>
           </ScaledPressable>
         </View>
 
         <View className="mt-5 rounded-card border border-border bg-surface p-4">
           <View className="flex-row justify-between">
             <View className="rounded bg-success/15 px-2 py-0.5">
-              <Text className="text-[10px] font-bold text-success">ACTIVE DISPUTE</Text>
+              <Text className="text-[10px] font-bold text-success">{t('activeDispute')}</Text>
             </View>
             <View className="rounded bg-primary/10 px-2 py-0.5">
-              <Text className="text-[10px] font-bold text-primary">In Review</Text>
+              <Text className="text-[10px] font-bold text-primary">{t('inReview')}</Text>
             </View>
           </View>
           <Text className="mt-3 text-base font-bold text-text">
@@ -120,8 +142,8 @@ export default function SupportScreen() {
           </Text>
         </View>
 
-        <Text className="mb-3 mt-5 text-base font-bold text-text">Resolution Steps</Text>
-        {RESOLUTION_STEPS.map((step, i) => (
+        <Text className="mb-3 mt-5 text-base font-bold text-text">{t('resolutionSteps')}</Text>
+        {resolutionSteps.map((step, i) => (
           <View key={step.label} className="flex-row gap-3">
             <View className="items-center">
               {step.active ? (
@@ -134,7 +156,7 @@ export default function SupportScreen() {
                   {step.done && <Ionicons name="checkmark" size={10} color="#FFF" />}
                 </View>
               )}
-              {i < RESOLUTION_STEPS.length - 1 && (
+              {i < resolutionSteps.length - 1 && (
                 <View className={`h-8 w-0.5 ${step.done ? 'bg-primary' : 'bg-border'}`} />
               )}
             </View>
@@ -145,7 +167,7 @@ export default function SupportScreen() {
           </View>
         ))}
 
-        <Text className="mb-3 mt-4 text-base font-bold text-text">File New Dispute</Text>
+        <Text className="mb-3 mt-4 text-base font-bold text-text">{t('fileNewDispute')}</Text>
         <View className="flex-row flex-wrap gap-3">
           {DISPUTE_TYPES.map((d) => {
             const selected = selectedDispute === d.id;
@@ -162,28 +184,25 @@ export default function SupportScreen() {
                   className={`mt-2 text-center text-xs font-semibold ${
                     selected ? 'text-primary' : 'text-text-secondary'
                   }`}>
-                  {d.label}
+                  {t(d.labelKey)}
                 </Text>
               </ScaledPressable>
             );
           })}
         </View>
 
-        <Text className="mb-2 mt-5 text-base font-bold text-text">Upload Evidence</Text>
-        <Text className="mb-3 text-xs leading-4 text-text-secondary">
-          Please provide high-resolution photos or videos of the damaged items. Include the shipping
-          label in at least one photo.
-        </Text>
+        <Text className="mb-2 mt-5 text-base font-bold text-text">{t('uploadEvidence')}</Text>
+        <Text className="mb-3 text-xs leading-4 text-text-secondary">{t('uploadEvidenceSubtitle')}</Text>
         <Animated.View
           style={[uploadBorderStyle, { borderWidth: 2, borderStyle: 'dashed' }]}
           className="items-center rounded-card bg-trust p-6">
           <View className="h-14 w-14 items-center justify-center rounded-full bg-primary/15">
             <Ionicons name="cloud-upload-outline" size={28} color="#FF6B00" />
           </View>
-          <Text className="mt-3 font-bold text-text">Drag and drop media files</Text>
-          <Text className="mt-1 text-xs text-text-secondary">Supports JPG, PNG, MP4 up to 50MB</Text>
+          <Text className="mt-3 font-bold text-text">{t('dragDropFiles')}</Text>
+          <Text className="mt-1 text-xs text-text-secondary">{t('supportsFormats')}</Text>
           <ScaledPressable onPress={pickFiles} className="mt-4 rounded-lg bg-primary px-6 py-3">
-            <Text className="font-bold text-text-inverse">Select Files</Text>
+            <Text className="font-bold text-text-inverse">{t('selectFiles')}</Text>
           </ScaledPressable>
         </Animated.View>
 
@@ -204,8 +223,8 @@ export default function SupportScreen() {
                 <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FF6B00" />
               </View>
               <View>
-                <Text className="text-sm font-bold text-text">Live Chat</Text>
-                <Text className="text-xs text-success">Response in &lt; 2 min</Text>
+                <Text className="text-sm font-bold text-text">{t('liveChat')}</Text>
+                <Text className="text-xs text-success">{t('liveChatSubtitle')}</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#999" />
@@ -218,8 +237,8 @@ export default function SupportScreen() {
                 <Ionicons name="call-outline" size={20} color="#FF6B00" />
               </View>
               <View>
-                <Text className="text-sm font-bold text-text">Call Support</Text>
-                <Text className="text-xs text-success">Direct Line Available</Text>
+                <Text className="text-sm font-bold text-text">{t('callSupportLabel')}</Text>
+                <Text className="text-xs text-success">{t('callSupportSubtitle')}</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#999" />

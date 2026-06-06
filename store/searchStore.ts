@@ -8,6 +8,7 @@ interface SearchStore {
   recentSearches: string[];
   recentlyViewed: SearchProduct[];
   addRecentSearch: (term: string) => void;
+  removeRecentSearch: (term: string) => void;
   clearRecentSearches: () => void;
   addRecentlyViewed: (product: SearchProduct) => void;
 }
@@ -28,6 +29,13 @@ export const useSearchStore = create<SearchStore>()(
           return { recentSearches: [trimmed, ...filtered].slice(0, 8) };
         });
       },
+
+      removeRecentSearch: (term) =>
+        set((state) => ({
+          recentSearches: state.recentSearches.filter(
+            (s) => s.toLowerCase() !== term.trim().toLowerCase(),
+          ),
+        })),
 
       clearRecentSearches: () => set({ recentSearches: [] }),
 

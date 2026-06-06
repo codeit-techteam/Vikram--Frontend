@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { LogoIcon } from '@components/BrandLogo';
+import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { useCartStore } from '@store/cartStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { safeGoBack } from '@utils/navigation';
@@ -95,6 +96,13 @@ export function AppHeader({
       </View>
 
       <View style={styles.rightIcons}>
+        <Pressable
+          onPress={openVoiceAssistant}
+          style={styles.iconBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
+          <Ionicons name="mic-outline" size={22} color="#FF6A00" />
+        </Pressable>
+
         {showBell && (
           <Pressable
             onPress={() => router.push('/notifications')}

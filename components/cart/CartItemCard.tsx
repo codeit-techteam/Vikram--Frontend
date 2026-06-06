@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useTranslation } from '@store/languageStore';
 import {
   getEffectivePrice,
   getLineTotal,
@@ -29,6 +30,7 @@ export function CartItemCard({
   onRemove,
   onSaveForLater,
 }: CartItemCardProps) {
+  const { t } = useTranslation();
   const qtyOpacity = useSharedValue(1);
   const unitPrice = getEffectivePrice(item);
   const lineTotal = getLineTotal(item);
@@ -71,14 +73,14 @@ export function CartItemCard({
           </View>
 
           <View style={styles.subtotalWrap}>
-            <Text style={styles.subtotalLabel}>SUBTOTAL</Text>
+            <Text style={styles.subtotalLabel}>{t('subtotal').toUpperCase()}</Text>
             <Text style={styles.subtotalValue}>₹{lineTotal.toLocaleString('en-IN')}</Text>
           </View>
         </View>
 
         <Pressable onPress={() => onSaveForLater(item.id)} style={styles.saveLater}>
           <Ionicons name="bookmark-outline" size={14} color="#FF6B00" />
-          <Text style={styles.saveLaterText}>Save for later</Text>
+          <Text style={styles.saveLaterText}>{t('saveForLater')}</Text>
         </Pressable>
       </View>
     </View>

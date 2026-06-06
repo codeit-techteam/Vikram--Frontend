@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,10 +9,10 @@ import { DrawerShell } from '@components/DrawerShell';
 import { CategoryCard } from '@components/CategoryCard';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { CATALOG_CATEGORIES } from '@constants/catalogData';
-import { useStrings } from '@hooks/useStrings';
+import { useTranslation } from '@store/languageStore';
 
 export default function CatalogScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const rows: (typeof CATALOG_CATEGORIES)[] = [];
@@ -20,10 +20,10 @@ export default function CatalogScreen() {
     rows.push(CATALOG_CATEGORIES.slice(i, i + 2));
   }
 
-  const navigateToCategory = (id: string, name: string) => {
+  const navigateToCategory = (id: string, labelKey: (typeof CATALOG_CATEGORIES)[number]['labelKey']) => {
     router.push({
       pathname: '/products/[categoryId]',
-      params: { categoryId: id, categoryName: name },
+      params: { categoryId: id, categoryName: t(labelKey) },
     } as Href);
   };
 
@@ -37,9 +37,9 @@ export default function CatalogScreen() {
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
 
         <View className="px-5 pb-2">
-          <Text className="text-2xl font-bold text-text">{s.precisionProcurement}</Text>
+          <Text className="text-2xl font-bold text-text">{t('catalogTitle')}</Text>
           <Text className="mt-2 text-sm leading-5 text-text-secondary">
-            {s.precisionProcurementDesc}
+            {t('catalogSubtitle')}
           </Text>
         </View>
 
@@ -49,9 +49,9 @@ export default function CatalogScreen() {
               {row.map((cat) => (
                 <CategoryCard
                   key={cat.id}
-                  name={cat.name}
+                  name={t(cat.labelKey)}
                   image={cat.image}
-                  onPress={() => navigateToCategory(cat.id, cat.name)}
+                  onPress={() => navigateToCategory(cat.id, cat.labelKey)}
                 />
               ))}
               {row.length === 1 && <View className="flex-1" />}
@@ -60,12 +60,12 @@ export default function CatalogScreen() {
         </View>
 
         <View className="mx-5 mt-6 rounded-card bg-primary p-5">
-          <Text className="text-lg font-bold text-text-inverse">{s.bulkProcurementTitle}</Text>
+          <Text className="text-lg font-bold text-text-inverse">{t('bulkProcurementTitle')}</Text>
           <Text className="mt-2 text-sm leading-5 text-text-inverse/90">
-            {s.bulkProcurementDesc}
+            {t('bulkProcurementSubtitle')}
           </Text>
           <ScaledPressable className="mt-4 self-center rounded-pill border-2 border-surface bg-surface px-8 py-2.5">
-            <Text className="text-sm font-bold text-primary">{s.inquireNow}</Text>
+            <Text className="text-sm font-bold text-primary">{t('inquireNow')}</Text>
           </ScaledPressable>
         </View>
 
@@ -73,9 +73,9 @@ export default function CatalogScreen() {
           <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-surface">
             <Ionicons name="bus-outline" size={24} color="#FF6B00" />
           </View>
-          <Text className="text-base font-bold text-text">{s.priorityExpress}</Text>
+          <Text className="text-base font-bold text-text">{t('priorityExpress')}</Text>
           <Text className="mt-2 text-center text-sm text-text-secondary">
-            {s.priorityExpressDesc}
+            {t('priorityExpressSubtitle')}
           </Text>
         </View>
       </ScrollView>

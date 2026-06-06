@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Modal, ScrollView, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -16,11 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProfileSiteSheet } from '@components/account/ProfileSiteSheet';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
 import type { ProfileSite } from '@store/deliveryStore';
-import { safeGoBack } from '@utils/navigation';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
+import { safeGoBack } from '@utils/navigation';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { showToast } from '@utils/toast';
 import {
@@ -37,7 +36,7 @@ const CITIES = ['Mumbai', 'Pune', 'Delhi', 'Bangalore', 'Chennai', 'Hyderabad'];
 type FieldKey = 'name' | 'phone' | 'email' | 'gstNumber';
 
 export default function EditProfileScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
   const user = useUserStore((st) => st.user);
   const setAvatar = useUserStore((st) => st.setAvatar);
   const updateUserData = useUserStore((st) => st.updateUser);
@@ -63,6 +62,13 @@ export default function EditProfileScreen() {
   const avatarStyle = useAnimatedStyle(() => ({
     transform: [{ scale: avatarScale.value }],
   }));
+
+  const tierLabel =
+    user.memberTier === 'platinum'
+      ? `✦ ${t('platinumMember')}`
+      : user.memberTier === 'gold'
+        ? `✦ ${t('goldMember')}`
+        : `✦ ${t('silverMember')}`;
 
   const validate = useCallback(() => {
     const next: Partial<Record<FieldKey, string>> = {};
@@ -93,7 +99,7 @@ export default function EditProfileScreen() {
     });
     setSaveState('done');
     await new Promise((r) => setTimeout(r, 600));
-    showToast(s.accountProfileSaved);
+    showToast(t('profileSaved'));
     safeGoBack('/(tabs)/account');
   };
 
@@ -107,27 +113,20 @@ export default function EditProfileScreen() {
     if (uri) setAvatar(uri);
   };
 
-  const tierLabel =
-    user.memberTier === 'platinum'
-      ? '✦ Platinum Member'
-      : user.memberTier === 'gold'
-        ? '✦ Gold Member'
-        : '✦ Silver Member';
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center justify-between border-b border-border bg-surface px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="w-10">
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-base font-bold text-primary">{s.accountEditProfile}</Text>
+        <Text className="text-base font-bold text-primary">{t('editProfile')}</Text>
         <ScaledPressable onPress={handleSave} className="w-10 items-end">
           {saveState === 'saving' ? (
             <Ionicons name="hourglass-outline" size={20} color="#FF6B00" />
           ) : saveState === 'done' ? (
             <Ionicons name="checkmark" size={22} color="#FF6B00" />
           ) : (
-            <Text className="text-sm font-semibold text-primary">Save</Text>
+            <Text className="text-sm font-semibold text-primary">{t('save')}</Text>
           )}
         </ScaledPressable>
       </View>
@@ -155,18 +154,18 @@ export default function EditProfileScreen() {
           <Text className="text-sm text-text-secondary">{user.company}</Text>
         </View>
 
-        <SectionLabel text={s.accountPersonalDetails} />
+        <SectionLabel text={t('personalDetails')} />
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <FormField
             icon="person-outline"
-            label="FULL NAME"
+            label={t('fullName')}
             value={name}
             onChangeText={setName}
             error={errors.name}
           />
           <FormField
             icon="call-outline"
-            label="MOBILE NUMBER"
+            label={t('mobileNumber')}
             value={phone}
             onChangeText={setPhone}
             error={errors.phone}
@@ -174,7 +173,7 @@ export default function EditProfileScreen() {
           />
           <FormField
             icon="mail-outline"
-            label="EMAIL ADDRESS"
+            label={t('emailAddress')}
             value={email}
             onChangeText={setEmail}
             error={errors.email}
@@ -182,7 +181,7 @@ export default function EditProfileScreen() {
           />
           <FormField
             icon="document-text-outline"
-            label="GST NUMBER"
+            label={t('gstNumberLabel')}
             value={gstNumber}
             onChangeText={setGstNumber}
             error={errors.gstNumber}
@@ -190,20 +189,22 @@ export default function EditProfileScreen() {
           />
         </View>
 
-        <SectionLabel text={s.accountBusinessProfile} />
+        <SectionLabel text={t('businessProfile')} />
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <PickerField
-            label="BUSINESS TYPE"
+            label={t('businessType')}
             value={businessType}
             onPress={() => setPickerField('businessType')}
           />
           <PickerField
-            label="PROCUREMENT"
+            label={t('procurement')}
             value={procurement}
             onPress={() => setPickerField('procurement')}
           />
           <View className="mb-1">
-            <Text className="mb-1 text-[10px] font-semibold uppercase text-text-secondary">CITY</Text>
+            <Text className="mb-1 text-[10px] font-semibold uppercase text-text-secondary">
+              {t('city')}
+            </Text>
             <TextInput
               value={city}
               onChangeText={setCity}
@@ -224,13 +225,13 @@ export default function EditProfileScreen() {
         </View>
 
         <View className="mb-2 flex-row items-center justify-between">
-          <SectionLabel text={s.accountActiveSites} inline />
+          <SectionLabel text={t('activeProjectSites')} inline />
           <ScaledPressable
             onPress={() => {
               setEditSite(null);
               siteSheetRef.current?.expand();
             }}>
-            <Text className="text-sm font-semibold text-primary">{s.accountAddNewSite}</Text>
+            <Text className="text-sm font-semibold text-primary">{t('addNewSite')}</Text>
           </ScaledPressable>
         </View>
         {profileSites.map((site) => (
@@ -255,12 +256,12 @@ export default function EditProfileScreen() {
         ))}
 
         <PrimaryButton
-          title={s.accountSaveChanges}
+          title={t('saveAllChanges')}
           onPress={handleSave}
           loading={saveState === 'saving'}
         />
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="mt-4 items-center py-2">
-          <Text className="text-sm text-text-secondary">{s.accountCancelChanges}</Text>
+          <Text className="text-sm text-text-secondary">{t('cancelChanges')}</Text>
         </ScaledPressable>
       </ScrollView>
 

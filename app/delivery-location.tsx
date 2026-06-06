@@ -15,10 +15,11 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddSiteSheet } from '@components/AddSiteSheet';
+import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { SiteCard } from '@components/SiteCard';
-import { useStrings } from '@hooks/useStrings';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useSiteStore, type DeliverySite } from '@store/useSiteStore';
 import { safeGoBack } from '@utils/navigation';
 
@@ -30,7 +31,8 @@ const DEFAULT_REGION = {
 };
 
 export default function DeliveryLocationScreen() {
-  const s = useStrings();
+  const language = useLanguageStore((st) => st.language);
+  const { t } = useTranslation();
   const sites = useSiteStore((st) => st.sites);
   const addSite = useSiteStore((st) => st.addSite);
   const updateSite = useSiteStore((st) => st.updateSite);
@@ -99,7 +101,7 @@ export default function DeliveryLocationScreen() {
           <ScaledPressable onPress={() => safeGoBack('/complete-profile')} className="p-1">
             <Ionicons name="arrow-back" size={24} color="#FF6B00" />
           </ScaledPressable>
-          <Text className="text-lg font-bold text-primary">{s.deliveryLocation}</Text>
+          <Text className="text-lg font-bold text-primary">{t('deliveryLocation')}</Text>
           <View className="flex-row items-center gap-3">
             <Ionicons name="location-outline" size={22} color="#1A1A1A" />
             <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
@@ -128,22 +130,24 @@ export default function DeliveryLocationScreen() {
             ) : (
               <View className="flex-1 items-center justify-center bg-[#1a2332]">
                 <Ionicons name="map-outline" size={48} color="#666" />
-                <Text className="mt-2 text-sm text-text-secondary">Location access required</Text>
+                <Text className="mt-2 text-sm text-text-secondary">{t('locationAccessRequired')}</Text>
               </View>
             )}
 
             <View className="absolute left-3 right-3 top-3">
               <View className="flex-row items-center rounded-input border border-border bg-surface px-3 py-2.5 shadow-sm">
                 <Ionicons name="search" size={18} color="#FF6B00" />
-                <Text className="ml-2 flex-1 text-sm text-text-secondary">{s.searchSiteAddress}</Text>
-                <Ionicons name="mic-outline" size={18} color="#FF6B00" />
+                <Text className="ml-2 flex-1 text-sm text-text-secondary">{t('searchSiteAddress')}</Text>
+                <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
+                  <Ionicons name="mic-outline" size={18} color="#FF6B00" />
+                </ScaledPressable>
               </View>
             </View>
 
             <View className="absolute bottom-3 left-3">
               <View className="flex-row items-center gap-1.5 rounded-full border border-primary bg-surface px-3 py-1.5">
                 <Ionicons name="shield-checkmark" size={12} color="#FF6B00" />
-                <Text className="text-[10px] font-semibold text-primary">{s.preciseGpsPinning}</Text>
+                <Text className="text-[10px] font-semibold text-primary">{t('preciseGpsPinning')}</Text>
               </View>
             </View>
 
@@ -156,18 +160,18 @@ export default function DeliveryLocationScreen() {
 
           {permissionGranted === false && (
             <View className="mx-4 mt-4 rounded-card bg-surface p-4">
-              <Text className="mb-3 text-sm font-semibold text-text">{s.fullAddress}</Text>
+              <Text className="mb-3 text-sm font-semibold text-text">{t('fullAddress')}</Text>
               <TextInput
                 value={manualAddress}
                 onChangeText={setManualAddress}
-                placeholder={s.addressLine1}
+                placeholder={t('addressLine1')}
                 placeholderTextColor="#999"
                 className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
               />
               <TextInput
                 value={manualCity}
                 onChangeText={setManualCity}
-                placeholder={s.city}
+                placeholder={t('city')}
                 placeholderTextColor="#999"
                 className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
               />
@@ -175,7 +179,7 @@ export default function DeliveryLocationScreen() {
                 value={manualPincode}
                 onChangeText={setManualPincode}
                 keyboardType="number-pad"
-                placeholder={s.pincode}
+                placeholder={t('pincode')}
                 placeholderTextColor="#999"
                 className="rounded-input border border-border bg-input px-4 py-3 text-base text-text"
               />
@@ -183,8 +187,8 @@ export default function DeliveryLocationScreen() {
           )}
 
           <View className="mx-4 mt-5">
-            <Text className="text-lg font-bold text-text">{s.savedDeliverySites}</Text>
-            <Text className="mt-0.5 text-sm text-text-secondary">{s.manageProjects}</Text>
+            <Text className="text-lg font-bold text-text">{t('savedDeliverySites')}</Text>
+            <Text className="mt-0.5 text-sm text-text-secondary">{t('manageProjects')}</Text>
 
             {sites.length > 0 ? (
               <View className="mt-4">
@@ -192,8 +196,8 @@ export default function DeliveryLocationScreen() {
                   <SiteCard
                     key={site.id}
                     site={site}
-                    editLabel={s.edit}
-                    deleteLabel={s.delete}
+                    editLabel={t('edit')}
+                    deleteLabel={t('delete')}
                     onEdit={handleEdit}
                     onDelete={removeSite}
                   />
@@ -206,8 +210,8 @@ export default function DeliveryLocationScreen() {
                 <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
                   <Ionicons name="add" size={28} color="#FFFFFF" />
                 </View>
-                <Text className="mt-3 text-base font-bold text-primary">{s.addNewSite}</Text>
-                <Text className="mt-1 text-sm text-text-secondary">{s.registerDeliveryPoint}</Text>
+                <Text className="mt-3 text-base font-bold text-primary">{t('addNewSite')}</Text>
+                <Text className="mt-1 text-sm text-text-secondary">{t('registerDeliveryPoint')}</Text>
               </ScaledPressable>
             )}
           </View>
@@ -218,9 +222,9 @@ export default function DeliveryLocationScreen() {
                 <Ionicons name="shield-checkmark" size={20} color="#FF6B00" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-text">{s.industrialPrecision}</Text>
+                <Text className="text-sm font-bold text-text">{t('industrialPrecision')}</Text>
                 <Text className="mt-1 text-xs leading-4 text-text-secondary">
-                  {s.industrialPrecisionDesc}
+                  {t('industrialPrecisionDesc')}
                 </Text>
               </View>
             </View>
@@ -229,19 +233,19 @@ export default function DeliveryLocationScreen() {
                 <Ionicons name="headset" size={20} color="#FF6B00" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-text">{s.siteLogisticsSupport}</Text>
+                <Text className="text-sm font-bold text-text">{t('siteLogisticsSupport')}</Text>
                 <Text className="mt-1 text-xs leading-4 text-text-secondary">
-                  {s.siteLogisticsSupportDesc}
+                  {t('siteLogisticsSupportDesc')}
                 </Text>
               </View>
             </View>
           </View>
 
           <View className="mx-4 mt-6 mb-4">
-            <PrimaryButton title={s.allowFetchLocation} onPress={requestLocation} />
+            <PrimaryButton title={t('allowFetchLocation')} onPress={requestLocation} />
             {sites.length > 0 && (
               <View className="mt-3">
-                <PrimaryButton title={s.continueBtn} onPress={handleContinue} showArrow />
+                <PrimaryButton title={t('continueBtn')} onPress={handleContinue} showArrow />
               </View>
             )}
           </View>
@@ -251,11 +255,11 @@ export default function DeliveryLocationScreen() {
           ref={bottomSheetRef}
           editSite={editSite}
           labels={{
-            siteName: s.siteName,
-            fullAddress: s.fullAddress,
-            pincode: s.pincode,
-            gateInstructions: s.gateInstructions,
-            saveSite: s.saveSite,
+            siteName: t('siteName'),
+            fullAddress: t('fullAddress'),
+            pincode: t('pincode'),
+            gateInstructions: t('gateInstructions'),
+            saveSite: t('saveSite'),
           }}
           onSave={handleSaveSite}
           onClose={() => bottomSheetRef.current?.close()}

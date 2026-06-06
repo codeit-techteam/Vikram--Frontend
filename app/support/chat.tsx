@@ -1,21 +1,23 @@
 import { Text, View } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { useTranslation } from '@store/languageStore';
 import { safeGoBack } from '@utils/navigation';
 
 export default function SupportChatScreen() {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 border-b border-border px-5 py-4">
         <ScaledPressable onPress={() => safeGoBack('/support')}>
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-lg font-bold text-text">Live Chat</Text>
+        <Text className="text-lg font-bold text-text">{t('liveChat')}</Text>
         <View className="ml-auto rounded-full bg-success/15 px-2 py-0.5">
-          <Text className="text-[10px] font-bold text-success">Online</Text>
+          <Text className="text-[10px] font-bold text-success">{t('online')}</Text>
         </View>
       </View>
       <View className="flex-1 justify-end p-5">
@@ -24,9 +26,7 @@ export default function SupportChatScreen() {
             Hi Rajesh! I'm your BuildQuick support agent. How can I help with your delivery today?
           </Text>
         </View>
-        <Text className="text-center text-xs text-text-secondary">
-          Type a message below to start chatting
-        </Text>
+        <Text className="text-center text-xs text-text-secondary">{t('chatPlaceholder')}</Text>
       </View>
     </SafeAreaView>
   );

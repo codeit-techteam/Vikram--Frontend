@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { FlatList, Linking, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -11,14 +10,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProjectSiteSheet } from '@components/account/ProjectSiteSheet';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
 import type { ProjectSite } from '@store/deliveryStore';
-import { safeGoBack } from '@utils/navigation';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
+import { safeGoBack } from '@utils/navigation';
 
 export default function AddSitesScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
   const user = useUserStore((st) => st.user);
   const projectSites = useDeliveryStore((st) => st.projectSites);
   const addProjectSite = useDeliveryStore((st) => st.addProjectSite);
@@ -43,7 +42,7 @@ export default function AddSitesScreen() {
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
           <Ionicons name="menu" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-base font-bold text-text">{s.accountDeliverySites}</Text>
+        <Text className="text-base font-bold text-text">{t('deliverySites')}</Text>
         <View className="flex-row items-center gap-3">
           <Ionicons name="notifications-outline" size={22} color="#333333" />
           <Image
@@ -65,12 +64,12 @@ export default function AddSitesScreen() {
             <View className="h-6 w-6 items-center justify-center rounded-full bg-white">
               <Ionicons name="add" size={16} color="#FF6B00" />
             </View>
-            <Text className="text-sm font-bold text-text-inverse">{s.accountAddProjectSite}</Text>
+            <Text className="text-sm font-bold text-text-inverse">{t('addNewProjectSite')}</Text>
           </ScaledPressable>
         }
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInDown.delay(index * 80).duration(300)}>
-            <SiteCard site={item} onContact={handleContact} />
+            <SiteCard site={item} onContact={handleContact} t={t} />
           </Animated.View>
         )}
       />
@@ -101,9 +100,11 @@ export default function AddSitesScreen() {
 function SiteCard({
   site,
   onContact,
+  t,
 }: {
   site: ProjectSite;
   onContact: (phone: string) => void;
+  t: (key: import('@constants/strings').StringKey) => string;
 }) {
   const isActive = site.status === 'active';
 
@@ -143,13 +144,13 @@ function SiteCard({
           <Text className="ml-1 text-xs text-text-secondary">{site.contact}</Text>
           <Text className="mx-1 text-xs text-text-secondary">•</Text>
           <ScaledPressable onPress={() => onContact(site.phone)}>
-            <Text className="text-xs font-semibold text-primary">Contact Link</Text>
+            <Text className="text-xs font-semibold text-primary">{t('contactLink')}</Text>
           </ScaledPressable>
         </View>
 
         <View className="mt-3 flex-row gap-2 rounded-lg bg-info/10 p-3">
-          <LogisticsPill icon="location-outline" label="Warehouse Dist." value={site.warehouseDist} />
-          <LogisticsPill icon="time-outline" label="Est. Delivery" value={site.estDelivery} />
+          <LogisticsPill icon="location-outline" label={t('warehouseDist')} value={site.warehouseDist} />
+          <LogisticsPill icon="time-outline" label={t('estDelivery')} value={site.estDelivery} />
         </View>
 
         {site.gateNote && (

@@ -8,6 +8,7 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { getProductImageUrl } from '@constants/catalogData';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 import { useCartStore } from '@store/cartStore';
+import { useTranslation } from '@store/languageStore';
 import { frequentItemToCartItem } from '@utils/cartHelpers';
 
 const CARD_WIDTH = Dimensions.get('window').width * 0.55;
@@ -17,6 +18,7 @@ interface FrequentlyBoughtTogetherProps {
 }
 
 export function FrequentlyBoughtTogether({ items }: FrequentlyBoughtTogetherProps) {
+  const { t } = useTranslation();
   const listRef = useRef<FlatList>(null);
   const addItem = useCartStore((s) => s.addItem);
 
@@ -35,7 +37,7 @@ export function FrequentlyBoughtTogether({ items }: FrequentlyBoughtTogetherProp
   return (
     <View className="mt-8">
       <View className="mb-3 flex-row items-center justify-between px-5">
-        <Text className="text-base font-bold text-text">Frequently Bought Together</Text>
+        <Text className="text-base font-bold text-text">{t('frequentlyBought')}</Text>
         <View className="flex-row gap-2">
           <ScaledPressable
             onPress={() => scroll('left')}

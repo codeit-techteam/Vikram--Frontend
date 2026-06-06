@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
 import { getProductImageUrl } from '@constants/catalogData';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { formatINR } from '@utils/formatCurrency';
 import { safeGoBack } from '@utils/navigation';
@@ -20,6 +21,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export default function InvoiceScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const { invoiceId } = useLocalSearchParams<{ invoiceId: string }>();
   const orders = useOrderStore((s) => s.orders);
   const order = orders.find((o) => o.invoiceId === invoiceId);
@@ -69,7 +72,7 @@ export default function InvoiceScreen() {
           <ScaledPressable onPress={() => safeGoBack('/account/invoices')}>
             <Ionicons name="arrow-back" size={22} color="#FF6B00" />
           </ScaledPressable>
-          <Text className="text-xl font-bold text-primary">Invoice Details</Text>
+          <Text className="text-xl font-bold text-primary">{t('invoiceDetails')}</Text>
         </View>
         <Ionicons name="ellipsis-vertical" size={20} color="#666666" />
       </View>
@@ -79,20 +82,20 @@ export default function InvoiceScreen() {
           <View className="flex-row items-center gap-2">
             <Text className="text-lg font-bold text-text">{invoice.id}</Text>
             <View className="rounded bg-success/15 px-2 py-0.5">
-              <Text className="text-[10px] font-bold text-success">✓ VERIFIED</Text>
+              <Text className="text-[10px] font-bold text-success">✓ {t('verified')}</Text>
             </View>
           </View>
           <Text className="mt-1 text-xs text-text-secondary">
             Issued on {invoice.issuedDate} • Due in {invoice.dueDays} days
           </Text>
-          <Text className="mt-4 text-[10px] font-bold text-text-secondary">TOTAL AMOUNT</Text>
+          <Text className="mt-4 text-[10px] font-bold text-text-secondary">{t('totalAmountLabel')}</Text>
           <Text className="text-3xl font-bold text-primary">
             {formatINR(invoice.totalAmount)}
           </Text>
         </View>
 
         <View className="mb-4 rounded-card border-l-4 border-primary bg-surface p-4">
-          <Text className="text-[10px] font-bold text-text-secondary">BILLED FROM</Text>
+          <Text className="text-[10px] font-bold text-text-secondary">{t('billedFrom')}</Text>
           <Text className="mt-1 text-base font-bold text-primary">{invoice.billedFrom.name}</Text>
           <Text className="mt-1 text-xs text-text-secondary">{invoice.billedFrom.address}</Text>
           <Text className="mt-2 text-xs text-text-secondary">
@@ -101,7 +104,7 @@ export default function InvoiceScreen() {
         </View>
 
         <View className="mb-4 rounded-card border-l-4 border-secondary bg-surface p-4">
-          <Text className="text-[10px] font-bold text-text-secondary">BILLED TO</Text>
+          <Text className="text-[10px] font-bold text-text-secondary">{t('billedTo')}</Text>
           <Text className="mt-1 text-base font-bold text-text">{invoice.billedTo.name}</Text>
           <Text className="mt-1 text-xs text-text-secondary">{invoice.billedTo.address}</Text>
           <Text className="mt-2 text-xs text-text-secondary">GSTIN: {invoice.billedTo.gstin}</Text>
@@ -109,7 +112,7 @@ export default function InvoiceScreen() {
 
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <View className="flex-row justify-between">
-            <Text className="font-bold text-text">Items Ordered</Text>
+            <Text className="font-bold text-text">{t('itemsOrdered')}</Text>
             <Text className="text-xs text-text-secondary">{invoice.items.length} Units Total</Text>
           </View>
           <View className="mt-3 flex-row border-b border-border pb-2">
@@ -145,7 +148,7 @@ export default function InvoiceScreen() {
           <View className="my-4 h-px bg-border" />
           <View className="gap-2">
             <View className="flex-row justify-between">
-              <Text className="text-sm text-text-secondary">Subtotal</Text>
+              <Text className="text-sm text-text-secondary">{t('subtotal')}</Text>
               <Text className="text-sm font-semibold">{formatINR(invoice.subtotal)}</Text>
             </View>
             <View className="flex-row justify-between">
@@ -157,15 +160,15 @@ export default function InvoiceScreen() {
               <Text className="text-sm font-semibold">{formatINR(invoice.sgst)}</Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-sm text-text-secondary">Shipping & Logistics</Text>
-              <Text className="text-sm font-bold text-success">FREE</Text>
+              <Text className="text-sm text-text-secondary">{t('shippingLogistics')}</Text>
+              <Text className="text-sm font-bold text-success">{t('free')}</Text>
             </View>
           </View>
           <View className="my-3 h-px bg-border" />
           <View className="flex-row items-end justify-between">
             <View>
-              <Text className="text-[10px] font-bold text-text-secondary">TOTAL AMOUNT PAYABLE</Text>
-              <Text className="text-[10px] text-primary">Inclusive of all taxes</Text>
+              <Text className="text-[10px] font-bold text-text-secondary">{t('totalAmountPayable')}</Text>
+              <Text className="text-[10px] text-primary">{t('inclusiveTaxes')}</Text>
             </View>
             <Text className="text-2xl font-bold text-text">
               {formatINR(invoice.totalAmount)}
@@ -175,7 +178,7 @@ export default function InvoiceScreen() {
 
         <ScaledPressable onPress={toggleTerms} className="mb-2 flex-row items-center justify-between">
           <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
-            TERMS & CONDITIONS
+            {t('termsSection')}
           </Text>
           <Ionicons name={termsExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#666" />
         </ScaledPressable>
@@ -185,16 +188,16 @@ export default function InvoiceScreen() {
               'Payment is due within 14 days of invoice generation.',
               'Goods once sold will not be taken back unless damaged.',
               'Subject to Gurgaon Jurisdiction only.',
-            ].map((t) => (
-              <Text key={t} className="mb-2 text-xs text-text-secondary">
-                • {t}
+            ].map((term) => (
+              <Text key={term} className="mb-2 text-xs text-text-secondary">
+                • {term}
               </Text>
             ))}
           </View>
         )}
 
         <View className="mb-6 rounded-card border border-border bg-surface p-4">
-          <Text className="mb-4 font-bold text-text">Timeline</Text>
+          <Text className="mb-4 font-bold text-text">{t('timeline')}</Text>
           {invoice.timeline.map((step, i) => (
             <View key={step.label} className="flex-row gap-3">
               <View className="items-center">
@@ -226,7 +229,7 @@ export default function InvoiceScreen() {
           ) : (
             <>
               <Ionicons name="download-outline" size={20} color="#FFFFFF" />
-              <Text className="ml-2 font-bold text-text-inverse">Download PDF</Text>
+              <Text className="ml-2 font-bold text-text-inverse">{t('downloadPdfShort')}</Text>
             </>
           )}
         </ScaledPressable>
@@ -236,7 +239,7 @@ export default function InvoiceScreen() {
           className="flex-row items-center justify-center rounded-pill py-4"
           style={{ backgroundColor: '#25D366' }}>
           <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
-          <Text className="ml-2 font-bold text-text-inverse">Share on WhatsApp</Text>
+          <Text className="ml-2 font-bold text-text-inverse">{t('shareOnWhatsAppShort')}</Text>
         </ScaledPressable>
       </ScrollView>
     </SafeAreaView>

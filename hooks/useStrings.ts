@@ -1,5 +1,8 @@
 import { strings, type StringKey } from '@constants/strings';
-import { useLanguageStore } from '@store/languageStore';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
+
+export { useTranslation };
+export type { StringKey };
 
 export function useStrings() {
   const language = useLanguageStore((s) => s.language);
@@ -8,5 +11,6 @@ export function useStrings() {
 
 export function useT() {
   const language = useLanguageStore((s) => s.language);
-  return (key: StringKey) => strings[language][key];
+  const t = useLanguageStore((s) => s.t);
+  return { t, language };
 }

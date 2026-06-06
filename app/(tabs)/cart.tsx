@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '@components/BrandLogo';
 import { CartItemCard } from '@components/cart/CartItemCard';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
@@ -43,12 +44,14 @@ function SummaryRow({
 }
 
 function CartHeader({ unreadCount }: { unreadCount: number }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.header}>
       <Pressable onPress={() => safeGoBack()} hitSlop={10}>
         <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
       </Pressable>
-      <Text style={styles.headerTitle}>Your Cart</Text>
+      <Text style={styles.headerTitle}>{t('yourCart')}</Text>
       <Pressable onPress={() => router.push('/notifications')} hitSlop={10}>
         <View>
           <Ionicons name="notifications-outline" size={22} color="#1A1A1A" />
@@ -70,21 +73,23 @@ function BuildProPointsBanner({
   pointsApplied: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.pointsBanner}>
       <View style={styles.pointsRow}>
         <View style={styles.pointsLeft}>
           <BrandLogo size="sm" />
           <View>
-            <Text style={styles.pointsTitle}>BuildPro Points</Text>
-            <Text style={styles.pointsBalance}>Balance: 12,450</Text>
+            <Text style={styles.pointsTitle}>{t('buildProPoints')}</Text>
+            <Text style={styles.pointsBalance}>{t('balance')}: 12,450</Text>
           </View>
         </View>
         <Pressable onPress={onToggle} style={[styles.toggle, pointsApplied && styles.toggleOn]}>
           <View style={[styles.toggleKnob, pointsApplied && styles.toggleKnobOn]} />
         </Pressable>
       </View>
-      <Text style={styles.pointsHint}>Use 2,500 points to save ₹500</Text>
+      <Text style={styles.pointsHint}>{t('usePointsToSave')}</Text>
     </View>
   );
 }
@@ -102,19 +107,21 @@ function OrderSummaryCard({
   pointsApplied: boolean;
   loyaltyDiscount: number;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.summaryCard}>
-      <Text style={styles.summaryLabel}>Order Summary</Text>
-      <SummaryRow label="Items Total" value={`₹${itemsTotal.toLocaleString('en-IN')}`} />
-      <SummaryRow label="GST (18%)" value={`₹${gst.toLocaleString('en-IN')}`} />
+      <Text style={styles.summaryLabel}>{t('orderSummary')}</Text>
+      <SummaryRow label={t('itemsTotal')} value={`₹${itemsTotal.toLocaleString('en-IN')}`} />
+      <SummaryRow label={t('gst18')} value={`₹${gst.toLocaleString('en-IN')}`} />
       <SummaryRow
-        label="Delivery Charges"
+        label={t('deliveryCharges')}
         value={`₹${deliveryCharge.toLocaleString('en-IN')}`}
         showInfo
       />
       {pointsApplied && (
         <SummaryRow
-          label="Loyalty Discount"
+          label={t('loyaltyDiscount')}
           value={`-₹${loyaltyDiscount.toLocaleString('en-IN')}`}
           valueColor="#FF6B00"
         />
@@ -125,6 +132,8 @@ function OrderSummaryCard({
 }
 
 function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.siteCard}>
       <View style={styles.siteIconWrap}>
@@ -137,11 +146,11 @@ function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
         <Text style={styles.siteAddress}>{site?.address ?? 'Plot 42, Goregaon West'}</Text>
         <View style={styles.siteEtaRow}>
           <Ionicons name="time-outline" size={12} color="#888" />
-          <Text style={styles.siteEta}>ETA: Today, 5:00 PM</Text>
+          <Text style={styles.siteEta}>{t('etaLabel')}: Today, 5:00 PM</Text>
         </View>
       </View>
       <Pressable onPress={() => router.push('/delivery-location')} hitSlop={8}>
-        <Text style={styles.siteChange}>Change</Text>
+        <Text style={styles.siteChange}>{t('change')}</Text>
       </Pressable>
     </View>
   );
@@ -158,6 +167,7 @@ function CheckoutBar({
   loyaltyDiscount: number;
   onCheckout: () => void;
 }) {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const buttonAnimStyle = useAnimatedStyle(() => ({
@@ -177,13 +187,13 @@ function CheckoutBar({
     <View style={styles.checkoutBar}>
       <View style={styles.checkoutTotalRow}>
         <View>
-          <Text style={styles.totalLabel}>Total Price</Text>
+          <Text style={styles.totalLabel}>{t('totalPrice')}</Text>
           <Text style={styles.totalValue}>₹{grandTotal.toLocaleString('en-IN')}</Text>
         </View>
         {pointsApplied && (
           <View style={styles.savingsPill}>
             <Text style={styles.savingsText}>
-              Saving ₹{loyaltyDiscount.toLocaleString('en-IN')}
+              {t('youAreSaving')} ₹{loyaltyDiscount.toLocaleString('en-IN')}
             </Text>
           </View>
         )}
@@ -191,19 +201,21 @@ function CheckoutBar({
 
       <Animated.View style={buttonAnimStyle}>
         <Pressable onPress={handlePress} style={styles.checkoutButton}>
-          <Text style={styles.checkoutText}>Proceed to Checkout</Text>
+          <Text style={styles.checkoutText}>{t('proceedCheckout')}</Text>
           <View style={styles.checkoutIconWrap}>
             <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
           </View>
         </Pressable>
       </Animated.View>
 
-      <Text style={styles.trustNote}>🔒 Secure checkout · GST Invoice included</Text>
+      <Text style={styles.trustNote}>🔒 {t('secureCheckout')}</Text>
     </View>
   );
 }
 
 export default function CartScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const pointsApplied = useCartStore((s) => s.pointsApplied);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -230,7 +242,7 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.container}>
+      <View key={language} style={styles.container}>
         <CartHeader unreadCount={unreadCount} />
 
         <ScrollView
@@ -240,7 +252,9 @@ export default function CartScreen() {
           bounces>
           {items.length > 0 ? (
             <>
-              <Text style={styles.sectionTitle}>Active Items ({items.length})</Text>
+              <Text style={styles.sectionTitle}>
+                {t('activeItems')} ({items.length})
+              </Text>
 
               {items.map((item) => (
                 <CartItemCard
@@ -267,11 +281,12 @@ export default function CartScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="cart-outline" size={48} color="#E0E0E0" />
-              <Text style={styles.emptyTitle}>Your cart is empty</Text>
+              <Text style={styles.emptyTitle}>{t('emptyCart')}</Text>
+              <Text style={styles.emptySubtitle}>{t('emptyCartSubtitle')}</Text>
               <Pressable
                 onPress={() => router.push('/(tabs)/catalog')}
                 style={styles.browseButton}>
-                <Text style={styles.browseButtonText}>Browse Catalog</Text>
+                <Text style={styles.browseButtonText}>{t('browseCatalog')}</Text>
               </Pressable>
             </View>
           )}
@@ -572,6 +587,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#666',
+  },
+  emptySubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
   browseButton: {
     marginTop: 16,

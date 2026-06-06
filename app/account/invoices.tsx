@@ -22,7 +22,8 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
+import type { StringKey } from '@constants/strings';
+import { useTranslation } from '@store/languageStore';
 import type { AccountInvoice, InvoiceStatus } from '@store/invoiceStore';
 import { useInvoiceStore } from '@store/invoiceStore';
 import { buildAccountInvoiceHtml } from '@utils/accountInvoiceHtml';
@@ -34,7 +35,12 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const FILTERS = ['all', 'unpaid', 'paid', 'overdue'] as const;
+const FILTERS: { key: 'all' | 'unpaid' | 'paid' | 'overdue'; labelKey: StringKey }[] = [
+  { key: 'all', labelKey: 'all' },
+  { key: 'unpaid', labelKey: 'unpaid' },
+  { key: 'paid', labelKey: 'paidFilter' },
+  { key: 'overdue', labelKey: 'overdue' },
+];
 const STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
   paid: { bg: '#E8F5E9', text: '#2E7D32' },
   pending: { bg: '#FFF3E0', text: '#FF6B00' },
@@ -42,7 +48,7 @@ const STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
 };
 
 export default function InvoicesScreen() {
-  const s = useStrings();
+  const { t } = useTranslation();
   const invoices = useInvoiceStore((st) => st.invoices);
   const filter = useInvoiceStore((st) => st.filter);
   const setFilter = useInvoiceStore((st) => st.setFilter);
@@ -77,14 +83,14 @@ export default function InvoicesScreen() {
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="mb-2 self-start">
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">{s.accountInvoices}</Text>
+        <Text className="text-xl font-bold text-primary">{t('invoicesTitle')}</Text>
 
         <View className="mt-3 flex-row items-center rounded-pill border border-border bg-surface px-4 py-2.5">
           <Ionicons name="search" size={18} color="#999999" />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder={s.accountSearchInvoices}
+            placeholder={t('searchInvoice')}
             placeholderTextColor="#999"
             className="ml-2 flex-1 text-sm text-text"
           />
@@ -93,16 +99,16 @@ export default function InvoicesScreen() {
         <View className="mt-3 flex-row gap-2">
           {FILTERS.map((f) => (
             <ScaledPressable
-              key={f}
-              onPress={() => setFilterWithAnim(f)}
+              key={f.key}
+              onPress={() => setFilterWithAnim(f.key)}
               className={`rounded-full px-3 py-1.5 ${
-                filter === f ? 'bg-primary' : 'border border-border bg-surface'
+                filter === f.key ? 'bg-primary' : 'border border-border bg-surface'
               }`}>
               <Text
                 className={`text-xs font-semibold capitalize ${
-                  filter === f ? 'text-text-inverse' : 'text-text-secondary'
+                  filter === f.key ? 'text-text-inverse' : 'text-text-secondary'
                 }`}>
-                {f}
+                {t(f.labelKey)}
               </Text>
             </ScaledPressable>
           ))}
@@ -121,19 +127,17 @@ export default function InvoicesScreen() {
               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               setExpandedId((id) => (id === item.id ? null : item.id));
             }}
+            t={t}
           />
         )}
         ListFooterComponent={
           <View className="mt-4 rounded-card bg-[#333333] p-5">
-            <Text className="text-base font-bold text-white">Sync GST Returns Seamlessly</Text>
-            <Text className="mt-2 text-xs leading-5 text-white/80">
-              Automate your GSTR-1 and GSTR-3B filings by connecting your Tally or ERP software
-              directly with Construct-IQ.
-            </Text>
+            <Text className="text-base font-bold text-white">{t('syncGstTitle')}</Text>
+            <Text className="mt-2 text-xs leading-5 text-white/80">{t('syncGstSubtitle')}</Text>
             <ScaledPressable
-              onPress={() => showToast(s.accountComingSoonErp)}
+              onPress={() => showToast(t('comingSoon'))}
               className="mt-4 items-center rounded-pill border border-white py-2.5">
-              <Text className="text-sm font-bold text-primary">{s.accountConnectErp}</Text>
+              <Text className="text-sm font-bold text-primary">{t('connectErp')}</Text>
             </ScaledPressable>
           </View>
         }
@@ -146,10 +150,12 @@ function InvoiceCard({
   invoice,
   expanded,
   onToggleTimeline,
+  t,
 }: {
   invoice: AccountInvoice;
   expanded: boolean;
   onToggleTimeline: () => void;
+  t: (key: StringKey) => string;
 }) {
   const colors = STATUS_COLORS[invoice.status];
   const timelineHeight = useSharedValue(0);
@@ -196,7 +202,7 @@ function InvoiceCard({
       </Text>
 
       <Text className="mt-3 text-[10px] font-semibold uppercase text-text-secondary">
-        TOTAL AMOUNT
+        {t('totalAmountLabel')}
       </Text>
       <Text className="text-2xl font-bold text-text">{formatINR(invoice.total, false)}</Text>
 
@@ -216,24 +222,24 @@ function InvoiceCard({
           onPress={downloadPdf}
           className="mr-2 flex-row items-center rounded-full border border-primary px-3 py-1.5">
           <Ionicons name="download-outline" size={14} color="#FF6B00" />
-          <Text className="ml-1 text-xs font-semibold text-primary">PDF</Text>
+          <Text className="ml-1 text-xs font-semibold text-primary">{t('pdf')}</Text>
         </ScaledPressable>
         <ScaledPressable
           onPress={shareWhatsApp}
           className="flex-row items-center rounded-full border border-success px-3 py-1.5">
           <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-          <Text className="ml-1 text-xs font-semibold text-success">WhatsApp</Text>
+          <Text className="ml-1 text-xs font-semibold text-success">{t('whatsapp')}</Text>
         </ScaledPressable>
         <ScaledPressable onPress={toggleTimeline} className="ml-auto">
-          <Text className="text-xs font-semibold text-primary">View Timeline</Text>
+          <Text className="text-xs font-semibold text-primary">{t('viewTimeline')}</Text>
         </ScaledPressable>
       </View>
 
       <Animated.View style={[{ overflow: 'hidden' }, timelineStyle]} className="mt-2">
         <View className="rounded-lg bg-background p-3">
-          <TimelineStep label="Invoice Generated" done />
-          <TimelineStep label="Payment Received" done={invoice.status === 'paid'} />
-          <TimelineStep label="GST Filed" done={invoice.status === 'paid'} />
+          <TimelineStep label={t('invoiceGenerated')} done />
+          <TimelineStep label={t('paymentReceived')} done={invoice.status === 'paid'} />
+          <TimelineStep label={t('gstFiled')} done={invoice.status === 'paid'} />
         </View>
       </Animated.View>
     </View>

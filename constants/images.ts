@@ -27,3 +27,18 @@ export const images = {
   notificationProTip:
     'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80',
 } as const;
+
+/** Curated Unsplash URLs for SKU product images (source.unsplash.com is deprecated). */
+export const productImageUrls = {
+  cementBags: 'https://images.unsplash.com/photo-1565008576549-57569a49371d',
+  cementSite: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5',
+  mSand: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35',
+  riverSand: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
+  redBricks: 'https://images.unsplash.com/photo-1595846519845-68e298c2edd8',
+  redBricksStack: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4',
+  aacBlocks: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f',
+  stoneAggregate: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86',
+  crushedStone: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96',
+  steelBars: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e',
+  constructionSite: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
+} as const;

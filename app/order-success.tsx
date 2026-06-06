@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -13,16 +13,12 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 
-const TIMELINE = [
-  { label: 'Ordered', sub: 'Today, 10:45 AM', done: true },
-  { label: 'Processing', sub: 'System validated and allocated', done: true },
-  { label: 'Dispatched', sub: 'Expected in 30 mins', done: false },
-  { label: 'Delivery', sub: 'Arrival at Site A', done: false },
-];
-
 export default function OrderSuccessScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => (orderId ? s.getOrder(orderId) : undefined));
   const displayId = orderId ?? order?.id ?? 'CIQ-982441';
@@ -30,12 +26,23 @@ export default function OrderSuccessScreen() {
   const checkScale = useSharedValue(0);
   const [visibleSteps, setVisibleSteps] = useState(0);
 
+  const timeline = useMemo(
+    () => [
+      { labelKey: 'ordered' as const, sub: 'Today, 10:45 AM', done: true },
+      { labelKey: 'processing' as const, sub: t('systemValidated'), done: true },
+      { labelKey: 'dispatched' as const, sub: t('expectedIn'), done: false },
+      { labelKey: 'delivery' as const, sub: t('arrivalAtSite'), done: false },
+    ],
+    [t, language],
+  );
+
   useEffect(() => {
     checkScale.value = withSpring(1, { damping: 8, stiffness: 120 });
-    TIMELINE.forEach((_, i) => {
+    setVisibleSteps(0);
+    timeline.forEach((_, i) => {
       setTimeout(() => setVisibleSteps((v) => Math.max(v, i + 1)), 300 * (i + 1));
     });
-  }, [checkScale]);
+  }, [checkScale, timeline]);
 
   const checkStyle = useAnimatedStyle(() => ({
     transform: [{ scale: checkScale.value }],
@@ -43,13 +50,13 @@ export default function OrderSuccessScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView key={language} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="flex-row items-center justify-between">
           <ScaledPressable
             onPress={() => router.replace('/(tabs)')}
             className="flex-row items-center gap-2">
             <Ionicons name="close" size={22} color="#FF6B00" />
-            <Text className="text-lg font-bold text-primary">Order Success</Text>
+            <Text className="text-lg font-bold text-primary">{t('orderSuccess')}</Text>
           </ScaledPressable>
         </View>
 
@@ -59,19 +66,19 @@ export default function OrderSuccessScreen() {
             className="h-24 w-24 items-center justify-center rounded-full bg-primary">
             <Ionicons name="checkmark" size={48} color="#FFFFFF" />
           </Animated.View>
-          <Text className="mt-6 text-2xl font-bold text-text">Order Confirmed</Text>
+          <Text className="mt-6 text-2xl font-bold text-text">{t('orderConfirmed')}</Text>
           <Text className="mt-2 text-sm font-semibold text-primary">ID: #{displayId}</Text>
 
           <View className="mt-6 w-full flex-row gap-3">
             <View className="flex-1 rounded-card bg-trust p-3">
               <Ionicons name="time-outline" size={18} color="#FF6B00" />
-              <Text className="mt-2 text-[10px] font-bold text-text-secondary">DELIVERY ETA</Text>
-              <Text className="text-sm font-bold text-text">90 mins</Text>
+              <Text className="mt-2 text-[10px] font-bold text-text-secondary">{t('deliveryETA')}</Text>
+              <Text className="text-sm font-bold text-text">90 {t('mins')}</Text>
             </View>
             <View className="flex-1 rounded-card bg-trust p-3">
               <Ionicons name="business-outline" size={18} color="#FF6B00" />
               <Text className="mt-2 text-[10px] font-bold text-text-secondary">
-                ASSIGNED WAREHOUSE
+                {t('assignedWarehouse')}
               </Text>
               <Text className="text-sm font-bold text-text">Mumbai Central</Text>
             </View>
@@ -79,12 +86,12 @@ export default function OrderSuccessScreen() {
 
           <View className="mt-6 w-full rounded-card border border-border p-4">
             <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
-              DELIVERY TIMELINE
+              {t('deliveryTimeline')}
             </Text>
-            {TIMELINE.map((step, i) =>
+            {timeline.map((step, i) =>
               i < visibleSteps ? (
                 <Animated.View
-                  key={step.label}
+                  key={step.labelKey}
                   entering={FadeInDown.duration(300)}
                   className="mt-4 flex-row gap-3">
                   <View className="items-center">
@@ -98,12 +105,12 @@ export default function OrderSuccessScreen() {
                         <View className="h-2 w-2 rounded-full bg-border" />
                       )}
                     </View>
-                    {i < TIMELINE.length - 1 && (
+                    {i < timeline.length - 1 && (
                       <View className={`mt-1 h-8 w-0.5 ${step.done ? 'bg-primary' : 'bg-border'}`} />
                     )}
                   </View>
                   <View className="flex-1 pb-2">
-                    <Text className="text-sm font-bold text-text">{step.label}</Text>
+                    <Text className="text-sm font-bold text-text">{t(step.labelKey)}</Text>
                     <Text className="text-xs text-text-secondary">{step.sub}</Text>
                   </View>
                 </Animated.View>
@@ -114,7 +121,7 @@ export default function OrderSuccessScreen() {
           <View className="mt-4 w-full flex-row items-start gap-3 rounded-card border border-border p-4">
             <Ionicons name="location-outline" size={20} color="#FF6B00" />
             <View className="flex-1">
-              <Text className="text-[10px] font-bold text-text-secondary">DELIVERY ADDRESS</Text>
+              <Text className="text-[10px] font-bold text-text-secondary">{t('deliveryAddress')}</Text>
               <Text className="mt-1 text-sm font-bold text-text">
                 Site A – Mumbai North Industrial Estate
               </Text>
@@ -134,7 +141,7 @@ export default function OrderSuccessScreen() {
           <ScaledPressable
             onPress={() => router.push(`/orders/view/${displayId}`)}
             className="mt-6 w-full items-center rounded-pill bg-primary py-4">
-            <Text className="text-base font-bold text-text-inverse">View Order</Text>
+            <Text className="text-base font-bold text-text-inverse">{t('viewOrderBtn')}</Text>
           </ScaledPressable>
         </View>
       </ScrollView>

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '@components/BrandLogo';
 import { OTPInput } from '@components/OTPInput';
 import { PrimaryButton } from '@components/PrimaryButton';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { safeGoBack } from '@utils/navigation';
 
@@ -18,6 +19,8 @@ function formatPhone(phone: string) {
 }
 
 export default function OTPScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const phoneNumber = useAuthStore((s) => s.phoneNumber);
   const [loading, setLoading] = useState(false);
   const [seconds, setSeconds] = useState(53);
@@ -65,14 +68,14 @@ export default function OTPScreen() {
                 </View>
               </View>
 
-              <Text className="text-center text-xl font-bold text-text">Verify Your Identity</Text>
+              <Text className="text-center text-xl font-bold text-text">{t('verifyIdentity')}</Text>
               <Text className="mt-2 text-center text-sm text-text-secondary">
-                We&apos;ve sent a 6-digit code to{' '}
+                {t('otpSentTo')}{' '}
                 <Text className="font-semibold text-text">{formatPhone(phoneNumber)}</Text>
               </Text>
 
               <Pressable onPress={() => safeGoBack('/login')} className="mt-2 items-center">
-                <Text className="text-sm font-medium text-primary">Change Number</Text>
+                <Text className="text-sm font-medium text-primary">{t('changeNumber')}</Text>
               </Pressable>
 
               <View className="mt-6">
@@ -86,7 +89,7 @@ export default function OTPScreen() {
                 <View className="flex-row items-center gap-2 rounded-full bg-timer px-4 py-2">
                   <Ionicons name="time-outline" size={14} color="#FF6B00" />
                   <Text className="text-xs text-text-secondary">
-                    Resend code in{' '}
+                    {t('resendCodeIn')}{' '}
                     <Text className="font-bold text-primary">{formattedTime}</Text>
                   </Text>
                 </View>
@@ -94,7 +97,7 @@ export default function OTPScreen() {
 
               <View className="mt-6">
                 <PrimaryButton
-                  title="Verify & Continue"
+                  title={t('verifyContinue')}
                   onPress={handleVerify}
                   loading={loading}
                   disabled={otpValue.length < 6}
@@ -103,7 +106,7 @@ export default function OTPScreen() {
               </View>
 
               <Text className="mt-4 text-center text-[10px] tracking-widest text-text-secondary/60">
-                SECURE 256-BIT AES ENCRYPTION
+                {t('secureEncryption')}
               </Text>
             </View>
           </View>

@@ -2,6 +2,7 @@ import { LayoutAnimation, Platform, Text, UIManager, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { useTranslation } from '@store/languageStore';
 import type { TechSpecItem } from '@/types/catalog';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -15,6 +16,8 @@ interface TechSpecsGridProps {
 }
 
 export function TechSpecsGrid({ specs, expanded, onToggle }: TechSpecsGridProps) {
+  const { t } = useTranslation();
+
   const handleToggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggle();
@@ -25,7 +28,7 @@ export function TechSpecsGrid({ specs, expanded, onToggle }: TechSpecsGridProps)
       <ScaledPressable
         onPress={handleToggle}
         className="flex-row items-center justify-between py-2">
-        <Text className="text-base font-bold text-text">Technical Specifications</Text>
+        <Text className="text-base font-bold text-text">{t('technicalSpecs')}</Text>
         <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
       </ScaledPressable>
 

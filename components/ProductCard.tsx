@@ -13,15 +13,18 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { HighlightedText } from '@components/search/HighlightedText';
 import { getProductImageSource } from '@constants/catalogData';
 import type { Product } from '@/types/catalog';
 import { useCartStore } from '@store/cartStore';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { productToCartItem } from '@utils/cartHelpers';
 
 interface ProductCardProps {
   product: Product;
   categoryId?: string;
   categoryName?: string;
+  highlightQuery?: string;
 }
 
 function getStatusColors(status: Product['status']) {
@@ -31,12 +34,34 @@ function getStatusColors(status: Product['status']) {
   return { bg: '#E8F5E9', text: '#2E7D32' };
 }
 
-export function ProductCard({ product, categoryId, categoryName }: ProductCardProps) {
+function getStatusLabel(status: Product['status'], t: ReturnType<typeof useTranslation>['t']) {
+  switch (status) {
+    case 'READY FOR DISPATCH':
+      return t('readyForDispatch');
+    case 'IN STOCK':
+      return t('inStock');
+    case 'LIMITED STOCK':
+      return t('limitedStock');
+    default:
+      return status;
+  }
+}
+
+export function ProductCard({ product, categoryId, categoryName, highlightQuery }: ProductCardProps) {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const [quantity, setQuantity] = useState(product.defaultQuantity);
   const [addedFlash, setAddedFlash] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const btnScale = useSharedValue(1);
   const flashOpacity = useSharedValue(0);
+
+  const displayName =
+    language === 'hi' && product.nameHi ? product.nameHi : product.name;
+  const detailName =
+    language === 'hi' && product.nameHi
+      ? product.nameHi
+      : (product.detailName ?? product.name);
 
   const statusColors = getStatusColors(product.status);
 
@@ -55,7 +80,7 @@ export function ProductCard({ product, categoryId, categoryName }: ProductCardPr
         productId: product.id,
         categoryId: categoryId ?? '',
         categoryName: categoryName ?? product.category,
-        productName: product.detailName ?? product.name,
+        productName: detailName,
       },
     } as Href);
   };
@@ -99,18 +124,28 @@ export function ProductCard({ product, categoryId, categoryName }: ProductCardPr
             {product.category}
           </Text>
           <View className="rounded-md bg-secondary/10 px-2 py-0.5">
-            <Text className="text-xs font-bold text-secondary">Grade {product.grade}</Text>
+            <Text className="text-xs font-bold text-secondary">
+              {t('grade')} {product.grade}
+            </Text>
           </View>
         </View>
 
         <ScaledPressable onPress={openDetail}>
-          <Text className="mt-1 text-lg font-bold text-text">{product.name}</Text>
+          {highlightQuery ? (
+            <HighlightedText
+              text={displayName}
+              query={highlightQuery}
+              style={{ marginTop: 4, fontSize: 18, fontWeight: '700' }}
+            />
+          ) : (
+            <Text className="mt-1 text-lg font-bold text-text">{displayName}</Text>
+          )}
         </ScaledPressable>
 
         <View className="mt-2 flex-row items-center gap-2">
           <View className="rounded px-2 py-0.5" style={{ backgroundColor: statusColors.bg }}>
             <Text className="text-[10px] font-bold" style={{ color: statusColors.text }}>
-              {product.status}
+              {getStatusLabel(product.status, t)}
             </Text>
           </View>
           <Text className="text-xs text-text-secondary">• {product.spec}</Text>
@@ -118,7 +153,7 @@ export function ProductCard({ product, categoryId, categoryName }: ProductCardPr
 
         <View className="mt-4 border-t border-border pt-3">
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-text-secondary">Retail Price</Text>
+            <Text className="text-sm text-text-secondary">{t('retailPrice')}</Text>
             <Text className="text-sm font-semibold text-text">{product.retailPrice}</Text>
           </View>
           <View className="mt-2 flex-row items-center justify-between">
@@ -155,7 +190,7 @@ export function ProductCard({ product, categoryId, categoryName }: ProductCardPr
                 style={flashStyle}
               />
               <Ionicons name="cart-outline" size={18} color="#FFFFFF" />
-              <Text className="ml-2 text-xs font-bold text-text-inverse">ADD TO CART</Text>
+              <Text className="ml-2 text-xs font-bold text-text-inverse">{t('addToCart')}</Text>
             </ScaledPressable>
           </Animated.View>
         </View>

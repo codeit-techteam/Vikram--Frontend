@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,48 +7,62 @@ import { BrandLogo } from '@components/BrandLogo';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { RoleCard } from '@components/RoleCard';
 import { images } from '@constants/images';
+import type { StringKey } from '@constants/strings';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useAuthStore, type UserRole } from '@store/useAuthStore';
 
-const ROLES: {
+const ROLE_CONFIG: {
   role: UserRole;
-  title: string;
-  subtitle: string;
+  titleKey: StringKey;
+  subtitleKey: StringKey;
   imageUrl: string;
   icon: 'home-outline' | 'people-outline' | 'color-palette-outline' | 'construct-outline';
 }[] = [
   {
     role: 'individual',
-    title: 'Individual',
-    subtitle: 'Order materials for personal or home projects.',
+    titleKey: 'roleIndividual',
+    subtitleKey: 'roleIndividualDesc',
     imageUrl: images.roleIndividual,
     icon: 'home-outline',
   },
   {
     role: 'contractor',
-    title: 'Contractor',
-    subtitle: 'Manage site logistics, labor, and procurement.',
+    titleKey: 'roleContractor',
+    subtitleKey: 'roleContractorDesc',
     imageUrl: images.roleContractor,
     icon: 'people-outline',
   },
   {
     role: 'interior_designer',
-    title: 'Interior Designer / Architect',
-    subtitle: 'Source premium materials and manage interiors.',
+    titleKey: 'roleInterior',
+    subtitleKey: 'roleInteriorDesc',
     imageUrl: images.roleInterior,
     icon: 'color-palette-outline',
   },
   {
     role: 'builder_developer',
-    title: 'Builder / Developer',
-    subtitle: 'Handle large-scale construction and projects.',
+    titleKey: 'roleBuilder',
+    subtitleKey: 'roleBuilderDesc',
     imageUrl: images.roleBuilder,
     icon: 'construct-outline',
   },
 ];
 
 export default function RoleSelectionScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const selectedRole = useAuthStore((s) => s.selectedRole);
   const setSelectedRole = useAuthStore((s) => s.setSelectedRole);
+
+  const roles = useMemo(
+    () =>
+      ROLE_CONFIG.map((role) => ({
+        ...role,
+        title: t(role.titleKey),
+        subtitle: t(role.subtitleKey),
+      })),
+    [language, t],
+  );
 
   const handleContinue = () => {
     if (!selectedRole) return;
@@ -61,10 +76,8 @@ export default function RoleSelectionScreen() {
       </View>
 
       <View className="mt-6 items-center px-5">
-        <Text className="text-2xl font-bold text-text">Select Your Role</Text>
-        <Text className="mt-1 text-sm text-text-secondary">
-          Personalize your BuildPro experience
-        </Text>
+        <Text className="text-2xl font-bold text-text">{t('selectRole')}</Text>
+        <Text className="mt-1 text-sm text-text-secondary">{t('personalizeExperience')}</Text>
       </View>
 
       <ScrollView
@@ -74,25 +87,25 @@ export default function RoleSelectionScreen() {
         <View className="gap-3">
           <View className="flex-row gap-3">
             <RoleCard
-              {...ROLES[0]}
-              selected={selectedRole === ROLES[0].role}
+              {...roles[0]}
+              selected={selectedRole === roles[0].role}
               onSelect={setSelectedRole}
             />
             <RoleCard
-              {...ROLES[1]}
-              selected={selectedRole === ROLES[1].role}
+              {...roles[1]}
+              selected={selectedRole === roles[1].role}
               onSelect={setSelectedRole}
             />
           </View>
           <View className="flex-row gap-3">
             <RoleCard
-              {...ROLES[2]}
-              selected={selectedRole === ROLES[2].role}
+              {...roles[2]}
+              selected={selectedRole === roles[2].role}
               onSelect={setSelectedRole}
             />
             <RoleCard
-              {...ROLES[3]}
-              selected={selectedRole === ROLES[3].role}
+              {...roles[3]}
+              selected={selectedRole === roles[3].role}
               onSelect={setSelectedRole}
             />
           </View>
@@ -101,7 +114,7 @@ export default function RoleSelectionScreen() {
 
       <View className="px-5 pb-2 pt-4">
         <PrimaryButton
-          title="Continue"
+          title={t('continueBtn')}
           onPress={handleContinue}
           disabled={!selectedRole}
         />

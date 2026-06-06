@@ -13,17 +13,26 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { NotificationCard } from '@components/notifications/NotificationCard';
+import { SwipeableNotificationCard } from '@components/notifications/SwipeableNotificationCard';
+import type { StringKey } from '@constants/strings';
 import {
   filterNotifications,
-  NOTIFICATION_FILTERS,
   NOTIFICATIONS,
   type NotificationFilter,
 } from '@constants/notificationData';
+import { useTranslation } from '@store/languageStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { safeGoBack } from '@utils/navigation';
 
-function ProTipBanner() {
+const FILTER_KEYS: { key: NotificationFilter; labelKey: StringKey }[] = [
+  { key: 'all', labelKey: 'allNotifications' },
+  { key: 'logistics', labelKey: 'logisticsFilter' },
+  { key: 'payments', labelKey: 'paymentsFilter' },
+  { key: 'inventory', labelKey: 'inventoryFilter' },
+  { key: 'site', labelKey: 'siteComms' },
+];
+
+function ProTipBanner({ t }: { t: (key: StringKey) => string }) {
   return (
     <View style={styles.proTipWrap}>
       <ImageBackground
@@ -33,12 +42,10 @@ function ProTipBanner() {
         <View style={styles.proTipOverlay} />
         <View style={styles.proTipContent}>
           <View style={styles.proTipTag}>
-            <Text style={styles.proTipTagText}>PRO TIP</Text>
+            <Text style={styles.proTipTagText}>{t('proTip')}</Text>
           </View>
-          <Text style={styles.proTipTitle}>Maximize Procurement Efficiency</Text>
-          <Text style={styles.proTipBody}>
-            Upgrade to Business Gold for automated tax filing and logistics priority.
-          </Text>
+          <Text style={styles.proTipTitle}>{t('proTipEfficiencyTitle')}</Text>
+          <Text style={styles.proTipBody}>{t('proTipEfficiencyBody')}</Text>
         </View>
       </ImageBackground>
     </View>
@@ -46,15 +53,19 @@ function ProTipBanner() {
 }
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const markAllRead = useNotificationStore((s) => s.markAllRead);
+  const deleteNotification = useNotificationStore((s) => s.deleteNotification);
+  const markAsRead = useNotificationStore((s) => s.markAsRead);
+  const deletedIds = useNotificationStore((s) => s.deletedIds);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
 
-  const filteredNotifications = useMemo(
-    () => filterNotifications(NOTIFICATIONS, searchQuery, activeFilter),
-    [searchQuery, activeFilter],
-  );
+  const filteredNotifications = useMemo(() => {
+    const visible = NOTIFICATIONS.filter((n) => !deletedIds.includes(n.id));
+    return filterNotifications(visible, searchQuery, activeFilter);
+  }, [searchQuery, activeFilter, deletedIds]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -64,7 +75,7 @@ export default function NotificationsScreen() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={22} color="#FF6B00" />
         </Pressable>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications')}</Text>
         <Pressable
           onPress={markAllRead}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -75,7 +86,7 @@ export default function NotificationsScreen() {
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color="#AAAAAA" />
         <TextInput
-          placeholder="Search alerts, orders, or sites..."
+          placeholder={t('searchNotifications')}
           placeholderTextColor="#AAAAAA"
           style={styles.searchInput}
           value={searchQuery}
@@ -94,7 +105,7 @@ export default function NotificationsScreen() {
         bounces={false}
         style={styles.filterScroll}
         contentContainerStyle={styles.filterRow}>
-        {NOTIFICATION_FILTERS.map((filter) => {
+        {FILTER_KEYS.map((filter) => {
           const isActive = activeFilter === filter.key;
           return (
             <Pressable
@@ -108,7 +119,7 @@ export default function NotificationsScreen() {
                 isActive ? styles.filterPillActive : styles.filterPillInactive,
               ]}>
               <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                {filter.label}
+                {t(filter.labelKey)}
               </Text>
             </Pressable>
           );
@@ -122,14 +133,21 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListFooterComponent={<ProTipBanner />}
+        ListFooterComponent={<ProTipBanner t={t} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="notifications-off-outline" size={48} color="#DDD" />
-            <Text style={styles.emptyText}>No notifications here</Text>
+            <Ionicons name="checkmark-circle-outline" size={52} color="#DDD" />
+            <Text style={styles.emptyTitle}>{t('allCaughtUp')}</Text>
+            <Text style={styles.emptySubtitle}>{t('noNotifications')}</Text>
           </View>
         }
-        renderItem={({ item, index }) => <NotificationCard item={item} index={index} />}
+        renderItem={({ item }) => (
+          <SwipeableNotificationCard
+            item={item}
+            onDelete={deleteNotification}
+            onMarkRead={markAsRead}
+          />
+        )}
       />
     </SafeAreaView>
   );
@@ -234,10 +252,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 60,
   },
-  emptyText: {
+  emptyTitle: {
     fontSize: 16,
     color: '#BBBBBB',
     marginTop: 12,
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#CCCCCC',
+    marginTop: 4,
   },
   proTipWrap: {
     marginTop: 10,

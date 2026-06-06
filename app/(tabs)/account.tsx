@@ -27,10 +27,9 @@ import { ProfileSiteSheet } from '@components/account/ProfileSiteSheet';
 import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
 import type { ProfileSite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
-import { useLanguageStore } from '@store/languageStore';
+import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { resetAppStores } from '@utils/resetAppStores';
@@ -38,12 +37,6 @@ import { resetAppStores } from '@utils/resetAppStores';
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const TIER_LABELS = {
-  platinum: '⭐ PLATINUM MEMBER',
-  gold: '⭐ GOLD MEMBER',
-  silver: '⭐ SILVER MEMBER',
-} as const;
 
 const QUICK_LINKS = [
   { key: 'history', icon: 'time-outline' as const, route: '/orders/history' },
@@ -53,13 +46,17 @@ const QUICK_LINKS = [
 ] as const;
 
 export default function AccountScreen() {
-  const s = useStrings();
+  const { t, language, setLanguage } = useTranslation();
   const user = useUserStore((st) => st.user);
   const setAvatar = useUserStore((st) => st.setAvatar);
   const profileSites = useDeliveryStore((st) => st.profileSites);
   const updateProfileSite = useDeliveryStore((st) => st.updateProfileSite);
-  const language = useLanguageStore((st) => st.language);
-  const setLanguage = useLanguageStore((st) => st.setLanguage);
+
+  const tierLabels = {
+    platinum: `⭐ ${t('platinumMember')}`,
+    gold: `⭐ ${t('goldMember')}`,
+    silver: `⭐ ${t('silverMember')}`,
+  } as const;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [businessOpen, setBusinessOpen] = useState(true);
@@ -111,10 +108,10 @@ export default function AccountScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(s.accountLogoutTitle, s.accountLogoutMessage, [
-      { text: s.drawerLogoutCancel, style: 'cancel' },
+    Alert.alert(t('logout'), t('logoutConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: s.drawerLogoutConfirm,
+        text: t('logout'),
         style: 'destructive',
         onPress: () => {
           resetAppStores();
@@ -176,7 +173,7 @@ export default function AccountScreen() {
                 </Text>
                 <View className="mt-2 self-start rounded-full bg-primary px-2.5 py-1">
                   <Text className="text-[10px] font-bold text-text-inverse">
-                    {TIER_LABELS[user.memberTier]}
+                    {tierLabels[user.memberTier]}
                   </Text>
                 </View>
               </View>
@@ -185,25 +182,25 @@ export default function AccountScreen() {
             <ScaledPressable
               onPress={() => router.push('/account/edit-profile')}
               className="mt-4 h-11 items-center justify-center rounded-pill bg-primary">
-              <Text className="text-sm font-bold text-text-inverse">{s.accountEditProfile}</Text>
+              <Text className="text-sm font-bold text-text-inverse">{t('editProfile')}</Text>
             </ScaledPressable>
           </View>
 
           {/* Business Details */}
           <CollapsibleSection
             icon="briefcase-outline"
-            title={s.accountBusinessDetails}
+            title={t('businessDetails')}
             expanded={businessOpen}
             onToggle={() => toggleSection(setBusinessOpen)}>
-            <DetailRow label={s.accountLegalEntity} value={user.legalEntityName} />
-            <DetailRow label={s.accountEstablishmentDate} value={user.establishmentDate} />
-            <DetailRow label={s.accountRegisteredAddress} value={user.registeredAddress} />
+            <DetailRow label={t('legalEntity')} value={user.legalEntityName} />
+            <DetailRow label={t('establishmentDate')} value={user.establishmentDate} />
+            <DetailRow label={t('registeredAddress')} value={user.registeredAddress} />
           </CollapsibleSection>
 
           {/* GST Compliance */}
           <CollapsibleSection
             icon="shield-checkmark-outline"
-            title={s.accountGstCompliance}
+            title={t('gstCompliance')}
             expanded={gstOpen}
             onToggle={handleGstToggle}
             onHeaderPress={handleGstToggle}>
@@ -215,7 +212,7 @@ export default function AccountScreen() {
                     <Text className="text-xs font-bold text-success">VERIFIED</Text>
                   </View>
                   <Text className="text-sm text-text-secondary">
-                    {s.accountComplianceScore}: {user.complianceScore}%
+                    {t('complianceScore')}: {user.complianceScore}%
                   </Text>
                 </View>
               </View>
@@ -225,7 +222,7 @@ export default function AccountScreen() {
           {/* Saved Delivery Sites */}
           <CollapsibleSection
             icon="location-outline"
-            title={s.savedDeliverySites}
+            title={t('savedDeliverySites')}
             expanded={sitesOpen}
             onToggle={() => toggleSection(setSitesOpen)}
             rightElement={
@@ -266,25 +263,25 @@ export default function AccountScreen() {
           <View className="mb-4 rounded-card border border-border bg-surface p-4">
             <View className="mb-3 flex-row items-center gap-2">
               <Ionicons name="globe-outline" size={20} color="#FF6B00" />
-              <Text className="text-base font-bold text-text">{s.accountLanguage}</Text>
+              <Text className="text-base font-bold text-text">{t('languageSection')}</Text>
             </View>
 
             <LanguageCard
               selected={language === 'en'}
-              title={s.english}
-              subtitle={s.accountUseEnglish}
+              title={t('english')}
+              subtitle={t('englishSubtitle')}
               onPress={() => handleLanguage('en')}
             />
             <LanguageCard
               selected={language === 'hi'}
-              title={s.hindi}
-              subtitle={s.accountUseHindi}
+              title={t('hindi')}
+              subtitle={t('hindiSubtitle')}
               onPress={() => handleLanguage('hi')}
             />
 
             <View className="mt-3 flex-row items-start gap-2 rounded-lg bg-info/10 p-3">
               <Ionicons name="information-circle" size={18} color="#2196F3" />
-              <Text className="flex-1 text-xs text-text-secondary">{s.accountLanguageNote}</Text>
+              <Text className="flex-1 text-xs text-text-secondary">{t('languageNote')}</Text>
             </View>
           </View>
 
@@ -298,19 +295,19 @@ export default function AccountScreen() {
                 <Ionicons name={link.icon} size={20} color="#666666" />
                 <Text className="ml-3 flex-1 text-sm text-text">
                   {link.key === 'history'
-                    ? s.drawerOrderHistory
+                    ? t('orderHistoryMenu')
                     : link.key === 'invoices'
-                      ? s.drawerGstInvoices
+                      ? t('invoices')
                       : link.key === 'loyalty'
-                        ? s.drawerLoyalty
-                        : s.drawerPrivacy}
+                        ? t('loyaltyWallet')
+                        : t('privacySecurity')}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
               </ScaledPressable>
             ))}
             <ScaledPressable onPress={handleLogout} className="flex-row items-center px-4 py-4">
               <Ionicons name="log-out-outline" size={20} color="#FF6B00" />
-              <Text className="ml-3 flex-1 text-sm font-semibold text-primary">{s.drawerLogout}</Text>
+              <Text className="ml-3 flex-1 text-sm font-semibold text-primary">{t('logout')}</Text>
             </ScaledPressable>
           </View>
 
@@ -320,7 +317,7 @@ export default function AccountScreen() {
               <View className="h-8 w-8 items-center justify-center rounded-lg bg-info/15">
                 <Ionicons name="card-outline" size={18} color="#2196F3" />
               </View>
-              <Text className="text-base font-bold text-text">{s.accountPaymentMethods}</Text>
+              <Text className="text-base font-bold text-text">{t('paymentMethods')}</Text>
             </View>
             <View className="flex-row items-center justify-between border-b border-border py-3">
               <Text className="text-sm text-text">HDFC Bank (GST Reg)</Text>

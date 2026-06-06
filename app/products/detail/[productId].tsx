@@ -31,10 +31,13 @@ import { useSearchStore } from '@store/searchStore';
 import { FREQUENTLY_BOUGHT, SPECS_BY_TYPE } from '@constants/productSpecs';
 import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
 import { productToCartItem } from '@utils/cartHelpers';
 
 export default function ProductDetailScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const { productId, categoryName, productName, categoryId } = useLocalSearchParams<{
     productId: string;
     categoryName?: string;
@@ -127,16 +130,22 @@ export default function ProductDetailScreen() {
   if (!product) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <Text className="text-text-secondary">Product not found.</Text>
+        <Text className="text-text-secondary">{t('productNotFound')}</Text>
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/catalog')} className="mt-4">
-          <Text className="font-bold text-primary">Go Back</Text>
+          <Text className="font-bold text-primary">{t('goBack')}</Text>
         </ScaledPressable>
       </View>
     );
   }
 
+  const localizedName =
+    language === 'hi' && product.nameHi
+      ? product.nameHi
+      : (product.detailName ?? product.name);
+  const localizedDescription =
+    language === 'hi' && product.descriptionHi ? product.descriptionHi : product.description;
   const displayCategory = categoryName ?? product.category;
-  const displayName = productName ?? product.detailName ?? product.name;
+  const displayName = productName ?? localizedName;
 
   const navigateBreadcrumb = (segment: 'catalog' | 'category' | 'product') => {
     if (segment === 'catalog') {
@@ -158,7 +167,7 @@ export default function ProductDetailScreen() {
       <View className="px-5 pt-4">
         <View className="flex-row flex-wrap items-center">
           <ScaledPressable onPress={() => navigateBreadcrumb('catalog')}>
-            <Text className="text-sm text-text-secondary">Catalog</Text>
+            <Text className="text-sm text-text-secondary">{t('catalogLabel')}</Text>
           </ScaledPressable>
           <Text className="text-sm text-text-secondary"> / </Text>
           <ScaledPressable onPress={() => navigateBreadcrumb('category')}>
@@ -168,25 +177,23 @@ export default function ProductDetailScreen() {
           <Text className="text-sm font-semibold text-primary">{displayName}</Text>
         </View>
 
-        <Text className="mt-3 text-2xl font-bold text-text">
-          {product.detailName ?? product.name}
-        </Text>
-        <Text className="mt-2 text-sm leading-5 text-text-secondary">{product.description}</Text>
+        <Text className="mt-3 text-2xl font-bold text-text">{localizedName}</Text>
+        <Text className="mt-2 text-sm leading-5 text-text-secondary">{localizedDescription}</Text>
 
         <View className="mt-4 flex-row gap-3">
           <View className="flex-1 rounded-card bg-trust p-3">
             <Ionicons name="receipt-outline" size={18} color="#FF6B00" />
             <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
-              FINANCIALS
+              {t('financials')}
             </Text>
-            <Text className="mt-1 text-sm font-semibold text-text">GST Invoice Ready</Text>
+            <Text className="mt-1 text-sm font-semibold text-text">{t('gstInvoiceReady')}</Text>
           </View>
           <View className="flex-1 rounded-card bg-trust p-3">
             <Ionicons name="bus-outline" size={18} color="#FF6B00" />
             <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
-              SHIPPING
+              {t('shipping')}
             </Text>
-            <Text className="mt-1 text-sm font-semibold text-text">Flatbed Logistics</Text>
+            <Text className="mt-1 text-sm font-semibold text-text">{t('flatbedLogistics')}</Text>
           </View>
         </View>
       </View>
@@ -208,7 +215,7 @@ export default function ProductDetailScreen() {
           }`}>
           <Text className={`text-sm font-semibold ${isBulkPrice ? 'text-primary' : 'text-text'}`}>
             🏷 {product.bulkLabel}: {product.bulkPrice}
-            {isBulkPrice ? ' ✓ Applied' : ''}
+            {isBulkPrice ? ` ✓ ${t('applied')}` : ''}
           </Text>
         </View>
 
@@ -232,7 +239,7 @@ export default function ProductDetailScreen() {
           </View>
 
           <View className="ml-4 items-end">
-            <Text className="text-xs text-text-secondary">Total Subtotal</Text>
+            <Text className="text-xs text-text-secondary">{t('totalSubtotal')}</Text>
             <Text className="text-lg font-bold text-primary">{formatINR(subtotal)}</Text>
           </View>
         </View>
@@ -244,7 +251,7 @@ export default function ProductDetailScreen() {
               cartFlash ? 'bg-success' : 'bg-primary'
             }`}>
             <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
-            <Text className="ml-2 text-base font-bold text-text-inverse">ADD TO CART</Text>
+            <Text className="ml-2 text-base font-bold text-text-inverse">{t('addToCart')}</Text>
           </ScaledPressable>
         </Animated.View>
       </View>

@@ -1,8 +1,10 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import type { StringKey } from '@constants/strings';
+
 export interface CatalogCategory {
   id: string;
-  name: string;
+  labelKey: StringKey;
   image: ImageSourcePropType;
   imageSearch?: string;
 }
@@ -19,6 +21,7 @@ export interface Product {
   imageSearch: string;
   category: string;
   name: string;
+  nameHi?: string;
   grade: string;
   status: ProductStatus;
   spec: string;
@@ -31,6 +34,7 @@ export interface Product {
   defaultQuantity: number;
   bulkThreshold: number;
   description: string;
+  descriptionHi?: string;
   categoryType: ProductCategoryType;
   detailName?: string;
 }

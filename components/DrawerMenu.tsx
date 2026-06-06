@@ -14,8 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawerHeader } from '@components/DrawerHeader';
 import { DrawerMenuItem, DrawerSectionLabel } from '@components/DrawerMenuItem';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { useStrings } from '@hooks/useStrings';
-import { useLanguageStore } from '@store/languageStore';
+import { useTranslation } from '@store/languageStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { resetAppStores } from '@utils/resetAppStores';
 
@@ -28,8 +27,7 @@ interface DrawerMenuProps {
 }
 
 function LanguageToggle() {
-  const language = useLanguageStore((s) => s.language);
-  const setLanguage = useLanguageStore((s) => s.setLanguage);
+  const { language, setLanguage } = useTranslation();
 
   return (
     <View className="flex-row gap-1">
@@ -98,7 +96,7 @@ function AnimatedLanguageRow({
 
 export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
   const insets = useSafeAreaInsets();
-  const s = useStrings();
+  const { t } = useTranslation();
   const orderBadge = useNotificationStore((st) => st.orderNotifications);
   const notifBadge = useNotificationStore((st) => st.unreadCount);
   const [contentReady, setContentReady] = useState(false);
@@ -121,10 +119,10 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
   );
 
   const handleLogout = () => {
-    Alert.alert(s.drawerLogoutTitle, s.drawerLogoutMessage, [
-      { text: s.drawerLogoutCancel, style: 'cancel' },
+    Alert.alert(t('logout'), t('logoutConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: s.drawerLogoutConfirm,
+        text: t('logout'),
         style: 'destructive',
         onPress: () => {
           onClose();
@@ -153,41 +151,41 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
     {
       key: 'main',
       items: [
-        { icon: 'home-outline', label: s.drawerHome, onPress: () => navigateAndClose('/(tabs)') },
+        { icon: 'home-outline', label: t('drawerHome'), onPress: () => navigateAndClose('/(tabs)') },
         {
           icon: 'cube-outline',
-          label: s.drawerCatalog,
+          label: t('drawerCatalog'),
           onPress: () => navigateAndClose('/(tabs)/catalog'),
         },
         {
           icon: 'bag-outline',
-          label: s.drawerOrders,
+          label: t('drawerOrders'),
           badge: orderBadge,
           onPress: () => navigateAndClose('/(tabs)/orders'),
         },
         {
           icon: 'bus-outline',
-          label: s.drawerTrackDeliveries,
+          label: t('drawerTrackDeliveries'),
           onPress: () => navigateAndClose('/track-delivery'),
         },
         {
           icon: 'location-outline',
-          label: s.drawerSavedSites,
+          label: t('drawerSavedSites'),
           onPress: () => navigateAndClose('/delivery-location'),
         },
         {
           icon: 'document-text-outline',
-          label: s.drawerGstInvoices,
+          label: t('invoices'),
           onPress: () => navigateAndClose('/account/invoices'),
         },
         {
           icon: 'trophy-outline',
-          label: s.drawerLoyalty,
+          label: t('loyaltyWallet'),
           onPress: () => navigateAndClose('/account/loyalty'),
         },
         {
           icon: 'notifications-outline',
-          label: s.drawerNotifications,
+          label: t('drawerNotifications'),
           badge: notifBadge,
           onPress: () => navigateAndClose('/notifications'),
         },
@@ -195,38 +193,38 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
     },
     {
       key: 'procurement',
-      section: s.drawerProcurementTools,
+      section: t('drawerProcurementTools'),
       items: [
         {
           icon: 'flash-outline',
-          label: s.drawerEmergencyOrders,
+          label: t('drawerEmergencyOrders'),
           isHighlight: true,
           onPress: () => navigateAndClose('/(tabs)'),
         },
         {
           icon: 'layers-outline',
-          label: s.drawerBulkProcurement,
+          label: t('drawerBulkProcurement'),
           onPress: () => navigateAndClose('/(tabs)/catalog'),
         },
         {
           icon: 'time-outline',
-          label: s.drawerOrderHistory,
+          label: t('orderHistoryMenu'),
           onPress: () => navigateAndClose('/orders/history'),
         },
       ],
     },
     {
       key: 'support',
-      section: s.drawerSupport,
+      section: t('drawerSupport'),
       items: [
         {
           icon: 'help-circle-outline',
-          label: s.drawerHelpCenter,
+          label: t('drawerHelpCenter'),
           onPress: () => navigateAndClose('/support'),
         },
         {
           icon: 'chatbubble-ellipses-outline',
-          label: s.drawerWhatsAppSupport,
+          label: t('drawerWhatsAppSupport'),
           onPress: () => {
             onClose();
             Linking.openURL('whatsapp://send?phone=919999999999');
@@ -234,30 +232,30 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
         },
         {
           icon: 'ticket-outline',
-          label: s.drawerRaiseTicket,
+          label: t('drawerRaiseTicket'),
           onPress: () => navigateAndClose('/support'),
         },
       ],
     },
     {
       key: 'preferences',
-      section: s.drawerPreferences,
+      section: t('drawerPreferences'),
       items: [
         {
           icon: 'globe-outline',
-          label: s.drawerLanguage,
+          label: t('drawerLanguage'),
           isLanguageRow: true,
           rightElement: <LanguageToggle />,
           onPress: () => {},
         },
         {
           icon: 'shield-checkmark-outline',
-          label: s.drawerPrivacy,
+          label: t('privacySecurity'),
           onPress: () => navigateAndClose('/account/privacy'),
         },
         {
           icon: 'document-outline',
-          label: s.drawerTerms,
+          label: t('drawerTerms'),
           onPress: () => navigateAndClose('/(tabs)/account'),
         },
       ],
@@ -324,14 +322,14 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
 
             <DrawerMenuItem
               icon="log-out-outline"
-              label={s.drawerLogout}
+              label={t('logout')}
               isDestructive
               index={itemIndex}
               isDrawerOpen={isOpen}
               onPress={handleLogout}
             />
 
-            <Text className="mt-4 text-center text-xs text-text-secondary">{s.drawerVersion}</Text>
+            <Text className="mt-4 text-center text-xs text-text-secondary">{t('drawerVersion')}</Text>
           </>
         )}
       </ScrollView>

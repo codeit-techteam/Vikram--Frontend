@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router, Stack, type Href } from 'expo-router';
+
+import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -41,6 +43,7 @@ import {
 import { getProductImageUrl } from '@constants/catalogData';
 import { useCartStore } from '@store/cartStore';
 import { useSearchStore } from '@store/searchStore';
+import { useTranslation } from '@store/languageStore';
 import { safeGoBack } from '@utils/navigation';
 
 type SearchState = 'empty' | 'typing' | 'results';
@@ -198,13 +201,14 @@ function SearchResultItem({
 }
 
 function BundleCard({ onAddBundle }: { onAddBundle: () => void }) {
+  const { t } = useTranslation();
   const cementProduct = getSearchProductById(BUNDLE_PRODUCT_IDS[0]);
 
   return (
     <View style={styles.bundleCard}>
       <View style={styles.bundleHeader}>
         <Text style={styles.bundleStar}>✦</Text>
-        <Text style={styles.bundleLabel}>Frequently Purchased Together</Text>
+        <Text style={styles.bundleLabel}>{t('frequentlyPurchasedTogether')}</Text>
       </View>
 
       <View style={styles.bundleItems}>
@@ -242,7 +246,7 @@ function BundleCard({ onAddBundle }: { onAddBundle: () => void }) {
           <Text style={styles.bundlePrice}>{formatSearchPrice(BUNDLE_PRICE)}</Text>
         </View>
         <Pressable onPress={onAddBundle} style={styles.bundleButton}>
-          <Text style={styles.bundleButtonText}>Add Bundle</Text>
+          <Text style={styles.bundleButtonText}>{t('addBundle')}</Text>
         </Pressable>
       </View>
     </View>
@@ -250,6 +254,7 @@ function BundleCard({ onAddBundle }: { onAddBundle: () => void }) {
 }
 
 export default function SearchScreen() {
+  const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -397,7 +402,7 @@ export default function SearchScreen() {
                 ref={inputRef}
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search cement, steel, sand, bricks..."
+                placeholder={t('searchBuildQuick')}
                 placeholderTextColor="#AAAAAA"
                 autoFocus
                 returnKeyType="search"
@@ -415,10 +420,7 @@ export default function SearchScreen() {
 
               <View style={styles.inputDivider} />
 
-              <Pressable
-                onPress={() => router.push('/voice-assistant' as Href)}
-                hitSlop={8}
-                style={styles.micButton}>
+              <Pressable onPress={openVoiceAssistant} hitSlop={8} style={styles.micButton}>
                 <Ionicons name="mic-outline" size={20} color="#FF6B00" />
               </Pressable>
             </View>
@@ -461,9 +463,9 @@ export default function SearchScreen() {
             {recentSearches.length > 0 ? (
               <Animated.View entering={FadeIn.delay(50).duration(300)} style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionLabel}>Recent Searches</Text>
+                  <Text style={styles.sectionLabel}>{t('recentSearches')}</Text>
                   <Pressable onPress={clearRecentSearches}>
-                    <Text style={styles.clearAll}>Clear All</Text>
+                    <Text style={styles.clearAll}>{t('clearAll')}</Text>
                   </Pressable>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -486,7 +488,7 @@ export default function SearchScreen() {
               <View style={styles.resultsSection}>
                 {results.length > 0 ? (
                   <>
-                    <Text style={styles.resultsTitle}>Search Results</Text>
+                    <Text style={styles.resultsTitle}>{t('searchResults')}</Text>
                     <FlatList
                       data={results}
                       keyExtractor={(item) => item.id}
@@ -497,12 +499,12 @@ export default function SearchScreen() {
                 ) : (
                   <View style={styles.emptyResults}>
                     <Ionicons name="search" size={48} color="#CCC" />
-                    <Text style={styles.emptyResultsTitle}>No results for '{debouncedQuery}'</Text>
-                    <Text style={styles.emptyResultsHint}>
-                      Try searching cement, steel, sand, bricks
+                    <Text style={styles.emptyResultsTitle}>
+                      {t('noResultsFor')} '{debouncedQuery}'
                     </Text>
+                    <Text style={styles.emptyResultsHint}>{t('trySearching')}</Text>
                     <Pressable onPress={() => router.push('/(tabs)/catalog' as Href)}>
-                      <Text style={styles.browseLink}>Browse All Categories →</Text>
+                      <Text style={styles.browseLink}>{t('browseAllCategories')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -517,7 +519,7 @@ export default function SearchScreen() {
 
             {recentlyViewed.length > 0 ? (
               <View style={styles.recentlyViewedSection}>
-                <Text style={styles.sectionLabel}>Recently Viewed</Text>
+                <Text style={styles.sectionLabel}>{t('recentlyViewed')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={styles.recentlyViewedRow}>
                     {recentlyViewed.map((product) => (

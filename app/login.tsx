@@ -16,9 +16,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '@components/BrandLogo';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { images } from '@constants/images';
+import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 
 export default function LoginScreen() {
+  const language = useLanguageStore((s) => s.language);
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('98765 43210');
   const [loading, setLoading] = useState(false);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
@@ -53,12 +56,10 @@ export default function LoginScreen() {
           />
 
           <View className="mx-5 -mt-10 rounded-card bg-surface p-6 shadow-lg">
-            <Text className="text-xl font-bold text-text">Welcome Back, Builder</Text>
-            <Text className="mt-2 text-sm leading-5 text-text-secondary">
-              Enter your mobile number to manage site logistics and procurement.
-            </Text>
+            <Text className="text-xl font-bold text-text">{t('welcomeBack')}</Text>
+            <Text className="mt-2 text-sm leading-5 text-text-secondary">{t('loginSubtitle')}</Text>
 
-            <Text className="mb-2 mt-6 text-sm text-text-secondary">Mobile Number</Text>
+            <Text className="mb-2 mt-6 text-sm text-text-secondary">{t('loginMobileLabel')}</Text>
             <View className="flex-row items-center rounded-input border border-border bg-input px-3">
               <Text className="text-base font-medium text-text">+91</Text>
               <View className="mx-3 h-6 w-px bg-border" />
@@ -73,7 +74,7 @@ export default function LoginScreen() {
             </View>
 
             <View className="mt-6">
-              <PrimaryButton title="Login" onPress={handleLogin} loading={loading} />
+              <PrimaryButton title={t('loginBtn')} onPress={handleLogin} loading={loading} />
             </View>
 
             <View className="mt-6 flex-row items-center rounded-card bg-trust p-4">
@@ -96,30 +97,34 @@ export default function LoginScreen() {
                 ))}
               </View>
               <View className="ml-3 flex-1">
-                <Text className="text-sm font-bold text-text">Trusted by 10,000+</Text>
-                <Text className="text-xs text-text-secondary">Contractors across India</Text>
+                <Text className="text-sm font-bold text-text">{t('trustedBy')}</Text>
+                <Text className="text-xs text-text-secondary">{t('contractorsIndia')}</Text>
               </View>
             </View>
           </View>
 
           <View className="mt-8 items-center px-5 pb-4">
             <View className="flex-row gap-6">
-              {['Help Center', 'Privacy Policy', 'Terms'].map((link) => (
-                <Pressable key={link}>
-                  <Text className="text-xs text-text-secondary">{link}</Text>
+              {(
+                [
+                  { key: 'helpCenter' as const, label: t('helpCenter') },
+                  { key: 'privacyPolicy' as const, label: t('privacyPolicy') },
+                  { key: 'termsLink' as const, label: t('termsLink') },
+                ] as const
+              ).map((link) => (
+                <Pressable key={link.key}>
+                  <Text className="text-xs text-text-secondary">{link.label}</Text>
                 </Pressable>
               ))}
             </View>
 
             <View className="mt-4 flex-row items-center gap-1.5">
               <Ionicons name="lock-closed-outline" size={12} color="#666666" />
-              <Text className="text-[10px] text-text-secondary">
-                ISO 27001 Certified Enterprise Security
-              </Text>
+              <Text className="text-[10px] text-text-secondary">{t('isoSecurity')}</Text>
             </View>
 
             <Text className="mt-3 text-center text-[10px] text-text-secondary/70">
-              © 2024 BuildQuick India Private Limited. All rights reserved.
+              {t('copyrightNotice')}
             </Text>
           </View>
         </ScrollView>
