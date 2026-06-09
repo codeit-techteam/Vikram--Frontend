@@ -118,7 +118,7 @@ export const ProjectSiteSheet = forwardRef<BottomSheet, ProjectSiteSheetProps>(
                   setLat(e.nativeEvent.coordinate.latitude);
                   setLng(e.nativeEvent.coordinate.longitude);
                 }}
-                pinColor="#FF6B00"
+                pinColor="#FEB623"
               />
             </MapView>
           </View>

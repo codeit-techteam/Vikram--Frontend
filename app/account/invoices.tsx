@@ -43,7 +43,7 @@ const FILTERS: { key: 'all' | 'unpaid' | 'paid' | 'overdue'; labelKey: StringKey
 ];
 const STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
   paid: { bg: '#E8F5E9', text: '#2E7D32' },
-  pending: { bg: '#FFF3E0', text: '#FF6B00' },
+  pending: { bg: '#FFF4D1', text: '#FEB623' },
   overdue: { bg: '#FFEBEE', text: '#D32F2F' },
 };
 
@@ -81,7 +81,7 @@ export default function InvoicesScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="mb-2 self-start">
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('invoicesTitle')}</Text>
 
@@ -106,7 +106,7 @@ export default function InvoicesScreen() {
               }`}>
               <Text
                 className={`text-xs font-semibold capitalize ${
-                  filter === f.key ? 'text-text-inverse' : 'text-text-secondary'
+                  filter === f.key ? 'text-onPrimary' : 'text-text-secondary'
                 }`}>
                 {t(f.labelKey)}
               </Text>
@@ -182,7 +182,7 @@ function InvoiceCard({
   const shareWhatsApp = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const text = encodeURIComponent(
-      `Invoice ${invoice.id} — ${formatINR(invoice.total, false)} from BuildQuick India`,
+      `Invoice ${invoice.id} — ${formatINR(invoice.total, false)} from Bajriwala`,
     );
     Linking.openURL(`whatsapp://send?text=${text}`);
   };
@@ -221,7 +221,7 @@ function InvoiceCard({
         <ScaledPressable
           onPress={downloadPdf}
           className="mr-2 flex-row items-center rounded-full border border-primary px-3 py-1.5">
-          <Ionicons name="download-outline" size={14} color="#FF6B00" />
+          <Ionicons name="download-outline" size={14} color="#FEB623" />
           <Text className="ml-1 text-xs font-semibold text-primary">{t('pdf')}</Text>
         </ScaledPressable>
         <ScaledPressable

@@ -12,7 +12,7 @@ export function HighlightedText({
   text,
   query,
   style,
-  matchColor = '#FF6A00',
+  matchColor = '#FEB623',
   ...rest
 }: HighlightedTextProps) {
   const segments = highlightMatch(text, query);

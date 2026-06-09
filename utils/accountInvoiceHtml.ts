@@ -6,7 +6,7 @@ export function buildAccountInvoiceHtml(invoice: AccountInvoice): string {
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<style>body{font-family:Arial,sans-serif;margin:24px}h1{color:#FF6B00}table{width:100%;border-collapse:collapse;margin-top:16px}td,th{border:1px solid #ddd;padding:8px}</style>
+<style>body{font-family:Arial,sans-serif;margin:24px}h1{color:#FEB623}table{width:100%;border-collapse:collapse;margin-top:16px}td,th{border:1px solid #ddd;padding:8px}</style>
 </head>
 <body>
   <h1>${invoice.id}</h1>
@@ -21,7 +21,7 @@ export function buildAccountInvoiceHtml(invoice: AccountInvoice): string {
       <td><strong>${formatINR(invoice.total, false)}</strong></td>
     </tr>
   </table>
-  <p style="margin-top:24px;font-size:12px;color:#666">BuildQuick India — GST Compliant Invoice</p>
+  <p style="margin-top:24px;font-size:12px;color:#666">Bajriwala — GST Compliant Invoice</p>
 </body>
 </html>`;
 }

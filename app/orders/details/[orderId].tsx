@@ -78,7 +78,7 @@ export default function OrderDetailsScreen() {
 
         <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card border border-border bg-trust p-4">
           <View className="h-10 w-10 items-center justify-center rounded-lg bg-primary/15">
-            <Ionicons name="bus-outline" size={22} color="#FF6B00" />
+            <Ionicons name="bus-outline" size={22} color="#FEB623" />
           </View>
           <View>
             <Text className="text-base font-bold text-text">{order.quantitySummary}</Text>
@@ -126,13 +126,13 @@ export default function OrderDetailsScreen() {
         <View className="mx-5 mt-2 overflow-hidden rounded-card" style={{ height: 200 }}>
           <MapView style={{ flex: 1 }} initialRegion={INITIAL_REGION}>
             <Marker coordinate={WAREHOUSE} title={t('warehouse')} pinColor="#1A73E8" />
-            <Marker coordinate={DESTINATION} title={t('deliverySite')} pinColor="#FF6B00" />
+            <Marker coordinate={DESTINATION} title={t('deliverySite')} pinColor="#FEB623" />
             <Marker coordinate={truckPos} title="Truck">
-              <Ionicons name="bus" size={24} color="#FF6B00" />
+              <Ionicons name="bus" size={24} color="#FEB623" />
             </Marker>
             <Polyline
               coordinates={[WAREHOUSE, DESTINATION]}
-              strokeColor="#FF6B00"
+              strokeColor="#FEB623"
               strokeWidth={3}
             />
           </MapView>

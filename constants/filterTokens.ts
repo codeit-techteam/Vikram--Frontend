@@ -1,7 +1,7 @@
 export const FILTER_COLORS = {
-  primary: '#FF6A00',
-  primaryLight: '#FFF0E6',
-  primaryBorder: '#FF6A00',
+  primary: '#FEB623',
+  primaryLight: '#FFF4D1',
+  primaryBorder: '#FEB623',
 
   surface: '#FFFFFF',
   surfaceMuted: '#F8F8F8',

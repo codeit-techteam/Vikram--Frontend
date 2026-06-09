@@ -80,8 +80,8 @@ export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
               <Text className="text-base font-bold text-text-inverse">{user.name}</Text>
               <Text className="text-xs text-text-inverse/90">{user.company}</Text>
               <View className="mt-2 self-start flex-row items-center gap-1 rounded-full bg-primary px-2.5 py-1">
-                <Ionicons name="star" size={10} color="#FFFFFF" />
-                <Text className="text-[9px] font-bold tracking-wide text-text-inverse">
+                <Ionicons name="star" size={10} color="#1A1A1A" />
+                <Text className="text-[9px] font-bold tracking-wide text-onPrimary">
                   {TIER_LABELS[user.memberTier]}
                 </Text>
               </View>

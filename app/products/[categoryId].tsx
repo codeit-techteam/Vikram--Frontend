@@ -87,10 +87,10 @@ export default function ProductListingScreen() {
       <AppHeader showBack title={title} />
 
       <View className="mx-5 mt-4 flex-row items-center rounded-input border border-border bg-surface px-4 py-3">
-        <Ionicons name="search" size={20} color="#FF6A00" />
+        <Ionicons name="search" size={20} color="#FEB623" />
         <Text className="ml-3 flex-1 text-sm text-text-secondary">{t('searchCatalog')}</Text>
         <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
-          <Ionicons name="mic-outline" size={20} color="#FF6A00" />
+          <Ionicons name="mic-outline" size={20} color="#FEB623" />
         </ScaledPressable>
       </View>
 

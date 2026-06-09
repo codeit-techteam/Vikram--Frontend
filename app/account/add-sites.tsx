@@ -40,7 +40,7 @@ export default function AddSitesScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center justify-between border-b border-border bg-surface px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="menu" size={22} color="#FF6B00" />
+          <Ionicons name="menu" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-base font-bold text-text">{t('deliverySites')}</Text>
         <View className="flex-row items-center gap-3">
@@ -62,9 +62,9 @@ export default function AddSitesScreen() {
             onPress={openAdd}
             className="mb-4 flex-row items-center justify-center gap-2 rounded-pill bg-primary py-3.5">
             <View className="h-6 w-6 items-center justify-center rounded-full bg-white">
-              <Ionicons name="add" size={16} color="#FF6B00" />
+              <Ionicons name="add" size={16} color="#FEB623" />
             </View>
-            <Text className="text-sm font-bold text-text-inverse">{t('addNewProjectSite')}</Text>
+            <Text className="text-sm font-bold text-onPrimary">{t('addNewProjectSite')}</Text>
           </ScaledPressable>
         }
         renderItem={({ item, index }) => (
@@ -123,7 +123,7 @@ function SiteCard({
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
           }}>
-          <Marker coordinate={{ latitude: site.lat, longitude: site.lng }} pinColor="#FF6B00" />
+          <Marker coordinate={{ latitude: site.lat, longitude: site.lng }} pinColor="#FEB623" />
         </MapView>
       </View>
 
@@ -155,7 +155,7 @@ function SiteCard({
 
         {site.gateNote && (
           <View className="mt-3 flex-row rounded-lg border-l-4 border-primary bg-background p-3">
-            <Ionicons name="information-circle-outline" size={16} color="#FF6B00" />
+            <Ionicons name="information-circle-outline" size={16} color="#FEB623" />
             <Text className="ml-2 flex-1 text-xs text-text-secondary">{site.gateNote}</Text>
           </View>
         )}
@@ -176,7 +176,7 @@ function LogisticsPill({
   return (
     <View className="flex-1">
       <View className="flex-row items-center gap-1">
-        <Ionicons name={icon} size={12} color="#FF6B00" />
+        <Ionicons name={icon} size={12} color="#FEB623" />
         <Text className="text-[10px] text-text-secondary">{label}</Text>
       </View>
       <Text className="mt-0.5 text-sm font-bold text-text">{value}</Text>

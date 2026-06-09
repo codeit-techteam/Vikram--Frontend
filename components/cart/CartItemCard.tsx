@@ -79,7 +79,7 @@ export function CartItemCard({
         </View>
 
         <Pressable onPress={() => onSaveForLater(item.id)} style={styles.saveLater}>
-          <Ionicons name="bookmark-outline" size={14} color="#FF6B00" />
+          <Ionicons name="bookmark-outline" size={14} color="#FEB623" />
           <Text style={styles.saveLaterText}>{t('saveForLater')}</Text>
         </Pressable>
       </View>
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
     marginBottom: 12,
   },
   controlsRow: {
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   saveLaterText: {
     fontSize: 13,
-    color: '#FF6B00',
+    color: '#FEB623',
     fontWeight: '500',
   },
 });

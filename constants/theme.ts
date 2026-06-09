@@ -1,5 +1,3 @@
-import { colors } from './colors';
-
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -28,10 +26,50 @@ export const borderRadius = {
 } as const;
 
 export const theme = {
-  colors,
-  spacing,
-  fontSize,
-  borderRadius,
+  // ── BRAND COLORS ──
+  primary: '#FEB623',
+  primaryDark: '#E5A01F',
+  primaryLight: '#FFF4D1',
+  primaryUltraLight: '#FFFBEE',
+
+  // ── SEMANTIC COLORS ──
+  success: '#34C759',
+  error: '#FF3B30',
+  warning: '#FF9500',
+  info: '#1A73E8',
+
+  // ── NEUTRALS ──
+  black: '#1A1A1A',
+  darkGray: '#333333',
+  gray: '#666666',
+  mediumGray: '#999999',
+  lightGray: '#E0E0E0',
+  ultraLightGray: '#F5F5F5',
+  white: '#FFFFFF',
+
+  // ── BACKGROUND ──
+  bgMain: '#F5F5F5',
+  bgCard: '#FFFFFF',
+  bgPrimary: '#FFF4D1',
+
+  // ── TEXT ──
+  textPrimary: '#1A1A1A',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  textOnPrimary: '#1A1A1A',
+  textLink: '#FEB623',
+
+  // ── BORDER ──
+  border: '#E0E0E0',
+  borderFocus: '#FEB623',
+
+  // ── BRAND NAME ──
+  appName: 'Bajriwala',
+  appTagline: 'Construction Materials Delivered Fast',
+  trustBadge: 'Trusted by 500+ Contractors across Delhi',
 } as const;
+
+export const Logo = require('../assets/images/logo.png');
+export const LogoSmall = require('../assets/images/logo.png');
 
 export type Theme = typeof theme;

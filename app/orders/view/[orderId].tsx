@@ -115,7 +115,7 @@ export default function ViewOrderScreen() {
           />
           {order.badge && (
             <View className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1">
-              <Text className="text-[10px] font-bold text-text-inverse">{order.badge}</Text>
+              <Text className="text-[10px] font-bold text-onPrimary">{order.badge}</Text>
             </View>
           )}
         </View>
@@ -158,7 +158,7 @@ export default function ViewOrderScreen() {
 
         <View className="mx-5 mt-5">
           <View className="mb-3 flex-row items-center gap-2">
-            <Ionicons name="cube-outline" size={18} color="#FF6B00" />
+            <Ionicons name="cube-outline" size={18} color="#FEB623" />
             <Text className="text-base font-bold text-text">{t('orderedMaterials')}</Text>
           </View>
           {order.materials.map((mat) => (
@@ -219,7 +219,7 @@ export default function ViewOrderScreen() {
               <ScaledPressable
                 onPress={() => Linking.openURL('tel:+919999999999')}
                 className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <Ionicons name="call" size={18} color="#FF6B00" />
+                <Ionicons name="call" size={18} color="#FEB623" />
               </ScaledPressable>
               <ScaledPressable
                 onPress={() => router.push('/support/chat')}
@@ -233,12 +233,12 @@ export default function ViewOrderScreen() {
         <View className="mx-5 mt-4 overflow-hidden rounded-card">
           <View className="bg-primary px-4 py-4">
             <View className="flex-row items-center justify-between">
-              <Text className="text-[10px] font-bold text-text-inverse/80">{t('totalPayable')}</Text>
+              <Text className="text-[10px] font-bold text-onPrimary/80">{t('totalPayable')}</Text>
               <View className="rounded bg-success px-2 py-0.5">
-                <Text className="text-[10px] font-bold text-text-inverse">{t('paid')}</Text>
+                <Text className="text-[10px] font-bold text-onPrimary">{t('paid')}</Text>
               </View>
             </View>
-            <Text className="mt-1 text-3xl font-bold text-text-inverse">
+            <Text className="mt-1 text-3xl font-bold text-onPrimary">
               {formatINR(order.totalPayable, false)}
             </Text>
           </View>
@@ -258,7 +258,7 @@ export default function ViewOrderScreen() {
               </View>
             </View>
             <View className="mt-3 flex-row items-center gap-2 border-t border-border pt-3">
-              <Ionicons name="card-outline" size={16} color="#FF6B00" />
+              <Ionicons name="card-outline" size={16} color="#FEB623" />
               <Text className="text-xs text-text-secondary">{order.paymentMethodLabel}</Text>
             </View>
           </View>
@@ -267,7 +267,7 @@ export default function ViewOrderScreen() {
         <View className="mx-5 mt-4 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-[10px] font-bold text-text-secondary">{t('gstInvoice')}</Text>
-            <Ionicons name="settings-outline" size={18} color="#FF6B00" />
+            <Ionicons name="settings-outline" size={18} color="#FEB623" />
           </View>
           <View className="mt-3 flex-row items-center gap-3">
             <Ionicons name="document" size={28} color="#D32F2F" />
@@ -288,7 +288,7 @@ export default function ViewOrderScreen() {
               ) : (
                 <>
                   <Ionicons name="download-outline" size={18} color="#FFF" />
-                  <Text className="ml-2 font-bold text-text-inverse">{t('download')}</Text>
+                  <Text className="ml-2 font-bold text-onPrimary">{t('download')}</Text>
                 </>
               )}
             </ScaledPressable>
@@ -297,19 +297,19 @@ export default function ViewOrderScreen() {
               className="flex-1 flex-row items-center justify-center rounded-lg py-3"
               style={{ backgroundColor: '#25D366' }}>
               <Ionicons name="share-social-outline" size={18} color="#FFF" />
-              <Text className="ml-2 font-bold text-text-inverse">{t('whatsapp')}</Text>
+              <Text className="ml-2 font-bold text-onPrimary">{t('whatsapp')}</Text>
             </ScaledPressable>
           </View>
         </View>
 
         <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card border border-dashed border-primary/40 bg-primary/5 p-4">
           <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/15">
-            <Ionicons name="star" size={20} color="#FF6B00" />
+            <Ionicons name="star" size={20} color="#FEB623" />
           </View>
           <View>
             <Text className="text-[10px] font-bold text-text-secondary">{t('loyaltyPointsEarned')}</Text>
             <Text className="text-base font-bold text-primary">
-              {order.loyaltyPointsEarned.toLocaleString('en-IN')} CIQ Points
+              {order.loyaltyPointsEarned.toLocaleString('en-IN')} BJW Points
             </Text>
           </View>
         </View>

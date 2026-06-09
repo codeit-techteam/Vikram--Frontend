@@ -9,7 +9,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  appName: 'BuildQuick India',
+  appName: 'Bajriwala',
   themeMode: 'system',
   setThemeMode: (mode) => set({ themeMode: mode }),
 }));

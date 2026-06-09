@@ -73,13 +73,13 @@ export default function NotificationsScreen() {
         <Pressable
           onPress={() => safeGoBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </Pressable>
         <Text style={styles.headerTitle}>{t('notifications')}</Text>
         <Pressable
           onPress={markAllRead}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="options-outline" size={22} color="#FF6B00" />
+          <Ionicons name="options-outline" size={22} color="#FEB623" />
         </Pressable>
       </View>
 
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
   },
   searchBar: {
     marginHorizontal: 16,
@@ -212,9 +212,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   filterPillActive: {
-    backgroundColor: '#FF6B00',
-    borderColor: '#FF6B00',
-    shadowColor: '#FF6B00',
+    backgroundColor: '#FEB623',
+    borderColor: '#FEB623',
+    shadowColor: '#FEB623',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   list: {
     flex: 1,
@@ -283,14 +283,14 @@ const styles = StyleSheet.create({
   },
   proTipTag: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     marginBottom: 8,
   },
   proTipTagText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 10,
     fontWeight: '700',
   },

@@ -35,18 +35,18 @@ export function buildLoyaltyStatementHtml(data: StatementData): string {
   <meta charset="utf-8" />
   <style>
     body { font-family: -apple-system, sans-serif; color: #1A1A1A; padding: 32px; }
-    h1 { color: #FF6B00; font-size: 22px; margin-bottom: 4px; }
+    h1 { color: #FEB623; font-size: 22px; margin-bottom: 4px; }
     .meta { color: #888; font-size: 13px; margin-bottom: 24px; }
     .summary { display: flex; gap: 32px; margin-bottom: 28px; }
     .card { background: #F5F5F5; border-radius: 12px; padding: 16px 20px; }
     .card label { font-size: 11px; color: #888; text-transform: uppercase; }
     .card .val { font-size: 22px; font-weight: 800; margin-top: 4px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: left; padding: 8px; border-bottom: 2px solid #FF6B00; color: #888; font-size: 11px; text-transform: uppercase; }
+    th { text-align: left; padding: 8px; border-bottom: 2px solid #FEB623; color: #888; font-size: 11px; text-transform: uppercase; }
   </style>
 </head>
 <body>
-  <h1>BuildQuick India — Loyalty Statement</h1>
+  <h1>Bajriwala — Loyalty Statement</h1>
   <p class="meta">Tier: ${data.tier.charAt(0).toUpperCase() + data.tier.slice(1)} · Generated ${new Date().toLocaleDateString('en-IN')}</p>
   <div class="summary">
     <div class="card">

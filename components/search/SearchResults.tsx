@@ -131,7 +131,7 @@ export function SearchResults({
                 {t(option.labelKey)}
               </Text>
               {sortOption === option.id ? (
-                <Ionicons name="checkmark" size={18} color="#FF6A00" />
+                <Ionicons name="checkmark" size={18} color="#FEB623" />
               ) : null}
             </Pressable>
           ))}
@@ -205,6 +205,6 @@ const styles = StyleSheet.create({
   },
   sortLabelActive: {
     fontWeight: '700',
-    color: '#FF6A00',
+    color: '#FEB623',
   },
 });

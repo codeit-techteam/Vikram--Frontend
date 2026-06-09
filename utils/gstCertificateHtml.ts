@@ -32,7 +32,7 @@ export function buildGstCertificateHtml(user: User): string {
     <tr><td>TMT Steel Bars 12mm</td><td>7214</td><td>₹1,20,000</td><td>18%</td><td>₹21,600</td></tr>
     <tr><td>Grey Fill Sand</td><td>2505</td><td>₹45,000</td><td>5%</td><td>₹2,250</td></tr>
   </table>
-  <div class="seal">● OFFICIAL VERIFICATION SEAL — BuildQuick India</div>
+  <div class="seal">● OFFICIAL VERIFICATION SEAL — Bajriwala</div>
 </body>
 </html>`;
 }

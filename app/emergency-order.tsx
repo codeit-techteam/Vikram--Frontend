@@ -14,17 +14,17 @@ export default function EmergencyOrderScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 px-5 py-4">
         <ScaledPressable onPress={() => safeGoBack()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('emergencyOrder')}</Text>
       </View>
       <View className="mx-5 rounded-card bg-[#1A2332] p-6">
-        <Text className="text-lg font-bold text-text-inverse">{t('criticalShortage')}</Text>
-        <Text className="mt-3 text-sm leading-5 text-text-inverse/80">{t('criticalSubtitle')}</Text>
+        <Text className="text-lg font-bold text-onPrimary">{t('criticalShortage')}</Text>
+        <Text className="mt-3 text-sm leading-5 text-onPrimary/80">{t('criticalSubtitle')}</Text>
         <ScaledPressable
           onPress={openVoiceAssistant}
           className="mt-6 items-center rounded-pill bg-primary py-4">
-          <Text className="text-base font-bold text-text-inverse">⚡ {t('emergencyOrder')}</Text>
+          <Text className="text-base font-bold text-onPrimary">⚡ {t('emergencyOrder')}</Text>
         </ScaledPressable>
       </View>
     </SafeAreaView>

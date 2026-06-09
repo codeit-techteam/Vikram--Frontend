@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -10,8 +10,8 @@ import Animated, {
   type AnimatedStyle,
 } from 'react-native-reanimated';
 
-import { LogoIcon } from '@components/BrandLogo';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
+import { Logo, theme } from '@constants/theme';
 import { useCartStore } from '@store/cartStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { safeGoBack } from '@utils/navigation';
@@ -69,7 +69,7 @@ export function AppHeader({
           onPress={handleBack}
           style={styles.hamburger}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
+          <Ionicons name="arrow-back" size={24} color={theme.black} />
         </Pressable>
       ) : (
         <Pressable
@@ -77,7 +77,7 @@ export function AppHeader({
           style={styles.hamburger}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Animated.View style={menuIconStyle}>
-            <Ionicons name={leftIcon} size={24} color="#1A1A1A" />
+            <Ionicons name={leftIcon} size={24} color={theme.black} />
           </Animated.View>
         </Pressable>
       )}
@@ -89,8 +89,12 @@ export function AppHeader({
           </Text>
         ) : (
           <>
-            <LogoIcon size={28} />
-            <Text style={styles.logoText}>BuildQuick India</Text>
+            <Image
+              source={Logo}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.logoText}>{theme.appName}</Text>
           </>
         )}
       </View>
@@ -100,7 +104,7 @@ export function AppHeader({
           onPress={openVoiceAssistant}
           style={styles.iconBtn}
           hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
-          <Ionicons name="mic-outline" size={22} color="#FF6A00" />
+          <Ionicons name="mic-outline" size={22} color={theme.primary} />
         </Pressable>
 
         {showBell && (
@@ -108,7 +112,7 @@ export function AppHeader({
             onPress={() => router.push('/notifications')}
             style={styles.iconBtn}
             hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
-            <Ionicons name="notifications-outline" size={22} color="#1A1A1A" />
+            <Ionicons name="notifications-outline" size={22} color={theme.black} />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
@@ -123,7 +127,7 @@ export function AppHeader({
             style={styles.iconBtn}
             hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
             <Animated.View style={cartIconStyle}>
-              <Ionicons name="cart-outline" size={22} color="#1A1A1A" />
+              <Ionicons name="cart-outline" size={22} color={theme.black} />
             </Animated.View>
             {cartCount > 0 && (
               <View style={styles.badge}>
@@ -144,7 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.white,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -159,18 +163,23 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  logoImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
   },
   logoText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A73E8',
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.black,
     letterSpacing: -0.3,
   },
   titleText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: theme.black,
     letterSpacing: -0.3,
   },
   rightIcons: {
@@ -186,7 +195,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: '#FF6B00',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -194,10 +203,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: theme.white,
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: theme.textOnPrimary,
     fontSize: 9,
     fontWeight: '700',
     lineHeight: 11,

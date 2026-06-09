@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardUnread: {
-    backgroundColor: '#FFFAF5',
+    backgroundColor: '#FFFBEE',
   },
   cardRead: {
     backgroundColor: '#FFFFFF',
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
   },
   title: {
     fontSize: 15,
@@ -152,21 +152,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   actionFilled: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
   },
   actionOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: '#FF6B00',
+    borderColor: '#FEB623',
   },
   actionText: {
     fontSize: 13,
     fontWeight: '700',
   },
   actionTextFilled: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   actionTextOutline: {
-    color: '#FF6B00',
+    color: '#FEB623',
   },
 });

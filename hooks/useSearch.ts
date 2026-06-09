@@ -60,7 +60,7 @@ async function requestMicPermission(): Promise<boolean> {
       PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
       {
         title: 'Microphone Permission',
-        message: 'BuildQuick India needs microphone access for voice search.',
+        message: 'Bajriwala needs microphone access for voice search.',
         buttonNeutral: 'Ask Me Later',
         buttonNegative: 'Cancel',
         buttonPositive: 'OK',

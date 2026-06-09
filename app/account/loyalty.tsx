@@ -81,7 +81,7 @@ const REWARDS: Reward[] = [
     subtitle: 'Coverage for 3 projects',
     points: null,
     pointsLabel: 'Platinum Only',
-    pointsColor: '#FF6B00',
+    pointsColor: '#FEB623',
     icon: 'lock-closed-outline',
     isLocked: true,
   },
@@ -248,7 +248,7 @@ function RewardCard({
               onPress={onPressRedeem}
               disabled={redeeming || (!isLocked && reward.points != null && !canAfford)}
               style={{
-                backgroundColor: isLocked ? '#F0F0F0' : canRedeem ? '#FFF3E0' : '#F8F8F8',
+                backgroundColor: isLocked ? '#F0F0F0' : canRedeem ? '#FFF4D1' : '#F8F8F8',
                 width: 36,
                 height: 36,
                 borderRadius: 10,
@@ -257,12 +257,12 @@ function RewardCard({
                 marginLeft: 10,
               }}>
               {redeeming ? (
-                <ActivityIndicator size="small" color="#FF6B00" />
+                <ActivityIndicator size="small" color="#FEB623" />
               ) : (
                 <Ionicons
                   name={isLocked ? 'lock-closed-outline' : 'gift-outline'}
                   size={18}
-                  color={isLocked ? '#CCC' : canRedeem ? '#FF6B00' : '#CCC'}
+                  color={isLocked ? '#CCC' : canRedeem ? '#FEB623' : '#CCC'}
                 />
               )}
             </TouchableOpacity>
@@ -273,7 +273,7 @@ function RewardCard({
               style={{
                 fontSize: 14,
                 fontWeight: '800',
-                color: reward.pointsColor || '#FF6B00',
+                color: reward.pointsColor || '#FEB623',
               }}>
               {reward.pointsLabel}
             </Text>
@@ -299,11 +299,11 @@ function RewardCard({
 
 function ActivityRow({ activity }: { activity: ActivityItem }) {
   const isInr = activity.valueType === 'inr';
-  const iconBg = isInr ? '#E3F2FD' : activity.isCredit ? '#E8F5E9' : '#FFF3E0';
-  const iconColor = isInr ? '#1976D2' : activity.isCredit ? '#34C759' : '#FF6B00';
+  const iconBg = isInr ? '#E3F2FD' : activity.isCredit ? '#E8F5E9' : '#FFF4D1';
+  const iconColor = isInr ? '#1976D2' : activity.isCredit ? '#34C759' : '#FEB623';
 
   const valueColor = isInr
-    ? '#FF6B00'
+    ? '#FEB623'
     : activity.isCredit
       ? '#34C759'
       : '#FF3B30';
@@ -343,7 +343,7 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
         <Text style={{ fontSize: 14, fontWeight: '800', color: valueColor }}>{valueText}</Text>
         <View
           style={{
-            backgroundColor: activity.status === 'COMPLETED' ? '#E8F5E9' : '#FFF3E0',
+            backgroundColor: activity.status === 'COMPLETED' ? '#E8F5E9' : '#FFF4D1',
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 4,
@@ -353,7 +353,7 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
             style={{
               fontSize: 9,
               fontWeight: '700',
-              color: activity.status === 'COMPLETED' ? '#34C759' : '#FF6B00',
+              color: activity.status === 'COMPLETED' ? '#34C759' : '#FEB623',
               letterSpacing: 0.3,
             }}>
             {activity.status}
@@ -482,7 +482,7 @@ export default function LoyaltyWalletScreen() {
             textAlign: 'center',
             fontSize: 17,
             fontWeight: '700',
-            color: '#FF6B00',
+            color: '#FEB623',
           }}>
           Loyalty Rewards
         </Text>
@@ -510,7 +510,7 @@ export default function LoyaltyWalletScreen() {
               width: 160,
               height: 160,
               borderRadius: 80,
-              backgroundColor: 'rgba(255,107,0,0.08)',
+              backgroundColor: 'rgba(254,182,35,0.08)',
             }}
           />
           <View
@@ -521,7 +521,7 @@ export default function LoyaltyWalletScreen() {
               width: 120,
               height: 120,
               borderRadius: 60,
-              backgroundColor: 'rgba(255,107,0,0.05)',
+              backgroundColor: 'rgba(254,182,35,0.05)',
             }}
           />
 
@@ -531,14 +531,14 @@ export default function LoyaltyWalletScreen() {
                 width: 20,
                 height: 3,
                 borderRadius: 2,
-                backgroundColor: '#FF6B00',
+                backgroundColor: '#FEB623',
               }}
             />
             <Text
               style={{
                 fontSize: 11,
                 fontWeight: '700',
-                color: '#FF6B00',
+                color: '#FEB623',
                 letterSpacing: 1.2,
                 textTransform: 'uppercase',
               }}>
@@ -588,7 +588,7 @@ export default function LoyaltyWalletScreen() {
                     letterSpacing: -1,
                   }}
                 />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#FF6B00' }}>CP</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#FEB623' }}>CP</Text>
               </View>
             </View>
 
@@ -644,7 +644,7 @@ export default function LoyaltyWalletScreen() {
               }}>
               <View
                 style={{
-                  backgroundColor: '#FF6B00',
+                  backgroundColor: '#FEB623',
                   paddingHorizontal: 8,
                   paddingVertical: 2,
                   borderRadius: 6,
@@ -653,7 +653,7 @@ export default function LoyaltyWalletScreen() {
                   {progressTierLabel}
                 </Text>
               </View>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FF6B00' }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FEB623' }}>
                 {progressPercent}%
               </Text>
             </View>
@@ -670,7 +670,7 @@ export default function LoyaltyWalletScreen() {
                   {
                     height: '100%',
                     borderRadius: 4,
-                    backgroundColor: '#FF6B00',
+                    backgroundColor: '#FEB623',
                   },
                   progressBarStyle,
                 ]}
@@ -685,7 +685,7 @@ export default function LoyaltyWalletScreen() {
               }}>
               <Text style={{ fontSize: 12, color: '#888' }}>{totalSpend} Total Spend</Text>
               <TouchableOpacity onPress={() => router.push('/account/tier-benefits' as never)}>
-                <Text style={{ fontSize: 12, color: '#FF6B00', fontWeight: '600' }}>
+                <Text style={{ fontSize: 12, color: '#FEB623', fontWeight: '600' }}>
                   {nextTier} Tier →
                 </Text>
               </TouchableOpacity>
@@ -696,7 +696,7 @@ export default function LoyaltyWalletScreen() {
             onPress={() => router.push('/account/tier-benefits' as never)}
             style={{
               borderWidth: 1.5,
-              borderColor: '#FF6B00',
+              borderColor: '#FEB623',
               borderRadius: 12,
               paddingVertical: 12,
               alignItems: 'center',
@@ -705,8 +705,8 @@ export default function LoyaltyWalletScreen() {
               justifyContent: 'center',
               gap: 6,
             }}>
-            <Text style={{ color: '#FF6B00', fontSize: 14, fontWeight: '700' }}>View Tier Benefits</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FF6B00" />
+            <Text style={{ color: '#FEB623', fontSize: 14, fontWeight: '700' }}>View Tier Benefits</Text>
+            <Ionicons name="arrow-forward" size={16} color="#FEB623" />
           </TouchableOpacity>
         </View>
 
@@ -714,7 +714,7 @@ export default function LoyaltyWalletScreen() {
           style={{
             marginHorizontal: 16,
             marginTop: 14,
-            backgroundColor: '#FF6B00',
+            backgroundColor: '#FEB623',
             borderRadius: 16,
             padding: 18,
             overflow: 'hidden',
@@ -776,7 +776,7 @@ export default function LoyaltyWalletScreen() {
               paddingVertical: 11,
               alignItems: 'center',
             }}>
-            <Text style={{ color: '#FF6B00', fontSize: 14, fontWeight: '700' }}>Order Now</Text>
+            <Text style={{ color: '#FEB623', fontSize: 14, fontWeight: '700' }}>Order Now</Text>
           </TouchableOpacity>
         </View>
 
@@ -797,8 +797,8 @@ export default function LoyaltyWalletScreen() {
             <TouchableOpacity
               onPress={() => router.push('/account/all-rewards' as never)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-              <Text style={{ fontSize: 13, color: '#FF6B00', fontWeight: '600' }}>View All</Text>
-              <Ionicons name="chevron-forward" size={14} color="#FF6B00" />
+              <Text style={{ fontSize: 13, color: '#FEB623', fontWeight: '600' }}>View All</Text>
+              <Ionicons name="chevron-forward" size={14} color="#FEB623" />
             </TouchableOpacity>
           </View>
 
@@ -826,7 +826,7 @@ export default function LoyaltyWalletScreen() {
               <Ionicons
                 name={activityFilter === 'all' ? 'filter-outline' : 'funnel'}
                 size={20}
-                color={activityFilter === 'all' ? '#888' : '#FF6B00'}
+                color={activityFilter === 'all' ? '#888' : '#FEB623'}
               />
             </TouchableOpacity>
           </View>
@@ -838,7 +838,7 @@ export default function LoyaltyWalletScreen() {
           <TouchableOpacity
             onPress={onDownloadStatement}
             style={{ alignItems: 'center', marginTop: 8, marginBottom: 24 }}>
-            <Text style={{ fontSize: 14, color: '#FF6B00', fontWeight: '700' }}>Download Statement</Text>
+            <Text style={{ fontSize: 14, color: '#FEB623', fontWeight: '700' }}>Download Statement</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

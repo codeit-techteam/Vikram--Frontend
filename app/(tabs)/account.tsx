@@ -172,7 +172,7 @@ export default function AccountScreen() {
                   {user.company} • ●
                 </Text>
                 <View className="mt-2 self-start rounded-full bg-primary px-2.5 py-1">
-                  <Text className="text-[10px] font-bold text-text-inverse">
+                  <Text className="text-[10px] font-bold text-onPrimary">
                     {tierLabels[user.memberTier]}
                   </Text>
                 </View>
@@ -182,7 +182,7 @@ export default function AccountScreen() {
             <ScaledPressable
               onPress={() => router.push('/account/edit-profile')}
               className="mt-4 h-11 items-center justify-center rounded-pill bg-primary">
-              <Text className="text-sm font-bold text-text-inverse">{t('editProfile')}</Text>
+              <Text className="text-sm font-bold text-onPrimary">{t('editProfile')}</Text>
             </ScaledPressable>
           </View>
 
@@ -230,7 +230,7 @@ export default function AccountScreen() {
                 onPress={() => router.push('/account/add-sites')}
                 hitSlop={8}>
                 <View className="h-7 w-7 items-center justify-center rounded-full border border-primary">
-                  <Ionicons name="add" size={16} color="#FF6B00" />
+                  <Ionicons name="add" size={16} color="#FEB623" />
                 </View>
               </ScaledPressable>
             }>
@@ -244,7 +244,7 @@ export default function AccountScreen() {
                     <Ionicons
                       name={site.icon === 'person' ? 'person-outline' : 'business-outline'}
                       size={18}
-                      color="#FF6B00"
+                      color="#FEB623"
                     />
                     <Text className="text-sm font-bold text-text">{site.name}</Text>
                   </View>
@@ -262,7 +262,7 @@ export default function AccountScreen() {
           {/* Language */}
           <View className="mb-4 rounded-card border border-border bg-surface p-4">
             <View className="mb-3 flex-row items-center gap-2">
-              <Ionicons name="globe-outline" size={20} color="#FF6B00" />
+              <Ionicons name="globe-outline" size={20} color="#FEB623" />
               <Text className="text-base font-bold text-text">{t('languageSection')}</Text>
             </View>
 
@@ -306,7 +306,7 @@ export default function AccountScreen() {
               </ScaledPressable>
             ))}
             <ScaledPressable onPress={handleLogout} className="flex-row items-center px-4 py-4">
-              <Ionicons name="log-out-outline" size={20} color="#FF6B00" />
+              <Ionicons name="log-out-outline" size={20} color="#FEB623" />
               <Text className="ml-3 flex-1 text-sm font-semibold text-primary">{t('logout')}</Text>
             </ScaledPressable>
           </View>

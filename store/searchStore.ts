@@ -46,7 +46,7 @@ export const useSearchStore = create<SearchStore>()(
         }),
     }),
     {
-      name: 'buildquick-search',
+      name: 'bajriwala-search',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

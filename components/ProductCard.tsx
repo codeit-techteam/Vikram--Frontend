@@ -29,7 +29,7 @@ interface ProductCardProps {
 
 function getStatusColors(status: Product['status']) {
   if (status === 'LIMITED STOCK') {
-    return { bg: '#FFF3E0', text: '#E65100' };
+    return { bg: '#FFF4D1', text: '#E65100' };
   }
   return { bg: '#E8F5E9', text: '#2E7D32' };
 }
@@ -110,8 +110,8 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
         />
         <View
           className="absolute left-3 top-3 rounded-full px-3 py-1"
-          style={{ backgroundColor: product.badgeColor ?? '#FF6B00' }}>
-          <Text className="text-[10px] font-bold text-text-inverse">{product.badge}</Text>
+          style={{ backgroundColor: product.badgeColor ?? '#FEB623' }}>
+          <Text className="text-[10px] font-bold text-onPrimary">{product.badge}</Text>
         </View>
         <ScaledPressable className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-surface/90">
           <Ionicons name="heart-outline" size={18} color="#666666" />
@@ -190,7 +190,7 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
                 style={flashStyle}
               />
               <Ionicons name="cart-outline" size={18} color="#FFFFFF" />
-              <Text className="ml-2 text-xs font-bold text-text-inverse">{t('addToCart')}</Text>
+              <Text className="ml-2 text-xs font-bold text-onPrimary">{t('addToCart')}</Text>
             </ScaledPressable>
           </Animated.View>
         </View>

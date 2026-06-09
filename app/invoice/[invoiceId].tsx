@@ -26,7 +26,7 @@ export default function InvoiceScreen() {
   const { invoiceId } = useLocalSearchParams<{ invoiceId: string }>();
   const orders = useOrderStore((s) => s.orders);
   const order = orders.find((o) => o.invoiceId === invoiceId);
-  const invoice = getInvoiceData(invoiceId ?? 'CIQ-INV-88294', order);
+  const invoice = getInvoiceData(invoiceId ?? 'BJW-INV-88294', order);
 
   const [termsExpanded, setTermsExpanded] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -56,7 +56,7 @@ export default function InvoiceScreen() {
   const shareWhatsApp = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const text = encodeURIComponent(
-      `Invoice ${invoice.id} from BuildQuick India — Total: ${formatINR(invoice.totalAmount)}. View details in the app.`,
+      `Invoice ${invoice.id} from Bajriwala — Total: ${formatINR(invoice.totalAmount)}. View details in the app.`,
     );
     const url = `whatsapp://send?text=${text}`;
     const supported = await Linking.canOpenURL(url);
@@ -70,7 +70,7 @@ export default function InvoiceScreen() {
       <View className="mb-4 flex-row items-center justify-between px-5 py-3">
         <View className="flex-row items-center gap-3">
           <ScaledPressable onPress={() => safeGoBack('/account/invoices')}>
-            <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+            <Ionicons name="arrow-back" size={22} color="#FEB623" />
           </ScaledPressable>
           <Text className="text-xl font-bold text-primary">{t('invoiceDetails')}</Text>
         </View>

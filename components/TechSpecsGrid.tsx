@@ -42,7 +42,7 @@ export function TechSpecsGrid({ specs, expanded, onToggle }: TechSpecsGridProps)
                 <Ionicons
                   name={spec.icon as keyof typeof Ionicons.glyphMap}
                   size={14}
-                  color="#FF6B00"
+                  color="#FEB623"
                 />
                 <Text className="text-[10px] font-semibold tracking-wider text-text-secondary">
                   {spec.label}

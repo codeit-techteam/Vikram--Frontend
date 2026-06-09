@@ -95,7 +95,7 @@ const cementProducts: Product[] = [
   {
     id: 'c1',
     badge: '⚡ 90 min ETA',
-    badgeColor: '#FF6B00',
+    badgeColor: '#FEB623',
     image: images.productUltratech,
     imageSearch: 'ultratech cement bags warehouse',
     category: 'CEMENT & ADHESIVES',
@@ -122,7 +122,7 @@ const cementProducts: Product[] = [
   {
     id: 'c2',
     badge: '🟠 Bulk Discount Available',
-    badgeColor: '#FF6B00',
+    badgeColor: '#FEB623',
     image: images.productAcc,
     imageSearch: 'acc cement pile grey',
     category: 'CEMENT & ADHESIVES',

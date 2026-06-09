@@ -21,7 +21,7 @@ export default function OrderSuccessScreen() {
   const { t } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => (orderId ? s.getOrder(orderId) : undefined));
-  const displayId = orderId ?? order?.id ?? 'CIQ-982441';
+  const displayId = orderId ?? order?.id ?? 'BJW-982441';
 
   const checkScale = useSharedValue(0);
   const [visibleSteps, setVisibleSteps] = useState(0);
@@ -55,7 +55,7 @@ export default function OrderSuccessScreen() {
           <ScaledPressable
             onPress={() => router.replace('/(tabs)')}
             className="flex-row items-center gap-2">
-            <Ionicons name="close" size={22} color="#FF6B00" />
+            <Ionicons name="close" size={22} color="#FEB623" />
             <Text className="text-lg font-bold text-primary">{t('orderSuccess')}</Text>
           </ScaledPressable>
         </View>
@@ -71,12 +71,12 @@ export default function OrderSuccessScreen() {
 
           <View className="mt-6 w-full flex-row gap-3">
             <View className="flex-1 rounded-card bg-trust p-3">
-              <Ionicons name="time-outline" size={18} color="#FF6B00" />
+              <Ionicons name="time-outline" size={18} color="#FEB623" />
               <Text className="mt-2 text-[10px] font-bold text-text-secondary">{t('deliveryETA')}</Text>
               <Text className="text-sm font-bold text-text">90 {t('mins')}</Text>
             </View>
             <View className="flex-1 rounded-card bg-trust p-3">
-              <Ionicons name="business-outline" size={18} color="#FF6B00" />
+              <Ionicons name="business-outline" size={18} color="#FEB623" />
               <Text className="mt-2 text-[10px] font-bold text-text-secondary">
                 {t('assignedWarehouse')}
               </Text>
@@ -119,7 +119,7 @@ export default function OrderSuccessScreen() {
           </View>
 
           <View className="mt-4 w-full flex-row items-start gap-3 rounded-card border border-border p-4">
-            <Ionicons name="location-outline" size={20} color="#FF6B00" />
+            <Ionicons name="location-outline" size={20} color="#FEB623" />
             <View className="flex-1">
               <Text className="text-[10px] font-bold text-text-secondary">{t('deliveryAddress')}</Text>
               <Text className="mt-1 text-sm font-bold text-text">
@@ -141,7 +141,7 @@ export default function OrderSuccessScreen() {
           <ScaledPressable
             onPress={() => router.push(`/orders/view/${displayId}`)}
             className="mt-6 w-full items-center rounded-pill bg-primary py-4">
-            <Text className="text-base font-bold text-text-inverse">{t('viewOrderBtn')}</Text>
+            <Text className="text-base font-bold text-onPrimary">{t('viewOrderBtn')}</Text>
           </ScaledPressable>
         </View>
       </ScrollView>

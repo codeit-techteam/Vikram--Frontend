@@ -70,7 +70,7 @@ export default function RoleSelectionScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-primary-light" edges={['top', 'bottom']}>
       <View className="mb-4 px-5 pt-2">
         <BrandLogo size="sm" />
       </View>

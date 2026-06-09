@@ -15,7 +15,7 @@ export function AccountTabIcon({ focused }: { focused: boolean; color: string })
           height: 24,
           borderRadius: 12,
           borderWidth: focused ? 2 : 0,
-          borderColor: '#FF6B00',
+          borderColor: '#FEB623',
         }}
         contentFit="cover"
       />
@@ -23,6 +23,6 @@ export function AccountTabIcon({ focused }: { focused: boolean; color: string })
   }
 
   return (
-    <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={focused ? '#FF6B00' : '#666666'} />
+    <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={focused ? '#FEB623' : '#666666'} />
   );
 }

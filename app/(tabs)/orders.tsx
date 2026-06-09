@@ -91,7 +91,7 @@ export default function OrdersScreen() {
           searchFocused ? 'border-primary' : 'border-border'
         }`}
         style={{ height: 48 }}>
-        <Ionicons name="search" size={20} color="#FF6B00" />
+        <Ionicons name="search" size={20} color="#FEB623" />
         <TextInput
           className="ml-3 flex-1 text-sm text-text"
           value={searchQuery}
@@ -110,7 +110,7 @@ export default function OrdersScreen() {
           </ScaledPressable>
         ) : (
           <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
-            <Ionicons name="mic-outline" size={20} color="#FF6B00" />
+            <Ionicons name="mic-outline" size={20} color="#FEB623" />
           </ScaledPressable>
         )}
       </View>
@@ -146,7 +146,7 @@ export default function OrdersScreen() {
           <Text
             className={`text-sm font-semibold ${
               activeFilter === 'recent' && !hasActiveFilters && !hasCustomSort
-                ? 'text-text-inverse'
+                ? 'text-onPrimary'
                 : 'text-text-secondary'
             }`}>
             {t('recentOrders')}
@@ -159,7 +159,7 @@ export default function OrdersScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FEB623" />}
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInUp.delay(index * 80).duration(400)}>
             <OrderCard order={item} searchQuery={trimmedQuery} />
@@ -189,9 +189,9 @@ export default function OrdersScreen() {
               <View className="self-start rounded-full bg-white/20 px-2 py-0.5">
                 <Text className="text-[10px] font-bold text-text-inverse">{t('proTip')}</Text>
               </View>
-              <Text className="mt-2 text-lg font-bold text-text-inverse">{t('proTipTitle')}</Text>
-              <Text className="mt-2 text-sm leading-5 text-text-inverse/90">{t('proTipBody')}</Text>
-              <Text className="mt-3 text-xs text-text-inverse/80">⏰ {t('nextSlot')}</Text>
+              <Text className="mt-2 text-lg font-bold text-onPrimary">{t('proTipTitle')}</Text>
+              <Text className="mt-2 text-sm leading-5 text-onPrimary/90">{t('proTipBody')}</Text>
+              <Text className="mt-3 text-xs text-onPrimary/80">⏰ {t('nextSlot')}</Text>
               <Ionicons
                 name="bus-outline"
                 size={80}

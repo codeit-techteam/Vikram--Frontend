@@ -17,7 +17,7 @@ export default function PrivacyScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('privacySecurity')}</Text>
       </View>
@@ -69,7 +69,7 @@ function PrivacyRow({
 }) {
   return (
     <View className="mb-3 flex-row items-center rounded-card border border-border bg-surface p-4">
-      <Ionicons name={icon} size={22} color="#FF6B00" />
+      <Ionicons name={icon} size={22} color="#FEB623" />
       <View className="ml-3 flex-1">
         <Text className="text-sm font-bold text-text">{title}</Text>
         <Text className="text-xs text-text-secondary">{subtitle}</Text>
@@ -78,7 +78,7 @@ function PrivacyRow({
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: '#E0E0E0', true: '#FFB380' }}
-        thumbColor={value ? '#FF6B00' : '#FFFFFF'}
+        thumbColor={value ? '#FEB623' : '#FFFFFF'}
       />
     </View>
   );

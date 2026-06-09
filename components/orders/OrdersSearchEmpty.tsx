@@ -15,7 +15,7 @@ export function OrdersSearchEmpty({ query, onClear }: OrdersSearchEmptyProps) {
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
-        <Ionicons name="search-outline" size={32} color="#FF6A00" />
+        <Ionicons name="search-outline" size={32} color="#FEB623" />
       </View>
       <Text style={styles.title}>{t('noOrdersFound')}</Text>
       <Text style={styles.subtitle}>
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF4D1',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -61,13 +61,13 @@ const styles = StyleSheet.create({
     height: 48,
     paddingHorizontal: 28,
     borderRadius: 12,
-    backgroundColor: '#FF6A00',
+    backgroundColor: '#FEB623',
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
 });

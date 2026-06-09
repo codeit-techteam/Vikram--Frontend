@@ -19,7 +19,7 @@ export default function PaymentMethodsScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('paymentMethods')}</Text>
       </View>
@@ -49,7 +49,7 @@ export default function PaymentMethodsScreen() {
         ))}
 
         <ScaledPressable className="mt-2 flex-row items-center justify-center gap-2 rounded-pill border border-dashed border-primary py-3">
-          <Ionicons name="add" size={18} color="#FF6B00" />
+          <Ionicons name="add" size={18} color="#FEB623" />
           <Text className="text-sm font-semibold text-primary">{t('addPaymentMethodLabel')}</Text>
         </ScaledPressable>
       </ScrollView>

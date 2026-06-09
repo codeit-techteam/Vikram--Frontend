@@ -37,11 +37,11 @@ export const NOTIFICATION_TYPE_META: Record<
   }
 > = {
   payment_due: {
-    labelColor: '#FF6B00',
+    labelColor: '#FEB623',
     iconName: 'cash-outline',
-    iconBg: '#FFF3E0',
-    iconColor: '#FF6B00',
-    borderColor: '#FF6B00',
+    iconBg: '#FFF4D1',
+    iconColor: '#FEB623',
+    borderColor: '#FEB623',
   },
   stock_critical: {
     labelColor: '#D32F2F',
@@ -108,7 +108,7 @@ export const NOTIFICATIONS: AppNotification[] = [
     id: 'n4',
     type: 'logistics',
     label: 'LOGISTICS UPDATE',
-    title: 'Order #CIQ-882 Out for Delivery',
+    title: 'Order #BJW-882 Out for Delivery',
     body: '50 Bags UltraTech Cement dispatched. Arriving at Site B-4 by 4:15 PM today.',
     time: '1d ago',
     unread: true,

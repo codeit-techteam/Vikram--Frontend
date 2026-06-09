@@ -66,7 +66,7 @@ function CartHeader({ unreadCount }: { unreadCount: number }) {
   );
 }
 
-function BuildProPointsBanner({
+function BajriProPointsBanner({
   pointsApplied,
   onToggle,
 }: {
@@ -123,7 +123,7 @@ function OrderSummaryCard({
         <SummaryRow
           label={t('loyaltyDiscount')}
           value={`-₹${loyaltyDiscount.toLocaleString('en-IN')}`}
-          valueColor="#FF6B00"
+          valueColor="#FEB623"
         />
       )}
       <View style={styles.summaryDivider} />
@@ -137,7 +137,7 @@ function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
   return (
     <View style={styles.siteCard}>
       <View style={styles.siteIconWrap}>
-        <Ionicons name="location-outline" size={18} color="#FF6B00" />
+        <Ionicons name="location-outline" size={18} color="#FEB623" />
       </View>
       <View style={styles.siteInfo}>
         <Text style={styles.siteName}>
@@ -203,7 +203,7 @@ function CheckoutBar({
         <Pressable onPress={handlePress} style={styles.checkoutButton}>
           <Text style={styles.checkoutText}>{t('proceedCheckout')}</Text>
           <View style={styles.checkoutIconWrap}>
-            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            <Ionicons name="arrow-forward" size={16} color="#1A1A1A" />
           </View>
         </Pressable>
       </Animated.View>
@@ -266,7 +266,7 @@ export default function CartScreen() {
                 />
               ))}
 
-              <BuildProPointsBanner pointsApplied={pointsApplied} onToggle={togglePoints} />
+              <BajriProPointsBanner pointsApplied={pointsApplied} onToggle={togglePoints} />
 
               <OrderSummaryCard
                 itemsTotal={itemsTotal}
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 9,
     fontWeight: '700',
   },
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 16,
     padding: 16,
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
   },
   pointsRow: {
     flexDirection: 'row',
@@ -380,11 +380,11 @@ const styles = StyleSheet.create({
   pointsTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   pointsBalance: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(26,26,26,0.75)',
   },
   toggle: {
     width: 48,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     alignSelf: 'flex-start',
   },
   toggleKnobOn: {
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF4D1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   },
   siteChange: {
     fontSize: 12,
-    color: '#FF6B00',
+    color: '#FEB623',
     fontWeight: '600',
   },
   checkoutBar: {
@@ -536,32 +536,32 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   savingsPill: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF4D1',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
   savingsText: {
     fontSize: 11,
-    color: '#FF6B00',
+    color: '#FEB623',
     fontWeight: '700',
   },
   checkoutButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     borderRadius: 14,
     paddingVertical: 15,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#FF6B00',
+    shadowColor: '#FEB623',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
   },
   checkoutText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -597,13 +597,13 @@ const styles = StyleSheet.create({
   },
   browseButton: {
     marginTop: 16,
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
   },
   browseButtonText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontWeight: '700',
     fontSize: 14,
   },

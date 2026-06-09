@@ -39,7 +39,7 @@ export function CollapsibleSection({
         onPress={handlePress}
         className="flex-row items-center justify-between px-4 py-4">
         <View className="flex-row items-center gap-3">
-          <Ionicons name={icon} size={20} color="#FF6B00" />
+          <Ionicons name={icon} size={20} color="#FEB623" />
           <Text className="text-base font-bold text-text">{title}</Text>
         </View>
         <View className="flex-row items-center gap-2">

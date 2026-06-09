@@ -60,8 +60,8 @@ export default function CatalogScreen() {
         </View>
 
         <View className="mx-5 mt-6 rounded-card bg-primary p-5">
-          <Text className="text-lg font-bold text-text-inverse">{t('bulkProcurementTitle')}</Text>
-          <Text className="mt-2 text-sm leading-5 text-text-inverse/90">
+          <Text className="text-lg font-bold text-onPrimary">{t('bulkProcurementTitle')}</Text>
+          <Text className="mt-2 text-sm leading-5 text-onPrimary/90">
             {t('bulkProcurementSubtitle')}
           </Text>
           <ScaledPressable className="mt-4 self-center rounded-pill border-2 border-surface bg-surface px-8 py-2.5">
@@ -71,7 +71,7 @@ export default function CatalogScreen() {
 
         <View className="mx-5 mt-5 mb-8 items-center rounded-card bg-trust p-6">
           <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-surface">
-            <Ionicons name="bus-outline" size={24} color="#FF6B00" />
+            <Ionicons name="bus-outline" size={24} color="#FEB623" />
           </View>
           <Text className="text-base font-bold text-text">{t('priorityExpress')}</Text>
           <Text className="mt-2 text-center text-sm text-text-secondary">

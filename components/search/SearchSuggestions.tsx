@@ -22,7 +22,7 @@ export function SearchSuggestions({ suggestions, query, onSelect }: SearchSugges
             await Haptics.selectionAsync();
             onSelect(item.text);
           }}>
-          <Ionicons name="search-outline" size={18} color="#FF6A00" />
+          <Ionicons name="search-outline" size={18} color="#FEB623" />
           <View style={styles.content}>
             <HighlightedText text={item.text} query={query} style={styles.title} />
             {item.category ? (

@@ -22,7 +22,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         animation: 'fade',
-        tabBarActiveTintColor: '#FF6B00',
+        tabBarActiveTintColor: '#FEB623',
         tabBarInactiveTintColor: '#999999',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
@@ -43,7 +43,7 @@ export default function TabLayout() {
           marginTop: 2,
         },
         tabBarBadgeStyle: {
-          backgroundColor: '#FF6B00',
+          backgroundColor: '#FEB623',
           fontSize: 9,
         },
       }}>

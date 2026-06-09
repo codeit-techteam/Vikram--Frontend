@@ -182,14 +182,14 @@ export default function ProductDetailScreen() {
 
         <View className="mt-4 flex-row gap-3">
           <View className="flex-1 rounded-card bg-trust p-3">
-            <Ionicons name="receipt-outline" size={18} color="#FF6B00" />
+            <Ionicons name="receipt-outline" size={18} color="#FEB623" />
             <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
               {t('financials')}
             </Text>
             <Text className="mt-1 text-sm font-semibold text-text">{t('gstInvoiceReady')}</Text>
           </View>
           <View className="flex-1 rounded-card bg-trust p-3">
-            <Ionicons name="bus-outline" size={18} color="#FF6B00" />
+            <Ionicons name="bus-outline" size={18} color="#FEB623" />
             <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
               {t('shipping')}
             </Text>
@@ -251,7 +251,7 @@ export default function ProductDetailScreen() {
               cartFlash ? 'bg-success' : 'bg-primary'
             }`}>
             <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
-            <Text className="ml-2 text-base font-bold text-text-inverse">{t('addToCart')}</Text>
+            <Text className="ml-2 text-base font-bold text-onPrimary">{t('addToCart')}</Text>
           </ScaledPressable>
         </Animated.View>
       </View>

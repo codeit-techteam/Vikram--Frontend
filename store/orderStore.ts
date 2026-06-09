@@ -89,7 +89,7 @@ const SKYLINE_SITE: DeliverySite = {
 
 export const SAMPLE_ORDERS: Order[] = [
   {
-    id: 'CIQ-88294',
+    id: 'BJW-88294',
     status: 'in_transit',
     productName: 'UltraTech Premium Cement',
     description:
@@ -140,8 +140,8 @@ export const SAMPLE_ORDERS: Order[] = [
     driverName: 'Rajesh Kumar',
     vehicleNumber: 'MH 01 AB 1234',
     loyaltyPointsEarned: 1250,
-    invoiceId: 'CIQ-INV-88294',
-    invoiceFileName: 'Invoice_CIQ_88294.pdf',
+    invoiceId: 'BJW-INV-88294',
+    invoiceFileName: 'Invoice_BJW_88294.pdf',
     invoiceFileSize: '1.2 MB',
     totalPayable: 541564,
     subtotal: 459000,
@@ -159,7 +159,7 @@ export const SAMPLE_ORDERS: Order[] = [
     productGrade: 'Ultratech Premium Grade',
   },
   {
-    id: 'CIQ-88295',
+    id: 'BJW-88295',
     status: 'processing',
     productName: 'JSW Neosteel TMT Bars',
     description: '12mm FE550D High Ductility bars for earthquake-resistant structures.',
@@ -187,8 +187,8 @@ export const SAMPLE_ORDERS: Order[] = [
     driverName: 'Rajesh Kumar',
     vehicleNumber: 'MH 01 AB 1234',
     loyaltyPointsEarned: 850,
-    invoiceId: 'CIQ-INV-88295',
-    invoiceFileName: 'Invoice_CIQ_88295.pdf',
+    invoiceId: 'BJW-INV-88295',
+    invoiceFileName: 'Invoice_BJW_88295.pdf',
     invoiceFileSize: '980 KB',
     totalPayable: 58450,
     subtotal: 49534,
@@ -206,7 +206,7 @@ export const SAMPLE_ORDERS: Order[] = [
     productGrade: 'FE550D Grade',
   },
   {
-    id: 'CIQ-88296',
+    id: 'BJW-88296',
     status: 'delivered',
     productName: 'Crushed Stone Aggregates',
     description: '20mm Grade - Premium Blue Metal',
@@ -234,8 +234,8 @@ export const SAMPLE_ORDERS: Order[] = [
     driverName: 'Rajesh Kumar',
     vehicleNumber: 'MH 01 AB 1234',
     loyaltyPointsEarned: 320,
-    invoiceId: 'CIQ-INV-88296',
-    invoiceFileName: 'Invoice_CIQ_88296.pdf',
+    invoiceId: 'BJW-INV-88296',
+    invoiceFileName: 'Invoice_BJW_88296.pdf',
     invoiceFileSize: '750 KB',
     totalPayable: 27750,
     subtotal: 23517,
@@ -255,11 +255,11 @@ export const SAMPLE_ORDERS: Order[] = [
 ];
 
 export function generateOrderId(): string {
-  return `CIQ-${Math.floor(100000 + Math.random() * 900000)}`;
+  return `BJW-${Math.floor(100000 + Math.random() * 900000)}`;
 }
 
 export function generateInvoiceId(): string {
-  return `CIQ-INV-${Math.floor(10000 + Math.random() * 90000)}`;
+  return `BJW-INV-${Math.floor(10000 + Math.random() * 90000)}`;
 }
 
 export const useOrderStore = create<OrderState>((set, get) => ({

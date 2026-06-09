@@ -71,7 +71,7 @@ function HighlightedText({
   return (
     <Text style={style}>
       {text.slice(0, idx)}
-      <Text style={[{ color: '#FF6B00', fontWeight: '700' }, highlightStyle]}>
+      <Text style={[{ color: '#FEB623', fontWeight: '700' }, highlightStyle]}>
         {text.slice(idx, idx + query.length)}
       </Text>
       {text.slice(idx + query.length)}
@@ -133,7 +133,7 @@ function AddButton({ product }: { product: SearchProduct }) {
         <Ionicons
           name={added ? 'checkmark' : 'add'}
           size={18}
-          color={added ? '#2E7D32' : '#FF6B00'}
+          color={added ? '#2E7D32' : '#FEB623'}
         />
       </Pressable>
     </Animated.View>
@@ -179,7 +179,7 @@ function SearchResultItem({
                 styles.resultBadge,
                 {
                   backgroundColor:
-                    item.badgeColor ?? (item.badge === 'TRENDING' ? '#FF6B00' : '#1A73E8'),
+                    item.badgeColor ?? (item.badge === 'TRENDING' ? '#FEB623' : '#1A73E8'),
                 },
               ]}>
               <Text style={styles.resultBadgeText}>{item.badge}</Text>
@@ -396,13 +396,13 @@ export default function SearchScreen() {
             <View
               style={[
                 styles.searchContainer,
-                { borderColor: focused ? '#FF6B00' : '#E0E0E0' },
+                { borderColor: focused ? '#FEB623' : '#E0E0E0' },
               ]}>
               <TextInput
                 ref={inputRef}
                 value={query}
                 onChangeText={setQuery}
-                placeholder={t('searchBuildQuick')}
+                placeholder={t('searchBajriwala')}
                 placeholderTextColor="#AAAAAA"
                 autoFocus
                 returnKeyType="search"
@@ -421,7 +421,7 @@ export default function SearchScreen() {
               <View style={styles.inputDivider} />
 
               <Pressable onPress={openVoiceAssistant} hitSlop={8} style={styles.micButton}>
-                <Ionicons name="mic-outline" size={20} color="#FF6B00" />
+                <Ionicons name="mic-outline" size={20} color="#FEB623" />
               </Pressable>
             </View>
           </View>
@@ -651,8 +651,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   categoryPillSelected: {
-    backgroundColor: '#FF6B00',
-    borderColor: '#FF6B00',
+    backgroundColor: '#FEB623',
+    borderColor: '#FEB623',
   },
   categoryPillDefault: {
     backgroundColor: '#FFFFFF',
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   categoryLabelSelected: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   section: {
     paddingHorizontal: 16,
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
   clearAll: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FF6B00',
+    color: '#FEB623',
   },
   chipsRow: {
     flexDirection: 'row',
@@ -784,7 +784,7 @@ const styles = StyleSheet.create({
   resultPriceValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
   },
   resultPriceUnit: {
     fontSize: 12,
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#FF6B00',
+    borderColor: '#FEB623',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
@@ -822,12 +822,12 @@ const styles = StyleSheet.create({
   },
   bundleStar: {
     fontSize: 13,
-    color: '#FF6B00',
+    color: '#FEB623',
   },
   bundleLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
   },
   bundleButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 22,
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   bundleButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
   },
   recentlyViewedSection: {
     paddingHorizontal: 16,
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
   recentlyViewedPrice: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
     marginTop: 2,
   },
   emptyResults: {
@@ -960,6 +960,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
   },
 });

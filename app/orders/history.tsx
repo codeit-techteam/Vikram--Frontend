@@ -18,7 +18,7 @@ export default function OrderHistoryScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/orders')}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('orderHistory')}</Text>
       </View>

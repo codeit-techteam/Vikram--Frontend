@@ -41,7 +41,7 @@ function LanguageToggle() {
               active ? 'bg-primary' : 'border border-border bg-surface'
             }`}>
             <Text
-              className={`text-[10px] font-bold ${active ? 'text-text-inverse' : 'text-text-secondary'}`}>
+              className={`text-[10px] font-bold ${active ? 'text-onPrimary' : 'text-text-secondary'}`}>
               {lang.toUpperCase()}
             </Text>
           </ScaledPressable>

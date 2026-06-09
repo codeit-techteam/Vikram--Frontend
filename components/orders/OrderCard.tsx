@@ -40,7 +40,7 @@ export function OrderCard({ order, searchQuery = '' }: OrderCardProps) {
         />
         {order.badge && (
           <View className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1">
-            <Text className="text-[10px] font-bold text-text-inverse">
+            <Text className="text-[10px] font-bold text-onPrimary">
               {translateBadge(order.badge, t)}
             </Text>
           </View>
@@ -50,7 +50,7 @@ export function OrderCard({ order, searchQuery = '' }: OrderCardProps) {
         </ScaledPressable>
         {order.isBulkDiscount && !order.badge && (
           <View className="absolute bottom-3 right-3 rounded-full bg-primary px-2 py-0.5">
-            <Text className="text-[9px] font-bold text-text-inverse">{t('bulkSavings')}</Text>
+            <Text className="text-[9px] font-bold text-onPrimary">{t('bulkSavings')}</Text>
           </View>
         )}
       </View>
@@ -90,7 +90,7 @@ export function OrderCard({ order, searchQuery = '' }: OrderCardProps) {
           <ScaledPressable
             onPress={() => router.push(`/orders/view/${order.id}`)}
             className="flex-[0.7] items-center rounded-lg bg-primary py-3">
-            <Text className="text-sm font-bold text-text-inverse">{t('viewOrder')}</Text>
+            <Text className="text-sm font-bold text-onPrimary">{t('viewOrder')}</Text>
           </ScaledPressable>
           <ScaledPressable
             onPress={() => router.push(`/orders/details/${order.id}`)}

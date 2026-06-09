@@ -74,7 +74,7 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
             />
             <View className="absolute left-4 top-4">
               <View className="rounded-full bg-primary px-3 py-1">
-                <Text className="text-xs font-bold text-text-inverse">{slide.badge}</Text>
+                <Text className="text-xs font-bold text-onPrimary">{slide.badge}</Text>
               </View>
             </View>
             <View className="absolute bottom-4 left-4 right-4">

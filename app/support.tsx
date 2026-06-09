@@ -72,7 +72,7 @@ export default function SupportScreen() {
   }, [picking, borderOpacity]);
 
   const uploadBorderStyle = useAnimatedStyle(() => ({
-    borderColor: `rgba(255, 107, 0, ${borderOpacity.value})`,
+    borderColor: `rgba(254, 182, 35, ${borderOpacity.value})`,
   }));
 
   const pickFiles = async () => {
@@ -93,7 +93,7 @@ export default function SupportScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 px-5 py-3">
         <ScaledPressable onPress={() => safeGoBack()}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('supportDisputes')}</Text>
       </View>
@@ -105,11 +105,11 @@ export default function SupportScreen() {
 
         <View className="mt-4 flex-row gap-2">
           <ScaledPressable className="flex-row items-center rounded-full border-2 border-primary px-4 py-2">
-            <Ionicons name="time-outline" size={14} color="#FF6B00" />
+            <Ionicons name="time-outline" size={14} color="#FEB623" />
             <Text className="ml-1 text-sm font-semibold text-primary">{t('history')}</Text>
           </ScaledPressable>
           <ScaledPressable className="rounded-full bg-primary px-4 py-2">
-            <Text className="text-sm font-bold text-text-inverse">{t('newTicket')}</Text>
+            <Text className="text-sm font-bold text-onPrimary">{t('newTicket')}</Text>
           </ScaledPressable>
         </View>
 
@@ -135,7 +135,7 @@ export default function SupportScreen() {
               <Text className="text-sm font-bold text-text">metallurgy_report_final.pdf</Text>
               <Text className="text-xs text-text-secondary">2.4 MB • Uploaded 2h ago</Text>
             </View>
-            <Ionicons name="download-outline" size={20} color="#FF6B00" />
+            <Ionicons name="download-outline" size={20} color="#FEB623" />
           </View>
           <Text className="mt-3 text-xs text-text-secondary">
             👥 Assigned to Logistics Specialist + 2 others
@@ -179,7 +179,7 @@ export default function SupportScreen() {
                   selected ? 'border-primary bg-primary/5' : 'border-border bg-surface'
                 }`}
                 scaleTo={1.02}>
-                <Ionicons name={d.icon} size={24} color={selected ? '#FF6B00' : '#666'} />
+                <Ionicons name={d.icon} size={24} color={selected ? '#FEB623' : '#666'} />
                 <Text
                   className={`mt-2 text-center text-xs font-semibold ${
                     selected ? 'text-primary' : 'text-text-secondary'
@@ -197,12 +197,12 @@ export default function SupportScreen() {
           style={[uploadBorderStyle, { borderWidth: 2, borderStyle: 'dashed' }]}
           className="items-center rounded-card bg-trust p-6">
           <View className="h-14 w-14 items-center justify-center rounded-full bg-primary/15">
-            <Ionicons name="cloud-upload-outline" size={28} color="#FF6B00" />
+            <Ionicons name="cloud-upload-outline" size={28} color="#FEB623" />
           </View>
           <Text className="mt-3 font-bold text-text">{t('dragDropFiles')}</Text>
           <Text className="mt-1 text-xs text-text-secondary">{t('supportsFormats')}</Text>
           <ScaledPressable onPress={pickFiles} className="mt-4 rounded-lg bg-primary px-6 py-3">
-            <Text className="font-bold text-text-inverse">{t('selectFiles')}</Text>
+            <Text className="font-bold text-onPrimary">{t('selectFiles')}</Text>
           </ScaledPressable>
         </Animated.View>
 
@@ -220,7 +220,7 @@ export default function SupportScreen() {
             className="flex-row items-center justify-between rounded-card border border-border bg-surface p-4">
             <View className="flex-row items-center gap-3">
               <View className="h-10 w-10 items-center justify-center rounded-lg bg-trust">
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FF6B00" />
+                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FEB623" />
               </View>
               <View>
                 <Text className="text-sm font-bold text-text">{t('liveChat')}</Text>
@@ -234,7 +234,7 @@ export default function SupportScreen() {
             className="flex-row items-center justify-between rounded-card border border-border bg-surface p-4">
             <View className="flex-row items-center gap-3">
               <View className="h-10 w-10 items-center justify-center rounded-lg bg-trust">
-                <Ionicons name="call-outline" size={20} color="#FF6B00" />
+                <Ionicons name="call-outline" size={20} color="#FEB623" />
               </View>
               <View>
                 <Text className="text-sm font-bold text-text">{t('callSupportLabel')}</Text>

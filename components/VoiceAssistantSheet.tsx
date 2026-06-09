@@ -46,7 +46,7 @@ const GOOGLE_COLORS = ['#4285F4', '#EA4335', '#FBBC05', '#34A853'] as const;
 const SNAP_POINTS = ['55%', '90%'] as const;
 
 const STATUS_MESSAGE_KEYS: Record<VoiceState, StringKey> = {
-  idle: 'searchBuildQuick',
+  idle: 'searchBajriwala',
   listening: 'listening',
   processing: 'findingResults',
   result: 'hereIsWhatIFound',
@@ -67,10 +67,10 @@ function getResultForQuery(text: string): VoiceSearchResult {
   const lower = text.toLowerCase();
   if (lower.includes('track') || lower.includes('order') || lower.includes('ऑर्डर')) {
     return {
-      title: 'Order CIQ-88294 En Route',
+      title: 'Order BJW-88294 En Route',
       body: 'Your latest order is on the way — arriving by 4:15 PM today.',
       actionLabel: 'Track Live →',
-      navigateTo: '/orders/details/CIQ-88294' as Href,
+      navigateTo: '/orders/details/BJW-88294' as Href,
     };
   }
   if (lower.includes('steel') || lower.includes('price') || lower.includes('स्टील')) {
@@ -98,7 +98,7 @@ function getResultForQuery(text: string): VoiceSearchResult {
     };
   }
   return {
-    title: 'BuildQuick India',
+    title: 'Bajriwala',
     body: 'Search cement, steel, sand & more. 90-minute delivery to your site.',
     actionLabel: 'Browse Catalog →',
     navigateTo: '/(tabs)/catalog' as Href,
@@ -295,7 +295,7 @@ function MicButton({ state, onPress }: { state: VoiceState; onPress: () => void 
       <Animated.View
         style={[
           styles.micGlow,
-          { backgroundColor: isListening ? '#FF6A00' : '#4285F4' },
+          { backgroundColor: isListening ? '#FEB623' : '#4285F4' },
           glowStyle,
         ]}
       />
@@ -769,8 +769,8 @@ const styles = StyleSheet.create({
     shadowColor: '#4285F4',
   },
   micButtonActive: {
-    backgroundColor: '#FF6A00',
-    shadowColor: '#FF6A00',
+    backgroundColor: '#FEB623',
+    shadowColor: '#FEB623',
   },
   micLabel: {
     color: 'rgba(255,255,255,0.4)',
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   micLabelActive: {
-    color: '#FF6A00',
+    color: '#FEB623',
   },
   suggestionsHeading: {
     color: 'rgba(255,255,255,0.3)',
@@ -834,7 +834,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FF6A00',
+    backgroundColor: '#FEB623',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -861,13 +861,13 @@ const styles = StyleSheet.create({
   },
   resultPrimary: {
     flex: 1,
-    backgroundColor: '#FF6A00',
+    backgroundColor: '#FEB623',
     paddingVertical: 11,
     borderRadius: 12,
     alignItems: 'center',
   },
   resultPrimaryText: {
-    color: '#fff',
+    color: '#1A1A1A',
     fontWeight: '700',
     fontSize: 14,
   },

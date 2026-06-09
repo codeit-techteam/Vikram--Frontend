@@ -51,10 +51,10 @@ export default function GstComplianceScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center justify-between px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-base font-bold text-text">{t('businessVerification')}</Text>
-        <Ionicons name="information-circle" size={22} color="#FF6B00" />
+        <Ionicons name="information-circle" size={22} color="#FEB623" />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -130,7 +130,7 @@ export default function GstComplianceScreen() {
           <ScaledPressable
             onPress={sharePdf}
             className="h-[52px] w-[52px] items-center justify-center rounded-card border border-border bg-surface">
-            <Ionicons name="share-outline" size={22} color="#FF6B00" />
+            <Ionicons name="share-outline" size={22} color="#FEB623" />
           </ScaledPressable>
         </View>
       </ScrollView>

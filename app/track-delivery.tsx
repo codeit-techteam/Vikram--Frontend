@@ -14,12 +14,12 @@ export default function TrackDeliveryScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center gap-3 px-5 py-4">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/orders')}>
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-xl font-bold text-primary">{t('trackDeliveries')}</Text>
       </View>
       <View className="flex-1 items-center justify-center px-6">
-        <Ionicons name="bus-outline" size={48} color="#FF6B00" />
+        <Ionicons name="bus-outline" size={48} color="#FEB623" />
         <Text className="mt-4 text-center text-base text-text-secondary">
           {t('trackDeliveriesEmpty')}
         </Text>

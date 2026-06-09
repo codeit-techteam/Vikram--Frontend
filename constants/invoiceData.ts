@@ -34,12 +34,12 @@ export interface InvoiceData {
 }
 
 const DEFAULT_INVOICE: InvoiceData = {
-  id: 'CIQ-INV-88294',
+  id: 'BJW-INV-88294',
   issuedDate: 'Oct 24, 2023',
   dueDays: 14,
   totalAmount: 144550,
   billedFrom: {
-    name: 'Construct-IQ Logistics',
+    name: 'Bajriwala Logistics',
     address: 'Industrial Hub, Sector 62, Gurgaon, HR - 122001',
     gstin: '06ABCDE1234F1Z5',
   },
@@ -154,12 +154,12 @@ export function buildInvoiceHtml(invoice: InvoiceData): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
   body { font-family: Arial, sans-serif; padding: 24px; color: #1A1A1A; }
-  h1 { color: #FF6B00; }
+  h1 { color: #FEB623; }
   table { width: 100%; border-collapse: collapse; margin-top: 16px; }
   th, td { border-bottom: 1px solid #E0E0E0; padding: 8px; text-align: left; }
-  .total { font-size: 20px; font-weight: bold; color: #FF6B00; }
+  .total { font-size: 20px; font-weight: bold; color: #FEB623; }
 </style></head><body>
-  <h1>BuildQuick India Invoice</h1>
+  <h1>Bajriwala Invoice</h1>
   <p><strong>${invoice.id}</strong> • Issued ${invoice.issuedDate}</p>
   <p>Billed From: ${invoice.billedFrom.name}<br/>${invoice.billedFrom.address}</p>
   <p>Billed To: ${invoice.billedTo.name}<br/>${invoice.billedTo.address}</p>

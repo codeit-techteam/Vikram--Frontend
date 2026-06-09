@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   clearAll: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FF6A00',
+    color: '#FEB623',
   },
   recentRow: {
     flexDirection: 'row',

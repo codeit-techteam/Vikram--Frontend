@@ -1,21 +1,28 @@
 import { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
+  ActivityIndicator,
+  Image,
   ScrollView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandLogo } from '@components/BrandLogo';
-import { LanguageCard } from '@components/LanguageCard';
-import { PrimaryButton } from '@components/PrimaryButton';
 import { useAuthStore } from '@store/useAuthStore';
 import { useLanguageStore, useTranslation, type AppLanguage } from '@store/languageStore';
+
+const GOLD = '#FEB623';
+const CREAM = '#FFF4D1';
+const DARK = '#1A1A1A';
+const WARM_BORDER = '#D4C89A';
+const WARM_SHADOW = '#C8900A';
+const BLUE = '#1A73E8';
+const BLUE_BG = '#EEF2FF';
 
 export default function CompleteProfileScreen() {
   const language = useLanguageStore((st) => st.language);
@@ -27,9 +34,12 @@ export default function CompleteProfileScreen() {
   const setGstNumber = useAuthStore((st) => st.setGstNumber);
 
   const [loading, setLoading] = useState(false);
+  const [companyFocused, setCompanyFocused] = useState(false);
+  const [gstFocused, setGstFocused] = useState(false);
 
   const handleContinue = () => {
     setLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setTimeout(() => {
       setLoading(false);
       router.push('/delivery-location' as Href);
@@ -38,101 +48,304 @@ export default function CompleteProfileScreen() {
 
   const handleLanguageSelect = (lang: AppLanguage) => {
     setLanguage(lang);
+    Haptics.selectionAsync();
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <View className="h-1 bg-primary" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: GOLD }} edges={['top']}>
+      {/* Progress bar */}
+      <View style={{ height: 3, backgroundColor: 'rgba(0,0,0,0.12)' }}>
+        <View
+          style={{
+            width: '75%',
+            height: '100%',
+            backgroundColor: DARK,
+            borderRadius: 2,
+          }}
+        />
+      </View>
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View className="mb-4 bg-surface px-5 py-3">
-          <BrandLogo size="sm" />
-        </View>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          backgroundColor: GOLD,
+          gap: 8,
+        }}>
+        <Image
+          source={require('../assets/images/logo.png')}
+          style={{ width: 30, height: 30, borderRadius: 6 }}
+          resizeMode="contain"
+        />
+        <Text style={{ fontSize: 17, fontWeight: '800', color: DARK }}>Bajriwala</Text>
+      </View>
 
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-5 pb-6 pt-4"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View className="rounded-card bg-surface p-5 shadow-sm">
-            <Text className="text-center text-xl font-bold text-text">
-              {t('completeProfileTitle')}
-            </Text>
-            <Text className="mt-2 text-center text-sm leading-5 text-text-secondary">
-              {t('completeProfileSubtitle')}
-            </Text>
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 110,
+        }}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        keyboardShouldPersistTaps="handled">
+        {/* Cream card */}
+        <View
+          style={{
+            backgroundColor: CREAM,
+            borderRadius: 20,
+            padding: 24,
+            shadowColor: WARM_SHADOW,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.18,
+            shadowRadius: 20,
+            elevation: 10,
+          }}>
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: '800',
+              color: DARK,
+              textAlign: 'center',
+              marginBottom: 6,
+            }}>
+            {t('completeProfileTitle')}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: '#666',
+              textAlign: 'center',
+              lineHeight: 20,
+              marginBottom: 24,
+            }}>
+            {t('completeProfileSubtitle')}
+          </Text>
 
-            <View className="mt-6 flex-row items-center gap-2">
-              <Ionicons name="business-outline" size={16} color="#666666" />
-              <Text className="text-sm text-text-secondary">{t('companyName')}</Text>
-            </View>
-            <TextInput
-              value={companyName}
-              onChangeText={setCompanyName}
-              placeholder={t('companyNamePlaceholder')}
-              placeholderTextColor="#999999"
-              className="mt-2 rounded-input border border-border bg-surface px-4 py-3.5 text-base text-text"
-            />
-
-            <View className="mt-5 flex-row items-center gap-2">
-              <Ionicons name="shield-checkmark-outline" size={16} color="#666666" />
-              <Text className="text-sm text-text-secondary">{t('gstNumber')}</Text>
-            </View>
-            <TextInput
-              value={gstNumber}
-              onChangeText={setGstNumber}
-              placeholder={t('gstPlaceholder')}
-              placeholderTextColor="#999999"
-              autoCapitalize="characters"
-              className="mt-2 rounded-input border border-border bg-surface px-4 py-3.5 text-base text-text"
-            />
-
-            <Text className="mt-8 text-base font-bold text-text">{t('chooseLanguage')}</Text>
-            <Text className="mt-1 text-sm text-text-secondary">{t('languageSubtitle')}</Text>
-            <Text className="mt-2 text-sm font-medium text-primary">{t('hindiLink')}</Text>
-
-            <View className="mt-3 flex-row items-center gap-2 self-start rounded-full bg-timer px-3 py-1.5">
-              <Ionicons name="location" size={12} color="#1A73E8" />
-              <Text className="text-xs font-medium text-secondary">{t('recommendedRegion')}</Text>
-            </View>
-
-            <View className="mt-4 flex-row gap-3">
-              <LanguageCard
-                lang="en"
-                title={t('english')}
-                subtitle={t('continueInEnglish')}
-                icon="globe-outline"
-                selected={language === 'en'}
-                onSelect={handleLanguageSelect}
-              />
-              <LanguageCard
-                lang="hi"
-                title={t('hindi')}
-                subtitle={t('continueInHindi')}
-                icon="language-outline"
-                selected={language === 'hi'}
-                onSelect={handleLanguageSelect}
-              />
-            </View>
+          {/* Company Name */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Ionicons name="business-outline" size={15} color="#888" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>{t('companyName')}</Text>
           </View>
-
-          <View className="mt-6 flex-row items-center justify-center gap-1.5">
-            <Ionicons name="shield-checkmark-outline" size={12} color="#666666" />
-            <Text className="text-[10px] tracking-wider text-text-secondary">{t('isoSecurity')}</Text>
-          </View>
-        </ScrollView>
-
-        <View className="border-t border-border bg-surface px-5 py-4">
-          <PrimaryButton
-            title={t('continueBtn')}
-            onPress={handleContinue}
-            loading={loading}
-            showArrow
+          <TextInput
+            style={{
+              borderWidth: 1.5,
+              borderColor: companyFocused ? GOLD : WARM_BORDER,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 13,
+              fontSize: 15,
+              color: DARK,
+              backgroundColor: '#FFFFFF',
+              marginBottom: 16,
+            }}
+            placeholder={t('companyNamePlaceholder')}
+            placeholderTextColor="#BBAA88"
+            value={companyName}
+            onChangeText={setCompanyName}
+            onFocus={() => setCompanyFocused(true)}
+            onBlur={() => setCompanyFocused(false)}
           />
+
+          {/* GST Number */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Ionicons name="shield-outline" size={15} color="#888" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>
+              {t('gstNumber')}
+              <Text style={{ color: '#AAA', fontWeight: '400' }}> ({t('optional')})</Text>
+            </Text>
+          </View>
+          <TextInput
+            style={{
+              borderWidth: 1.5,
+              borderColor: gstFocused ? GOLD : WARM_BORDER,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 13,
+              fontSize: 15,
+              color: DARK,
+              backgroundColor: '#FFFFFF',
+              marginBottom: 28,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+            placeholder={t('gstPlaceholder')}
+            placeholderTextColor="#BBAA88"
+            value={gstNumber}
+            onChangeText={setGstNumber}
+            autoCapitalize="characters"
+            onFocus={() => setGstFocused(true)}
+            onBlur={() => setGstFocused(false)}
+          />
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: WARM_BORDER, marginBottom: 24 }} />
+
+          {/* Language section */}
+          <Text style={{ fontSize: 18, fontWeight: '800', color: DARK, marginBottom: 4 }}>
+            {t('chooseLanguage')}
+          </Text>
+          <Text style={{ fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 8 }}>
+            {t('languageSubtitle')}
+          </Text>
+          <Text style={{ fontSize: 14, color: GOLD, fontWeight: '700', marginBottom: 12 }}>
+            {t('hindiLink')}
+          </Text>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: BLUE_BG,
+              alignSelf: 'flex-start',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 20,
+              marginBottom: 16,
+            }}>
+            <Ionicons name="location" size={12} color={BLUE} />
+            <Text style={{ fontSize: 12, color: BLUE, fontWeight: '600' }}>
+              {t('recommendedRegion')}
+            </Text>
+          </View>
+
+          {/* Language cards */}
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
+            <TouchableOpacity
+              onPress={() => handleLanguageSelect('en')}
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                borderWidth: 2,
+                borderColor: language === 'en' ? BLUE : WARM_BORDER,
+                borderRadius: 14,
+                paddingVertical: 18,
+                alignItems: 'center',
+                backgroundColor: language === 'en' ? BLUE_BG : 'rgba(255,255,255,0.6)',
+              }}>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor:
+                    language === 'en' ? 'rgba(26,115,232,0.1)' : 'rgba(254,182,35,0.15)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 8,
+                }}>
+                <Ionicons
+                  name="globe-outline"
+                  size={22}
+                  color={language === 'en' ? BLUE : GOLD}
+                />
+              </View>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: DARK }}>{t('english')}</Text>
+              <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                {t('continueInEnglish')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleLanguageSelect('hi')}
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                borderWidth: 2,
+                borderColor: language === 'hi' ? GOLD : WARM_BORDER,
+                borderRadius: 14,
+                paddingVertical: 18,
+                alignItems: 'center',
+                backgroundColor:
+                  language === 'hi' ? 'rgba(254,182,35,0.15)' : 'rgba(255,255,255,0.6)',
+              }}>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: 'rgba(254,182,35,0.15)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 8,
+                }}>
+                <Ionicons name="language-outline" size={22} color={GOLD} />
+              </View>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: DARK }}>{t('hindi')}</Text>
+              <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                {t('continueInHindi')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ISO badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <Ionicons name="shield-checkmark-outline" size={13} color="#AAA" />
+            <Text
+              style={{
+                fontSize: 10,
+                color: '#AAA',
+                fontWeight: '600',
+                letterSpacing: 0.5,
+              }}>
+              {t('isoSecurity')}
+            </Text>
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </ScrollView>
+
+      {/* Sticky continue button */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: GOLD,
+          paddingHorizontal: 20,
+          paddingTop: 14,
+          paddingBottom: 32,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(0,0,0,0.08)',
+        }}>
+        <TouchableOpacity
+          onPress={handleContinue}
+          activeOpacity={0.85}
+          disabled={loading}
+          style={{
+            backgroundColor: DARK,
+            borderRadius: 50,
+            paddingVertical: 16,
+            alignItems: 'center',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: 6,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 10,
+            elevation: 8,
+            opacity: loading ? 0.85 : 1,
+          }}>
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                color: '#FFFFFF',
+                letterSpacing: 0.2,
+              }}>
+              {t('continueBtn')} →
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }

@@ -44,7 +44,7 @@ export function VoiceSearchUI({ onCancel, error }: VoiceSearchUIProps) {
   return (
     <View style={styles.container}>
       <View style={styles.micCircle}>
-        <Ionicons name="mic" size={32} color="#FF6A00" />
+        <Ionicons name="mic" size={32} color="#FEB623" />
       </View>
 
       <View style={styles.waveRow}>
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF4D1',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 32,
     borderRadius: 2,
-    backgroundColor: '#FF6A00',
+    backgroundColor: '#FEB623',
   },
   status: {
     fontSize: 16,

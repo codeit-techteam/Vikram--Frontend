@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "BuildQuick India",
-    "slug": "buildquick-india",
+    "name": "Bajriwala",
+    "slug": "bajriwala",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "scheme": "buildquick",
+    "icon": "./assets/images/logo.png",
+    "scheme": "bajriwala",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/images/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B5E20"
+      "backgroundColor": "#FEB623"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,7 +20,7 @@
     "android": {
       "package": "com.dhoodhwala.frontend",
       "adaptiveIcon": {
-        "backgroundColor": "#1B5E20",
+        "backgroundColor": "#FEB623",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -38,7 +38,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow BuildQuick India to access your location for delivery site setup."
+          "locationAlwaysAndWhenInUsePermission": "Allow Bajriwala to access your location for delivery site setup."
         }
       ]
     ],

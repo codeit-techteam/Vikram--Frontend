@@ -21,7 +21,7 @@ export function SiteCard({ site, editLabel, deleteLabel, onEdit, onDelete }: Sit
           <Text className="mt-1 text-sm text-text-secondary">{site.address}</Text>
           <Text className="mt-0.5 text-xs text-text-secondary">PIN: {site.pincode}</Text>
         </View>
-        <Ionicons name="location" size={20} color="#FF6B00" />
+        <Ionicons name="location" size={20} color="#FEB623" />
       </View>
       <View className="mt-3 flex-row gap-4">
         <ScaledPressable onPress={() => onEdit(site)}>

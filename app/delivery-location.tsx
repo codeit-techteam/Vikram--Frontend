@@ -99,13 +99,13 @@ export default function DeliveryLocationScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View className="mb-4 flex-row items-center justify-between bg-surface px-4 py-3">
           <ScaledPressable onPress={() => safeGoBack('/complete-profile')} className="p-1">
-            <Ionicons name="arrow-back" size={24} color="#FF6B00" />
+            <Ionicons name="arrow-back" size={24} color="#FEB623" />
           </ScaledPressable>
           <Text className="text-lg font-bold text-primary">{t('deliveryLocation')}</Text>
           <View className="flex-row items-center gap-3">
             <Ionicons name="location-outline" size={22} color="#1A1A1A" />
             <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
-              <Text className="text-xs font-bold text-text-inverse">CP</Text>
+              <Text className="text-xs font-bold text-onPrimary">CP</Text>
             </View>
           </View>
         </View>
@@ -136,17 +136,17 @@ export default function DeliveryLocationScreen() {
 
             <View className="absolute left-3 right-3 top-3">
               <View className="flex-row items-center rounded-input border border-border bg-surface px-3 py-2.5 shadow-sm">
-                <Ionicons name="search" size={18} color="#FF6B00" />
+                <Ionicons name="search" size={18} color="#FEB623" />
                 <Text className="ml-2 flex-1 text-sm text-text-secondary">{t('searchSiteAddress')}</Text>
                 <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
-                  <Ionicons name="mic-outline" size={18} color="#FF6B00" />
+                  <Ionicons name="mic-outline" size={18} color="#FEB623" />
                 </ScaledPressable>
               </View>
             </View>
 
             <View className="absolute bottom-3 left-3">
               <View className="flex-row items-center gap-1.5 rounded-full border border-primary bg-surface px-3 py-1.5">
-                <Ionicons name="shield-checkmark" size={12} color="#FF6B00" />
+                <Ionicons name="shield-checkmark" size={12} color="#FEB623" />
                 <Text className="text-[10px] font-semibold text-primary">{t('preciseGpsPinning')}</Text>
               </View>
             </View>
@@ -219,7 +219,7 @@ export default function DeliveryLocationScreen() {
           <View className="mx-4 mt-5 gap-3">
             <View className="flex-row gap-3 rounded-card bg-trust p-4">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <Ionicons name="shield-checkmark" size={20} color="#FF6B00" />
+                <Ionicons name="shield-checkmark" size={20} color="#FEB623" />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-bold text-text">{t('industrialPrecision')}</Text>
@@ -230,7 +230,7 @@ export default function DeliveryLocationScreen() {
             </View>
             <View className="flex-row gap-3 rounded-card bg-trust p-4">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <Ionicons name="headset" size={20} color="#FF6B00" />
+                <Ionicons name="headset" size={20} color="#FEB623" />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-bold text-text">{t('siteLogisticsSupport')}</Text>

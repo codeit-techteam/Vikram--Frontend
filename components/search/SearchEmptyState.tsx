@@ -21,7 +21,7 @@ export function SearchEmptyState({ query, onSuggestionPress }: SearchEmptyStateP
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}>
       <View style={styles.illustration}>
-        <Ionicons name="cube-outline" size={48} color="#FF6A00" />
+        <Ionicons name="cube-outline" size={48} color="#FEB623" />
       </View>
 
       <Text style={styles.title}>
@@ -51,7 +51,7 @@ export function SearchEmptyState({ query, onSuggestionPress }: SearchEmptyStateP
           router.push('/(tabs)/catalog' as Href);
         }}>
         <Text style={styles.browseText}>{t('browseAllCategories')}</Text>
-        <Ionicons name="arrow-forward" size={16} color="#FF6A00" />
+        <Ionicons name="arrow-forward" size={16} color="#FEB623" />
       </Pressable>
     </ScrollView>
   );
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF4D1',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -96,13 +96,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FF6A00',
+    borderColor: '#FEB623',
     backgroundColor: '#FFF8F3',
   },
   chipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FF6A00',
+    color: '#FEB623',
   },
   browseLink: {
     flexDirection: 'row',
@@ -113,6 +113,6 @@ const styles = StyleSheet.create({
   browseText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FF6A00',
+    color: '#FEB623',
   },
 });

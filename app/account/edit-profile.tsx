@@ -117,14 +117,14 @@ export default function EditProfileScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="mb-4 flex-row items-center justify-between border-b border-border bg-surface px-4 py-3">
         <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="w-10">
-          <Ionicons name="arrow-back" size={22} color="#FF6B00" />
+          <Ionicons name="arrow-back" size={22} color="#FEB623" />
         </ScaledPressable>
         <Text className="text-base font-bold text-primary">{t('editProfile')}</Text>
         <ScaledPressable onPress={handleSave} className="w-10 items-end">
           {saveState === 'saving' ? (
-            <Ionicons name="hourglass-outline" size={20} color="#FF6B00" />
+            <Ionicons name="hourglass-outline" size={20} color="#FEB623" />
           ) : saveState === 'done' ? (
-            <Ionicons name="checkmark" size={22} color="#FF6B00" />
+            <Ionicons name="checkmark" size={22} color="#FEB623" />
           ) : (
             <Text className="text-sm font-semibold text-primary">{t('save')}</Text>
           )}
@@ -243,7 +243,7 @@ export default function EditProfileScreen() {
             }}
             className="mb-2 flex-row items-center rounded-card border border-border bg-surface p-3">
             <View className="mr-3 h-10 w-10 items-center justify-center rounded-lg bg-info/10">
-              <Ionicons name="location" size={18} color="#FF6B00" />
+              <Ionicons name="location" size={18} color="#FEB623" />
             </View>
             <View className="flex-1">
               <Text className="text-sm font-bold text-text">{site.name}</Text>
@@ -339,7 +339,7 @@ function FormField({
     <View className="mb-3">
       <Text className="mb-1 text-[10px] font-semibold uppercase text-text-secondary">{label}</Text>
       <View className="flex-row items-center rounded-input border border-border bg-input px-3">
-        <Ionicons name={icon} size={18} color="#FF6B00" />
+        <Ionicons name={icon} size={18} color="#FEB623" />
         <TextInput
           value={value}
           onChangeText={onChangeText}

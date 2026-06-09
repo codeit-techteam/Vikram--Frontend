@@ -32,7 +32,7 @@ function DeliveryCard({
   onSelect: (type: DeliveryType) => void;
 }) {
   const animStyle = useAnimatedStyle(() => ({
-    borderColor: withTiming(selected ? '#FF6B00' : '#E0E0E0', { duration: 200 }),
+    borderColor: withTiming(selected ? '#FEB623' : '#E0E0E0', { duration: 200 }),
     backgroundColor: withTiming(selected ? '#FFF8F3' : '#FFFFFF', { duration: 200 }),
   }));
 
@@ -65,7 +65,7 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
       </View>
 
       <View className="mt-3 flex-row items-center gap-2">
-        <Ionicons name="time-outline" size={16} color="#FF6B00" />
+        <Ionicons name="time-outline" size={16} color="#FEB623" />
         <Text className="text-sm font-bold text-text">{t('deliveryIn24')}</Text>
       </View>
       <Text className="mt-1 text-xs text-text-secondary">
@@ -78,7 +78,7 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
           title={t('priority')}
           time="2–4 Hours"
           price={formatINR(250, false)}
-          priceColor="#FF6B00"
+          priceColor="#FEB623"
           selected={selected === 'priority'}
           onSelect={onSelect}
         />
@@ -124,7 +124,7 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
 
       <View className="mt-4 flex-row items-center gap-2 rounded-card bg-primary px-4 py-3">
         <Ionicons name="flash" size={16} color="#FFFFFF" />
-        <Text className="flex-1 text-xs font-medium text-text-inverse">
+        <Text className="flex-1 text-xs font-medium text-onPrimary">
           {t('fastestDelivery')} {siteName}. {t('materialsAvailable')} Thane West {t('warehouse').toLowerCase()}.
         </Text>
       </View>
@@ -148,14 +148,14 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
         <View className="flex-1 rounded-card border border-border bg-surface p-3">
           <Text className="text-[10px] font-bold text-text-secondary">{t('warehouse')}</Text>
           <View className="mt-2 flex-row items-center gap-2">
-            <Ionicons name="home-outline" size={18} color="#FF6B00" />
+            <Ionicons name="home-outline" size={18} color="#FEB623" />
             <Text className="text-sm font-bold text-text">Thane West</Text>
           </View>
         </View>
         <View className="flex-1 rounded-card border border-border bg-surface p-3">
           <Text className="text-[10px] font-bold text-text-secondary">{t('vehicle')}</Text>
           <View className="mt-2 flex-row items-center gap-2">
-            <Ionicons name="bus-outline" size={18} color="#FF6B00" />
+            <Ionicons name="bus-outline" size={18} color="#FEB623" />
             <Text className="text-sm font-bold text-text">10-Ton Tipper</Text>
           </View>
         </View>

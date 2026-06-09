@@ -152,7 +152,7 @@ export default function CheckoutScreen() {
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-start justify-between">
             <View className="flex-row gap-2">
-              <Ionicons name="location" size={20} color="#FF6B00" />
+              <Ionicons name="location" size={20} color="#FEB623" />
               <View className="flex-1">
                 <Text className="text-[10px] font-bold tracking-wider text-text-secondary">
                   {t('deliveryDestination')}
@@ -173,7 +173,7 @@ export default function CheckoutScreen() {
 
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center gap-2">
-            <Ionicons name="bus-outline" size={18} color="#FF6B00" />
+            <Ionicons name="bus-outline" size={18} color="#FEB623" />
             <Text className="text-sm text-text">
               {t('scheduledDelivery')}:{' '}
               <Text className="font-bold text-primary">Today, 5:00 PM</Text>
@@ -233,7 +233,7 @@ export default function CheckoutScreen() {
           />
           <ScaledPressable onPress={verifyGst} disabled={gstVerifying}>
             {gstVerifying ? (
-              <ActivityIndicator size="small" color="#FF6B00" />
+              <ActivityIndicator size="small" color="#FEB623" />
             ) : (
               <Text className="font-semibold text-primary">{t('verify')}</Text>
             )}
@@ -301,7 +301,7 @@ export default function CheckoutScreen() {
           <Switch
             value={invoiceNeeded}
             onValueChange={setInvoiceNeeded}
-            trackColor={{ true: '#FF6B00', false: '#E0E0E0' }}
+            trackColor={{ true: '#FEB623', false: '#E0E0E0' }}
             thumbColor="#FFFFFF"
           />
         </View>
@@ -412,7 +412,7 @@ export default function CheckoutScreen() {
                 }`}>
                 <Text
                   className={`text-xs font-bold ${
-                    loyaltyPoints === pts ? 'text-text-inverse' : 'text-text-secondary'
+                    loyaltyPoints === pts ? 'text-onPrimary' : 'text-text-secondary'
                   }`}>
                   {pts} pts
                 </Text>
@@ -533,10 +533,10 @@ export default function CheckoutScreen() {
           ) : paySuccess ? (
             <>
               <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-              <Text className="ml-2 text-base font-bold text-text-inverse">{t('confirmed')}!</Text>
+              <Text className="ml-2 text-base font-bold text-onPrimary">{t('confirmed')}!</Text>
             </>
           ) : (
-            <Text className="text-base font-bold text-text-inverse">{t('payConfirmOrder')} →</Text>
+            <Text className="text-base font-bold text-onPrimary">{t('payConfirmOrder')} →</Text>
           )}
         </ScaledPressable>
       </ScrollView>

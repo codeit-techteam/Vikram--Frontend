@@ -72,7 +72,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
     return (
       <View style={styles.container}>
         <Pressable style={styles.idlePressable} onPress={handlePress}>
-          <Ionicons name="search-outline" size={18} color="#FF6A00" />
+          <Ionicons name="search-outline" size={18} color="#FEB623" />
           <Text style={styles.placeholder}>{t('searchPlaceholder')}</Text>
         </Pressable>
         <Pressable
@@ -82,7 +82,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
             onVoicePress();
           }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="mic-outline" size={20} color="#FF6A00" />
+          <Ionicons name="mic-outline" size={20} color="#FEB623" />
         </Pressable>
       </View>
     );
@@ -90,7 +90,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
 
   return (
     <View style={[styles.container, styles.containerActive]}>
-      <Ionicons name="search-outline" size={18} color="#FF6A00" />
+      <Ionicons name="search-outline" size={18} color="#FEB623" />
       <TextInput ref={inputRef} {...inputProps} />
       {query.length > 0 ? (
         <Pressable onPress={onClear} hitSlop={10}>
@@ -98,7 +98,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
         </Pressable>
       ) : (
         <Pressable onPress={onVoicePress} hitSlop={10}>
-          <Ionicons name="mic-outline" size={20} color="#FF6A00" />
+          <Ionicons name="mic-outline" size={20} color="#FEB623" />
         </Pressable>
       )}
     </View>
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginTop: 0,
     flex: 1,
-    borderColor: '#FF6A00',
+    borderColor: '#FEB623',
   },
   idlePressable: {
     flex: 1,

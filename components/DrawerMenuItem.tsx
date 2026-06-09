@@ -55,7 +55,7 @@ export const DrawerMenuItem = memo(function DrawerMenuItem({
     transform: [{ translateX: translateXItem.value }],
   }));
 
-  const color = isDestructive ? '#D32F2F' : isHighlight ? '#FF6B00' : '#555555';
+  const color = isDestructive ? '#D32F2F' : isHighlight ? '#FEB623' : '#555555';
 
   const handlePress = async () => {
     if (isDestructive) {
@@ -73,14 +73,14 @@ export const DrawerMenuItem = memo(function DrawerMenuItem({
       <Pressable
         onPress={handlePress}
         className="flex-row items-center px-5 py-3.5"
-        style={{ backgroundColor: flashing ? '#FFF3E0' : 'transparent' }}>
+        style={{ backgroundColor: flashing ? '#FFF4D1' : 'transparent' }}>
         <Ionicons name={icon} size={20} color={color} />
         <Text className="ml-4 flex-1 text-[15px] font-medium" style={{ color }}>
           {label}
         </Text>
         {badge !== undefined && badge !== 0 && (
           <View className="h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1">
-            <Text className="text-[10px] font-bold text-text-inverse">{badge}</Text>
+            <Text className="text-[10px] font-bold text-onPrimary">{badge}</Text>
           </View>
         )}
         {rightElement}

@@ -390,7 +390,7 @@ export default function HomeScreen() {
                     onPress={() => onReorderRowPress(item.id)}
                     style={styles.reorderRow}>
                     <View className="h-10 w-10 items-center justify-center rounded-lg bg-logo">
-                      <Ionicons name={item.icon} size={20} color="#FF6B00" />
+                      <Ionicons name={item.icon} size={20} color="#FEB623" />
                     </View>
                     <View className="ml-3 flex-1">
                       <Text className="text-sm font-bold text-text">{item.title}</Text>
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   },
   tierBadge: {
     borderWidth: 1.5,
-    borderColor: '#FF6B00',
+    borderColor: '#FEB623',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   tierText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FF6B00',
+    color: '#FEB623',
   },
   pointsText: {
     fontSize: 12,
@@ -508,12 +508,12 @@ const styles = StyleSheet.create({
   },
   loyaltyNext: {
     fontSize: 13,
-    color: '#FF6B00',
+    color: '#FEB623',
     fontWeight: '600',
   },
   earnText: {
     fontSize: 12,
-    color: '#FF6B00',
+    color: '#FEB623',
     marginTop: 6,
   },
   categoriesRow: {
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emergencyButton: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: '#FEB623',
     borderRadius: 30,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     marginBottom: 4,
-    shadowColor: '#FF6B00',
+    shadowColor: '#FEB623',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   emergencyButtonText: {
-    color: '#FFFFFF',
+    color: '#1A1A1A',
     fontSize: 15,
     fontWeight: '700',
   },

@@ -62,7 +62,7 @@ export const OrderSortSheet = forwardRef<BottomSheet, OrderSortSheetProps>(
                 {t(option.labelKey)}
               </Text>
               {sortOption === option.id ? (
-                <Ionicons name="checkmark" size={20} color="#FF6B00" />
+                <Ionicons name="checkmark" size={20} color="#FEB623" />
               ) : null}
             </ScaledPressable>
           ))}

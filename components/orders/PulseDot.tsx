@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-export function PulseDot({ size = 24, color = '#FF6B00' }: { size?: number; color?: string }) {
+export function PulseDot({ size = 24, color = '#FEB623' }: { size?: number; color?: string }) {
   const opacity = useSharedValue(1);
 
   useEffect(() => {

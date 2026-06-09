@@ -76,7 +76,7 @@ export const OrderFilterSheet = forwardRef<BottomSheet, OrderFilterSheetProps>(
                 }`}>
                 <Text
                   className={`text-sm font-semibold ${
-                    local.status === opt.key ? 'text-text-inverse' : 'text-text-secondary'
+                    local.status === opt.key ? 'text-onPrimary' : 'text-text-secondary'
                   }`}>
                   {t(opt.labelKey)}
                 </Text>
@@ -95,7 +95,7 @@ export const OrderFilterSheet = forwardRef<BottomSheet, OrderFilterSheetProps>(
                 }`}>
                 <Text
                   className={`text-sm font-semibold ${
-                    local.date === opt.key ? 'text-text-inverse' : 'text-text-secondary'
+                    local.date === opt.key ? 'text-onPrimary' : 'text-text-secondary'
                   }`}>
                   {t(opt.labelKey)}
                 </Text>
@@ -106,7 +106,7 @@ export const OrderFilterSheet = forwardRef<BottomSheet, OrderFilterSheetProps>(
           <ScaledPressable
             onPress={() => onApply(local)}
             className="items-center rounded-pill bg-primary py-4">
-            <Text className="font-bold text-text-inverse">{t('apply')}</Text>
+            <Text className="font-bold text-onPrimary">{t('apply')}</Text>
           </ScaledPressable>
         </BottomSheetView>
       </BottomSheet>

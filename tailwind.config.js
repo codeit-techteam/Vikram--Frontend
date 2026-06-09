@@ -10,13 +10,13 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          orange: '#FF6B00',
+          yellow: '#FEB623',
           blue: '#1A73E8',
         },
         primary: {
-          DEFAULT: '#FF6B00',
-          light: '#FF8533',
-          dark: '#E55D00',
+          DEFAULT: '#FEB623',
+          light: '#FFF4D1',
+          dark: '#E5A01F',
         },
         secondary: {
           DEFAULT: '#1A73E8',
@@ -29,17 +29,18 @@ module.exports = {
           DEFAULT: '#1A1A1A',
           secondary: '#666666',
           inverse: '#FFFFFF',
+          onPrimary: '#1A1A1A',
         },
         border: '#E0E0E0',
         input: '#F5F5F5',
         disabled: '#B8C4D4',
-        logo: '#FFF0E6',
+        logo: '#FFF4D1',
         timer: '#EEF2FF',
         trust: '#F0F4FF',
-        error: '#D32F2F',
-        success: '#388E3C',
-        warning: '#F57C00',
-        info: '#2196F3',
+        error: '#FF3B30',
+        success: '#34C759',
+        warning: '#FF9500',
+        info: '#1A73E8',
       },
       borderRadius: {
         card: '12px',

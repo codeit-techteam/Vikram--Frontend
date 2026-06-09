@@ -56,12 +56,12 @@ export function PricingSummary({
           <Text className="mt-1 text-2xl font-bold text-text">{formatINR(estimatedTotal)}</Text>
         </View>
         <View className="rounded-full bg-primary px-3 py-1.5">
-          <Text className="text-[10px] font-bold text-text-inverse">{t('quickQuote')}</Text>
+          <Text className="text-[10px] font-bold text-onPrimary">{t('quickQuote')}</Text>
         </View>
       </View>
 
       <View className="mt-4 flex-row items-start gap-2 rounded-lg bg-primary/10 p-3">
-        <Ionicons name="information-circle-outline" size={16} color="#FF6B00" />
+        <Ionicons name="information-circle-outline" size={16} color="#FEB623" />
         <Text className="flex-1 text-xs leading-4 text-text-secondary">{t('pricesLocked')}</Text>
       </View>
     </View>

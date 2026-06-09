@@ -1,6 +1,7 @@
 import { ActivityIndicator, Text } from 'react-native';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { theme } from '@constants/theme';
 
 interface PrimaryButtonProps {
   title: string;
@@ -27,9 +28,9 @@ export function PrimaryButton({
         isDisabled ? 'bg-disabled' : 'bg-primary'
       }`}>
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" size="small" />
+        <ActivityIndicator color={theme.textOnPrimary} size="small" />
       ) : (
-        <Text className="text-base font-bold text-text-inverse">
+        <Text className="text-base font-bold text-text">
           {title}
           {showArrow ? ' →' : ''}
         </Text>

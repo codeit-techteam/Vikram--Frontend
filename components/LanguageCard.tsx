@@ -28,7 +28,7 @@ export function LanguageCard({
         selected ? 'border-secondary bg-secondary/5' : 'border-border bg-surface'
       }`}>
       <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-logo">
-        <Ionicons name={icon} size={24} color="#FF6B00" />
+        <Ionicons name={icon} size={24} color="#FEB623" />
       </View>
       <Text className="text-base font-bold text-text">{title}</Text>
       <Text className="mt-1 text-center text-xs text-text-secondary">{subtitle}</Text>

@@ -47,13 +47,13 @@ export function RoleCard({
         }}
       />
       <View className="absolute left-2 top-2 h-8 w-8 items-center justify-center rounded-md bg-primary">
-        <Ionicons name={icon} size={16} color="#FFFFFF" />
+        <Ionicons name={icon} size={16} color="#1A1A1A" />
       </View>
       <View
         className={`absolute right-2 top-2 h-6 w-6 items-center justify-center rounded-full border-2 ${
           selected ? 'border-primary bg-primary' : 'border-white bg-transparent'
         }`}>
-        {selected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+        {selected && <Ionicons name="checkmark" size={14} color="#1A1A1A" />}
       </View>
       <View className="absolute bottom-0 left-0 right-0 p-3">
         <Text className="text-sm font-bold text-text-inverse">{title}</Text>
