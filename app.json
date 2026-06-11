@@ -4,7 +4,7 @@
     "slug": "bajriwala",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/icon.png",
     "scheme": "bajriwala",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -44,7 +44,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Bajriwala to access your location for delivery site setup."
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true

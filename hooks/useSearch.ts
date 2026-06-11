@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, PermissionsAndroid, Platform } from 'react-native';
+import { Keyboard } from 'react-native';
 
 import { useSearchStore } from '@store/searchStore';
 import type { SearchProduct } from '@constants/searchData';
@@ -41,36 +41,6 @@ export interface UseSearchReturn {
 
 const VOICE_FALLBACK_TERMS = ['UltraTech cement', 'TMT bars 12mm', 'River sand', 'Stone aggregate'];
 
-let VoiceModule: typeof import('@react-native-voice/voice').default | null = null;
-
-async function loadVoiceModule() {
-  if (VoiceModule) return VoiceModule;
-  try {
-    const mod = await import('@react-native-voice/voice');
-    VoiceModule = mod.default;
-    return VoiceModule;
-  } catch {
-    return null;
-  }
-}
-
-async function requestMicPermission(): Promise<boolean> {
-  if (Platform.OS === 'android') {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      {
-        title: 'Microphone Permission',
-        message: 'Bajriwala needs microphone access for voice search.',
-        buttonNeutral: 'Ask Me Later',
-        buttonNegative: 'Cancel',
-        buttonPositive: 'OK',
-      },
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
-  }
-  return true;
-}
-
 export function useSearch(): UseSearchReturn {
   const [query, setQueryState] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -110,12 +80,6 @@ export function useSearch(): UseSearchReturn {
       voiceTimeoutRef.current = null;
     }
     setIsVoiceActive(false);
-    void loadVoiceModule().then((Voice) => {
-      if (Voice) {
-        void Voice.stop().catch(() => undefined);
-        void Voice.destroy().catch(() => undefined);
-      }
-    });
   }, []);
 
   const runSuggestions = useCallback((text: string) => {
@@ -212,53 +176,23 @@ export function useSearch(): UseSearchReturn {
     cancelVoiceSearchInternal();
   }, [cancelVoiceSearchInternal]);
 
-  const startVoiceSearch = useCallback(async () => {
+  const startVoiceSearch = useCallback(() => {
     setVoiceError(null);
-    const permitted = await requestMicPermission();
-    if (!permitted) {
-      setIsActive(true);
-      setVoiceError('Microphone permission needed');
-      return;
-    }
-
     setIsActive(true);
     setIsVoiceActive(true);
-
-    const Voice = await loadVoiceModule();
 
     const handleResult = (text: string) => {
       cancelVoiceSearchInternal();
       submitSearch(text);
     };
 
-    const handleError = (msg: string) => {
-      cancelVoiceSearchInternal();
-      setVoiceError(msg);
+    voiceHandlersRef.current = {
+      onResult: handleResult,
+      onError: (msg: string) => {
+        cancelVoiceSearchInternal();
+        setVoiceError(msg);
+      },
     };
-
-    voiceHandlersRef.current = { onResult: handleResult, onError: handleError };
-
-    if (Voice) {
-      Voice.onSpeechResults = (e) => {
-        const transcript = e.value?.[0];
-        if (transcript) {
-          voiceHandlersRef.current?.onResult(transcript);
-        }
-      };
-      Voice.onSpeechError = () => {
-        voiceHandlersRef.current?.onError("Didn't catch that. Try again.");
-      };
-
-      try {
-        await Voice.start(Platform.OS === 'ios' ? 'en-IN' : 'en-US');
-        voiceTimeoutRef.current = setTimeout(() => {
-          voiceHandlersRef.current?.onError("Didn't catch that. Try again.");
-        }, 8000);
-        return;
-      } catch {
-        // fall through to simulated voice
-      }
-    }
 
     voiceTimeoutRef.current = setTimeout(() => {
       const term =
