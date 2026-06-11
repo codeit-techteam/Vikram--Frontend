@@ -106,6 +106,8 @@ export function buildOrderFromCheckout(params: {
     paymentMethodLabel: params.paymentMethod.replace('_', ' '),
     deliveryETA: params.deliveryETA,
     arrivingBy: params.deliveryETA,
+    eta: params.deliveryETA,
+    estimatedDelivery: params.deliveryETA,
     warehouse: 'Thane West Hub Warehouse',
     statusLabel: 'PROCESSING',
     quantitySummary: `${params.items.reduce((s, i) => s + i.quantity, 0)} items`,

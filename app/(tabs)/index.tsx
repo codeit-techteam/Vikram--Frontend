@@ -30,17 +30,15 @@ import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
-import { Toast } from '@components/Toast';
-import { getProductById } from '@constants/catalogData';
+import { LastOrderCard } from '@components/LastOrderCard';
+import { getProductById, getProductImageUrl } from '@constants/catalogData';
 import { images } from '@constants/images';
 import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
 import { useSearch } from '@hooks/useSearch';
-import { useCartStore } from '@store/cartStore';
-import type { Order } from '@store/orderStore';
+import type { LastOrderedProduct, Order } from '@store/orderStore';
 import { useOrderStore } from '@store/orderStore';
-import { productToCartItem } from '@utils/cartHelpers';
 
 const CATEGORIES: {
   id: string;
@@ -55,10 +53,45 @@ const CATEGORIES: {
   { id: 'bricks', routeId: '4', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
 ];
 
-const REORDER_ITEMS = [
-  { id: 's2', subtitleKey: 'lastOrdered' as const },
-  { id: 'c1', subtitleKey: 'lastOrdered' as const },
-];
+function buildFallbackLastOrders(): LastOrderedProduct[] {
+  const steel = getProductById('s2');
+  const cement = getProductById('c1');
+  const items: LastOrderedProduct[] = [];
+
+  if (steel) {
+    items.push({
+      id: steel.id,
+      name: steel.detailName ?? steel.name,
+      description: steel.description,
+      image: getProductImageUrl(steel.imageSearch, '80x80'),
+      unitPrice: steel.retailPriceValue,
+      bulkPrice: steel.bulkPriceValue,
+      bulkThreshold: steel.bulkThreshold,
+      quantity: 1,
+      unit: steel.unit,
+      orderedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+      orderId: 'fallback',
+    });
+  }
+
+  if (cement) {
+    items.push({
+      id: cement.id,
+      name: cement.detailName ?? cement.name,
+      description: cement.description,
+      image: getProductImageUrl(cement.imageSearch, '80x80'),
+      unitPrice: cement.retailPriceValue,
+      bulkPrice: cement.bulkPriceValue,
+      bulkThreshold: cement.bulkThreshold,
+      quantity: 1,
+      unit: cement.unit,
+      orderedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      orderId: 'fallback',
+    });
+  }
+
+  return items;
+}
 
 function CategoryCard({
   label,
@@ -142,9 +175,6 @@ function LiveDeliveryCard({ order }: { order: Order }) {
 export default function HomeScreen() {
   const { t, language } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  const [toastVisible, setToastVisible] = useState(false);
-
   const screenOpacity = useSharedValue(1);
   const prevLang = useRef(language);
 
@@ -162,8 +192,11 @@ export default function HomeScreen() {
     }
   }, [language, screenOpacity]);
 
-  const addItem = useCartStore((s) => s.addItem);
   const orders = useOrderStore((s) => s.orders);
+  const lastOrderedItems = useMemo(
+    () => useOrderStore.getState().getLastOrderedProducts(),
+    [orders],
+  );
 
   const activeOrder = useMemo(
     () => orders.find((o) => o.status === 'in_transit' || o.status === 'dispatched'),
@@ -209,12 +242,6 @@ export default function HomeScreen() {
     else openDrawer();
   };
 
-  const showToast = useCallback((msg: string) => {
-    setToastMsg(msg);
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2200);
-  }, []);
-
   const onCategoryPress = useCallback(
     async (category: (typeof CATEGORIES)[number]) => {
       await Haptics.selectionAsync();
@@ -229,22 +256,6 @@ export default function HomeScreen() {
   const onViewAllCategories = useCallback(async () => {
     await Haptics.selectionAsync();
     router.push('/(tabs)/catalog' as Href);
-  }, []);
-
-  const onReorder = useCallback(
-    async (productId: string) => {
-      const product = getProductById(productId);
-      if (!product) return;
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      addItem(productToCartItem(product, 1));
-      showToast('Added to cart ✓');
-    },
-    [addItem, showToast],
-  );
-
-  const onReorderRowPress = useCallback(async (productId: string) => {
-    await Haptics.selectionAsync();
-    router.push(`/products/detail/${productId}` as Href);
   }, []);
 
   const goLoyalty = useCallback(async () => {
@@ -263,16 +274,18 @@ export default function HomeScreen() {
     { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
   ];
 
-  const reorderRows = REORDER_ITEMS.map((item) => {
-    const product = getProductById(item.id);
-    return {
-      ...item,
-      product,
-      title: product?.name ?? item.id,
-      subtitle: t(item.subtitleKey),
-      icon: item.id === 's2' ? ('cube-outline' as const) : ('home-outline' as const),
-    };
-  });
+  const displayItems =
+    lastOrderedItems.length > 0 ? lastOrderedItems : buildFallbackLastOrders();
+
+  const onViewAllOrders = useCallback(async () => {
+    await Haptics.selectionAsync();
+    router.push('/(tabs)/orders' as Href);
+  }, []);
+
+  const onShopCatalog = useCallback(async () => {
+    await Haptics.selectionAsync();
+    router.push('/(tabs)/catalog' as Href);
+  }, []);
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -382,32 +395,39 @@ export default function HomeScreen() {
                 </Pressable>
               ) : null}
 
-              <Text className="mx-5 mt-6 text-base font-bold text-text">{t('smartReorder')}</Text>
-              <View className="mx-5 mt-3 gap-3">
-                {reorderRows.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => onReorderRowPress(item.id)}
-                    style={styles.reorderRow}>
-                    <View className="h-10 w-10 items-center justify-center rounded-lg bg-logo">
-                      <Ionicons name={item.icon} size={20} color="#FEB623" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="text-sm font-bold text-text">{item.title}</Text>
-                      <Text className="text-xs text-text-secondary">{item.subtitle}</Text>
+              {lastOrderedItems.length === 0 && orders.length === 0 ? (
+                <View style={styles.lastOrdersEmpty}>
+                  <View style={styles.lastOrdersEmptyIcon}>
+                    <Ionicons name="bag-outline" size={22} color="#1A1A1A" />
+                  </View>
+                  <View style={styles.lastOrdersEmptyText}>
+                    <Text style={styles.lastOrdersEmptyTitle}>{t('noLastOrdersPrompt')}</Text>
+                    <Text style={styles.lastOrdersEmptySubtitle}>{t('noLastOrdersSubtitle')}</Text>
+                  </View>
+                  <Pressable onPress={onShopCatalog} style={styles.lastOrdersShopButton}>
+                    <Text style={styles.lastOrdersShopText}>{t('shop')}</Text>
+                  </Pressable>
+                </View>
+              ) : displayItems.length > 0 ? (
+                <View style={styles.lastOrdersSection}>
+                  <View style={styles.lastOrdersHeader}>
+                    <View>
+                      <Text style={styles.lastOrdersTitle}>{t('lastOrders')}</Text>
+                      <Text style={styles.lastOrdersSubtitle}>{t('lastOrdersSubtitle')}</Text>
                     </View>
                     <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        onReorder(item.id);
-                      }}
-                      hitSlop={12}
-                      className="h-8 w-8 items-center justify-center rounded-full bg-primary">
-                      <Ionicons name="add" size={18} color="#FFFFFF" />
+                      onPress={onViewAllOrders}
+                      style={styles.lastOrdersViewAll}>
+                      <Text style={styles.lastOrdersViewAllText}>{t('viewAll')}</Text>
+                      <Ionicons name="chevron-forward" size={14} color="#FEB623" />
                     </Pressable>
-                  </Pressable>
-                ))}
-              </View>
+                  </View>
+
+                  {displayItems.map((item) => (
+                    <LastOrderCard key={item.id} item={item} />
+                  ))}
+                </View>
+              ) : null}
 
               <Pressable onPress={goLoyalty} className="mx-5 mt-5 mb-8 rounded-card bg-[#1A2332] p-5">
                 <View className="flex-row items-center justify-between">
@@ -430,7 +450,6 @@ export default function HomeScreen() {
               </Pressable>
             </ScrollView>
 
-            <Toast message={toastMsg} visible={toastVisible} />
           </SafeAreaView>
         </Animated.View>
 
@@ -602,13 +621,79 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
   },
-  reorderRow: {
+  lastOrdersSection: {
+    marginHorizontal: 16,
+    marginTop: 20,
+  },
+  lastOrdersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  lastOrdersTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  lastOrdersSubtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
+  },
+  lastOrdersViewAll: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    gap: 2,
+  },
+  lastOrdersViewAllText: {
+    fontSize: 13,
+    color: '#FEB623',
+    fontWeight: '700',
+  },
+  lastOrdersEmpty: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    backgroundColor: '#FFF4D1',
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
-    borderColor: '#E8E8E8',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
+    borderColor: '#FEB623',
+    borderStyle: 'dashed',
+  },
+  lastOrdersEmptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FEB623',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lastOrdersEmptyText: {
+    flex: 1,
+  },
+  lastOrdersEmptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  lastOrdersEmptySubtitle: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  lastOrdersShopButton: {
+    backgroundColor: '#FEB623',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  lastOrdersShopText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
 });

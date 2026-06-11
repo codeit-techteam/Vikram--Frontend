@@ -66,7 +66,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     brand: 'JSW',
     price: 58450,
     unit: 'MT',
-    image: 'tmt steel bars construction',
+    image: 'jsw steel rods construction',
   },
   {
     id: 'p5',

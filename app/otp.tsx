@@ -12,7 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
+
+const RETURNING_USER_KEY = '@bajriwala/returning_user';
 
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
@@ -54,8 +57,9 @@ export default function OTPScreen() {
     if (otp.join('').length < 6) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setTimeout(() => {
+    setTimeout(async () => {
       setLoading(false);
+      await storage.setItem(RETURNING_USER_KEY, 'true');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.push('/role-selection');
     }, 1500);

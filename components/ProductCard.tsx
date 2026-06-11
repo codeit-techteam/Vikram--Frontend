@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,11 @@ import { getProductImageSource } from '@constants/catalogData';
 import type { Product } from '@/types/catalog';
 import { useCartStore } from '@store/cartStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { formatINR } from '@utils/formatCurrency';
 import { productToCartItem } from '@utils/cartHelpers';
+
+const GOLD = '#FEB623';
+const DARK = '#1A1A1A';
 
 interface ProductCardProps {
   product: Product;
@@ -50,8 +54,9 @@ function getStatusLabel(status: Product['status'], t: ReturnType<typeof useTrans
 export function ProductCard({ product, categoryId, categoryName, highlightQuery }: ProductCardProps) {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
-  const [quantity, setQuantity] = useState(product.defaultQuantity);
-  const [addedFlash, setAddedFlash] = useState(false);
+  const [quantity, setQuantity] = useState(0);
+  const [added, setAdded] = useState(false);
+  const [isEditingQty, setIsEditingQty] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const btnScale = useSharedValue(1);
   const flashOpacity = useSharedValue(0);
@@ -64,6 +69,12 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
       : (product.detailName ?? product.name);
 
   const statusColors = getStatusColors(product.status);
+  const isBulk = quantity >= product.bulkThreshold;
+  const unitPrice = isBulk ? product.bulkPriceValue : product.retailPriceValue;
+  const totalPrice = quantity * unitPrice;
+  const minOrder = product.minOrder ?? 1;
+  const step = product.incrementStep ?? 1;
+  const canAddToCart = quantity >= minOrder;
 
   const btnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
@@ -85,7 +96,23 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
     } as Href);
   };
 
+  const increment = () => {
+    setQuantity((q) => (q === 0 ? minOrder : q + step));
+    Haptics.selectionAsync();
+  };
+
+  const decrement = () => {
+    setQuantity((q) => (q <= minOrder ? 0 : q - step));
+    Haptics.selectionAsync();
+  };
+
+  const handleQuantityBlur = () => {
+    setIsEditingQty(false);
+  };
+
   const handleAddToCart = async () => {
+    if (!canAddToCart) return;
+
     btnScale.value = withSequence(
       withSpring(0.95, { damping: 15 }),
       withSpring(1, { damping: 12 }),
@@ -96,8 +123,8 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
 
     addItem(productToCartItem(product, quantity));
 
-    setAddedFlash(true);
-    setTimeout(() => setAddedFlash(false), 500);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
   };
 
   return (
@@ -110,7 +137,7 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
         />
         <View
           className="absolute left-3 top-3 rounded-full px-3 py-1"
-          style={{ backgroundColor: product.badgeColor ?? '#FEB623' }}>
+          style={{ backgroundColor: product.badgeColor ?? GOLD }}>
           <Text className="text-[10px] font-bold text-onPrimary">{product.badge}</Text>
         </View>
         <ScaledPressable className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-surface/90">
@@ -151,49 +178,161 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
           <Text className="text-xs text-text-secondary">• {product.spec}</Text>
         </View>
 
-        <View className="mt-4 border-t border-border pt-3">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-text-secondary">{t('retailPrice')}</Text>
-            <Text className="text-sm font-semibold text-text">{product.retailPrice}</Text>
-          </View>
-          <View className="mt-2 flex-row items-center justify-between">
-            <Text className="text-sm font-medium text-primary">{product.bulkLabel}</Text>
-            <Text className="text-base font-bold text-primary">{product.bulkPrice}</Text>
-          </View>
-        </View>
-
-        <View className="mt-4 flex-row items-center gap-3">
-          <View className="flex-row items-center rounded-lg bg-timer px-1 py-1">
-            <ScaledPressable
-              onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="h-8 w-8 items-center justify-center">
-              <Text className="text-lg font-bold text-primary">−</Text>
-            </ScaledPressable>
-            <Text className="min-w-[40px] text-center text-base font-bold text-text">
-              {quantity}
+        <View
+          style={{
+            backgroundColor: '#F8F8F8',
+            borderRadius: 10,
+            padding: 10,
+            marginTop: 10,
+            marginBottom: 12,
+          }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text style={{ fontSize: 13, color: '#888' }}>{t('retailPrice')}</Text>
+            <Text style={{ fontSize: 13, color: DARK, fontWeight: '600' }}>
+              {formatINR(product.retailPriceValue)} / {product.unit}
             </Text>
-            <ScaledPressable
-              onPress={() => setQuantity((q) => q + 1)}
-              className="h-8 w-8 items-center justify-center">
-              <Text className="text-lg font-bold text-primary">+</Text>
-            </ScaledPressable>
+          </View>
+          {product.bulkThreshold > 0 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 13, color: GOLD, fontWeight: '700' }}>
+                {product.bulkLabel}
+              </Text>
+              <Text style={{ fontSize: 13, color: GOLD, fontWeight: '700' }}>
+                {formatINR(product.bulkPriceValue)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: step > 1 ? 4 : 12,
+          }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderWidth: 1.5,
+              borderColor: '#E0E0E0',
+              borderRadius: 10,
+              overflow: 'hidden',
+              height: 42,
+            }}>
+            <TouchableOpacity
+              onPress={decrement}
+              style={{ paddingHorizontal: 12, height: '100%', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 20, color: DARK, fontWeight: '300' }}>−</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsEditingQty(true)}
+              style={{
+                paddingHorizontal: 8,
+                minWidth: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+              }}>
+              {isEditingQty ? (
+                <TextInput
+                  style={{
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: DARK,
+                    textAlign: 'center',
+                    minWidth: 44,
+                  }}
+                  keyboardType="number-pad"
+                  value={String(quantity)}
+                  onChangeText={(val) => {
+                    const num = parseInt(val, 10);
+                    if (!Number.isNaN(num) && num >= 0) setQuantity(num);
+                    if (val === '') setQuantity(0);
+                  }}
+                  onBlur={handleQuantityBlur}
+                  autoFocus
+                  selectTextOnFocus
+                />
+              ) : (
+                <Text style={{ fontSize: 15, fontWeight: '700', color: DARK }}>
+                  {quantity.toLocaleString('en-IN')}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={increment}
+              style={{ paddingHorizontal: 12, height: '100%', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 20, color: DARK, fontWeight: '300' }}>+</Text>
+            </TouchableOpacity>
           </View>
 
-          <Animated.View style={[{ flex: 1 }, btnAnimStyle]}>
-            <ScaledPressable
-              onPress={handleAddToCart}
-              className={`relative flex-row items-center justify-center rounded-lg py-3 ${
-                addedFlash ? 'bg-success' : 'bg-primary'
-              }`}>
-              <Animated.View
-                className="absolute inset-0 rounded-lg bg-success"
-                style={flashStyle}
-              />
-              <Ionicons name="cart-outline" size={18} color="#FFFFFF" />
-              <Text className="ml-2 text-xs font-bold text-onPrimary">{t('addToCart')}</Text>
-            </ScaledPressable>
-          </Animated.View>
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }}>Total</Text>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                color: isBulk ? GOLD : DARK,
+              }}>
+              {formatINR(totalPrice, false)}
+            </Text>
+            {isBulk && quantity > 0 && (
+              <Text style={{ fontSize: 10, color: GOLD, fontWeight: '600' }}>
+                Bulk price applied ✓
+              </Text>
+            )}
+          </View>
         </View>
+
+        {step > 1 && (
+          <Text
+            style={{
+              fontSize: 11,
+              color: '#888',
+              marginTop: -4,
+              marginBottom: 8,
+              textAlign: 'center',
+            }}>
+            Tap number to type quantity directly
+          </Text>
+        )}
+
+        <Animated.View style={btnAnimStyle}>
+          <TouchableOpacity
+            onPress={handleAddToCart}
+            disabled={!canAddToCart}
+            style={{
+              backgroundColor: added ? '#34C759' : canAddToCart ? GOLD : '#E0E0E0',
+              borderRadius: 12,
+              paddingVertical: 13,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}>
+            <Animated.View
+              className="absolute inset-0 rounded-lg bg-success"
+              style={flashStyle}
+            />
+            <Ionicons
+              name={added ? 'checkmark' : 'cart-outline'}
+              size={18}
+              color={added ? '#fff' : canAddToCart ? DARK : '#AAA'}
+            />
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '800',
+                color: added ? '#fff' : canAddToCart ? DARK : '#AAA',
+              }}>
+              {added ? 'Added to Cart ✓' : t('addToCart')}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );

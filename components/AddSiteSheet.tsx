@@ -1,10 +1,13 @@
 import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { Ionicons } from '@expo/vector-icons';
 
-import { PrimaryButton } from '@components/PrimaryButton';
 import type { DeliverySite } from '@store/useSiteStore';
+
+const GOLD = '#FEB623';
+const DARK = '#1A1A1A';
 
 interface AddSiteSheetProps {
   editSite?: DeliverySite | null;
@@ -19,20 +22,64 @@ interface AddSiteSheetProps {
   onClose: () => void;
 }
 
+type SiteFormKey = 'siteName' | 'address' | 'pincode' | 'gateInstructions';
+
+const FORM_FIELDS: {
+  label: string;
+  placeholder: string;
+  key: SiteFormKey;
+  icon: keyof typeof Ionicons.glyphMap;
+  multiline?: boolean;
+  keyboard?: 'default' | 'number-pad';
+}[] = [
+  {
+    label: 'Site Name',
+    placeholder: 'e.g. Skyline Tower Site',
+    key: 'siteName',
+    icon: 'business-outline',
+  },
+  {
+    label: 'Full Address',
+    placeholder: 'Plot no, Street, Area',
+    key: 'address',
+    icon: 'location-outline',
+    multiline: true,
+  },
+  {
+    label: 'Pincode',
+    placeholder: '110001',
+    key: 'pincode',
+    icon: 'mail-outline',
+    keyboard: 'number-pad',
+  },
+  {
+    label: 'Gate Instructions',
+    placeholder: 'e.g. Gate 4, call before arrival (Optional)',
+    key: 'gateInstructions',
+    icon: 'information-circle-outline',
+    multiline: true,
+  },
+];
+
 export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
   ({ editSite, labels, onSave, onClose }, ref) => {
-    const [name, setName] = useState(editSite?.name ?? '');
-    const [address, setAddress] = useState(editSite?.address ?? '');
-    const [pincode, setPincode] = useState(editSite?.pincode ?? '');
-    const [gateInstructions, setGateInstructions] = useState(editSite?.gateInstructions ?? '');
+    const [siteForm, setSiteForm] = useState({
+      siteName: editSite?.name ?? '',
+      address: editSite?.address ?? '',
+      pincode: editSite?.pincode ?? '',
+      gateInstructions: editSite?.gateInstructions ?? '',
+    });
+    const [focusedField, setFocusedField] = useState<SiteFormKey | null>(null);
 
-    const snapPoints = useMemo(() => ['65%'], []);
+    const snapPoints = useMemo(() => ['85%'], []);
 
     useEffect(() => {
-      setName(editSite?.name ?? '');
-      setAddress(editSite?.address ?? '');
-      setPincode(editSite?.pincode ?? '');
-      setGateInstructions(editSite?.gateInstructions ?? '');
+      setSiteForm({
+        siteName: editSite?.name ?? '',
+        address: editSite?.address ?? '',
+        pincode: editSite?.pincode ?? '',
+        gateInstructions: editSite?.gateInstructions ?? '',
+      });
     }, [editSite]);
 
     const renderBackdrop = useCallback(
@@ -43,19 +90,18 @@ export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
     );
 
     const handleSave = () => {
-      if (!name.trim() || !address.trim() || !pincode.trim()) return;
+      if (!siteForm.siteName.trim() || !siteForm.address.trim()) return;
       onSave({
-        name: name.trim(),
-        address: address.trim(),
-        pincode: pincode.trim(),
-        gateInstructions: gateInstructions.trim() || undefined,
+        name: siteForm.siteName.trim(),
+        address: siteForm.address.trim(),
+        pincode: siteForm.pincode.trim(),
+        gateInstructions: siteForm.gateInstructions.trim() || undefined,
       });
-      setName('');
-      setAddress('');
-      setPincode('');
-      setGateInstructions('');
+      setSiteForm({ siteName: '', address: '', pincode: '', gateInstructions: '' });
       onClose();
     };
+
+    const canSave = Boolean(siteForm.siteName.trim() && siteForm.address.trim());
 
     return (
       <BottomSheet
@@ -65,47 +111,107 @@ export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
         enablePanDownToClose
         backdropComponent={renderBackdrop}
         onClose={onClose}
-        backgroundStyle={{ borderRadius: 20 }}>
-        <BottomSheetView className="px-5 pb-8">
-          <Text className="mb-4 text-lg font-bold text-text">{labels.saveSite}</Text>
+        backgroundStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+        handleIndicatorStyle={{ backgroundColor: '#D4C89A', width: 40 }}>
+        <BottomSheetScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 24,
+            }}>
+            <View>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: DARK }}>{labels.saveSite}</Text>
+              <Text style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
+                Register a new delivery point
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={onClose}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#F0F0F0',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Ionicons name="close" size={18} color="#666" />
+            </TouchableOpacity>
+          </View>
 
-          <Text className="mb-1 text-sm text-text-secondary">{labels.siteName}</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-            placeholderTextColor="#999"
-          />
+          {FORM_FIELDS.map((field) => (
+            <View key={field.key} style={{ marginBottom: 16 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginBottom: 6,
+                }}>
+                <Ionicons name={field.icon} size={14} color="#888" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>
+                  {field.key === 'siteName'
+                    ? labels.siteName
+                    : field.key === 'address'
+                      ? labels.fullAddress
+                      : field.key === 'pincode'
+                        ? labels.pincode
+                        : labels.gateInstructions}
+                </Text>
+              </View>
+              <TextInput
+                style={{
+                  borderWidth: 1.5,
+                  borderColor: focusedField === field.key ? GOLD : '#E0E0E0',
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: field.multiline ? 12 : 13,
+                  fontSize: 15,
+                  color: DARK,
+                  backgroundColor: '#F8F8F8',
+                  minHeight: field.multiline ? 80 : undefined,
+                  textAlignVertical: field.multiline ? 'top' : 'center',
+                }}
+                placeholder={field.placeholder}
+                placeholderTextColor="#AAAAAA"
+                multiline={field.multiline}
+                keyboardType={field.keyboard ?? 'default'}
+                maxLength={field.key === 'pincode' ? 6 : undefined}
+                value={siteForm[field.key]}
+                onChangeText={(val) => setSiteForm((prev) => ({ ...prev, [field.key]: val }))}
+                onFocus={() => setFocusedField(field.key)}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+          ))}
 
-          <Text className="mb-1 text-sm text-text-secondary">{labels.fullAddress}</Text>
-          <TextInput
-            value={address}
-            onChangeText={setAddress}
-            multiline
-            className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-            placeholderTextColor="#999"
-          />
-
-          <Text className="mb-1 text-sm text-text-secondary">{labels.pincode}</Text>
-          <TextInput
-            value={pincode}
-            onChangeText={setPincode}
-            keyboardType="number-pad"
-            maxLength={6}
-            className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-            placeholderTextColor="#999"
-          />
-
-          <Text className="mb-1 text-sm text-text-secondary">{labels.gateInstructions}</Text>
-          <TextInput
-            value={gateInstructions}
-            onChangeText={setGateInstructions}
-            className="mb-5 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-            placeholderTextColor="#999"
-          />
-
-          <PrimaryButton title={labels.saveSite} onPress={handleSave} disabled={!name || !address || !pincode} />
-        </BottomSheetView>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={!canSave}
+            style={{
+              backgroundColor: canSave ? GOLD : '#E0E0E0',
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: 'center',
+              marginTop: 8,
+              shadowColor: '#C8900A',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: canSave ? 0.25 : 0,
+              shadowRadius: 8,
+              elevation: canSave ? 6 : 0,
+            }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '800',
+                color: canSave ? DARK : '#AAA',
+              }}>
+              {labels.saveSite}
+            </Text>
+          </TouchableOpacity>
+        </BottomSheetScrollView>
       </BottomSheet>
     );
   },

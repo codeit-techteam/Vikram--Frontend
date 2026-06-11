@@ -32,6 +32,8 @@ export interface Product {
   bulkPriceValue: number;
   unit: string;
   defaultQuantity: number;
+  minOrder?: number;
+  incrementStep?: number;
   bulkThreshold: number;
   description: string;
   descriptionHi?: string;

@@ -35,6 +35,8 @@ import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
 import { productToCartItem } from '@utils/cartHelpers';
 
+const DARK = '#1A1A1A';
+
 export default function ProductDetailScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
@@ -250,8 +252,17 @@ export default function ProductDetailScreen() {
             className={`flex-row items-center justify-center rounded-pill py-4 ${
               cartFlash ? 'bg-success' : 'bg-primary'
             }`}>
-            <Ionicons name="cart-outline" size={20} color="#FFFFFF" />
-            <Text className="ml-2 text-base font-bold text-onPrimary">{t('addToCart')}</Text>
+            <Ionicons
+              name="cart-outline"
+              size={20}
+              color={cartFlash ? '#FFFFFF' : DARK}
+            />
+            <Text
+              className="ml-2 text-base font-bold"
+              style={{ color: cartFlash ? '#FFFFFF' : DARK }}
+              numberOfLines={1}>
+              {t('addToCart')}
+            </Text>
           </ScaledPressable>
         </Animated.View>
       </View>

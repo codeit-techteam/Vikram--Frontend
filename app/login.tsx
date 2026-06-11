@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -15,19 +15,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { images } from '@constants/images';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
+import { storage } from '@lib/storage';
 
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
 const DARK = '#1A1A1A';
 const WARM_BORDER = '#E8E0C8';
 const WARM_SHADOW = '#C8900A';
+const RETURNING_USER_KEY = '@bajriwala/returning_user';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
+  const [isFirstTime, setIsFirstTime] = useState(true);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
+
+  useEffect(() => {
+    storage.getItem(RETURNING_USER_KEY).then((flag) => {
+      setIsFirstTime(flag !== 'true');
+    });
+  }, []);
 
   const handleLogin = () => {
     setLoading(true);
@@ -84,27 +93,53 @@ export default function LoginScreen() {
             shadowRadius: 20,
             elevation: 10,
           }}>
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: '800',
-              color: DARK,
-              textAlign: 'center',
-              marginBottom: 6,
-            }}>
-            {t('welcomeBack')}
-          </Text>
-
-          <Text
-            style={{
-              fontSize: 14,
-              color: '#555555',
-              textAlign: 'center',
-              lineHeight: 20,
-              marginBottom: 24,
-            }}>
-            {t('loginSubtitle')}
-          </Text>
+          {isFirstTime ? (
+            <>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: '700',
+                  color: DARK,
+                  textAlign: 'center',
+                }}>
+                Welcome to Bajriwala
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: '#666',
+                  textAlign: 'center',
+                  marginTop: 6,
+                  lineHeight: 20,
+                  marginBottom: 24,
+                }}>
+                India's trusted construction materials platform. Enter your mobile to get started.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text
+                style={{
+                  fontSize: 24,
+                  fontWeight: '800',
+                  color: DARK,
+                  textAlign: 'center',
+                }}>
+                Welcome to Bajriwala
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: '#666',
+                  textAlign: 'center',
+                  marginTop: 6,
+                  lineHeight: 20,
+                  marginBottom: 24,
+                }}>
+                Enter your mobile number to manage site logistics and procurement.
+              </Text>
+            </>
+          )}
 
           <Text
             style={{
@@ -145,7 +180,7 @@ export default function LoginScreen() {
                 fontSize: 15,
                 color: DARK,
               }}
-              placeholder="98765 43210"
+              placeholder="Enter mobile number"
               placeholderTextColor="#BBAA88"
               keyboardType="phone-pad"
               maxLength={10}

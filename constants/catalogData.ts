@@ -112,6 +112,7 @@ const cementProducts: Product[] = [
     bulkPriceValue: 398.5,
     unit: 'Bag',
     defaultQuantity: 10,
+    minOrder: 10,
     bulkThreshold: 50,
     categoryType: 'cement',
     description:
@@ -177,6 +178,7 @@ const steelProducts: Product[] = [
   {
     id: 's2',
     badge: '⚡ 90 min ETA',
+    image: images.productJswNeosteel,
     imageSearch: 'jsw steel rods construction',
     category: 'STEEL & REBAR',
     name: 'JSW Neo Steel Bars',
@@ -276,6 +278,8 @@ const bricksProducts: Product[] = [
     bulkPriceValue: 7.2,
     unit: 'pc',
     defaultQuantity: 500,
+    minOrder: 500,
+    incrementStep: 100,
     bulkThreshold: 5000,
     categoryType: 'bricks',
     description:
@@ -435,6 +439,9 @@ export function getCategoryIdForProduct(productId: string): string | undefined {
 
 export function getProductImageSource(product: Product): ImageSourcePropType {
   if (product.image) return product.image;
+  if (product.imageSearch === 'jsw steel rods construction') {
+    return images.productJswNeosteel;
+  }
   return { uri: getProductImageUrl(product.imageSearch) };
 }
 

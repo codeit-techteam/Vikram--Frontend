@@ -30,6 +30,11 @@ export interface OrderMaterial {
   gstAmount: number;
 }
 
+export interface LastOrderedProduct extends CartItem {
+  orderedAt: Date;
+  orderId: string;
+}
+
 export interface Order {
   id: string;
   status: OrderStatus;
@@ -59,6 +64,11 @@ export interface Order {
   deliveryFee: number;
   total: number;
   createdAt: Date;
+  deliveredAt?: Date;
+  deliveredEarly?: boolean;
+  estimatedDelivery?: string;
+  eta?: string;
+  refundAmount?: number;
   paymentMethod: string;
   paymentMethodLabel: string;
   deliveryETA: string;
@@ -79,6 +89,7 @@ interface OrderState {
   dismissProTip: () => void;
   activeOrderCount: () => number;
   refreshOrders: () => void;
+  getLastOrderedProducts: () => LastOrderedProduct[];
 }
 
 const SKYLINE_SITE: DeliverySite = {
@@ -97,31 +108,54 @@ export const SAMPLE_ORDERS: Order[] = [
     price: 425,
     unit: 'bag',
     imageSearch: 'ultratech',
-    badge: 'GET READY',
+    badge: null,
     isBulkDiscount: false,
-    items: [],
+    items: [
+      {
+        id: 'c1',
+        name: 'UltraTech Premium PPC Cement',
+        description: '50kg Bag',
+        image: 'ultratech cement bags warehouse',
+        unitPrice: 425,
+        bulkPrice: 398.5,
+        bulkThreshold: 50,
+        quantity: 50,
+        unit: 'Bags',
+      },
+      {
+        id: 's2',
+        name: 'JSW Neo Steel Bars',
+        description: '12mm Fe550D',
+        image: 'jsw steel rods construction',
+        unitPrice: 61000,
+        bulkPrice: 57200,
+        bulkThreshold: 10,
+        quantity: 2,
+        unit: 'MT',
+      },
+    ],
     materials: [
       {
         id: 'm1',
-        name: 'Ultra-Tech Cement (Grade 53)',
-        description: 'Industrial Premium Blend • 50kg Bags',
+        name: 'UltraTech Premium PPC Cement',
+        description: '50kg Bag',
         imageSearch: 'ultratech',
-        quantityLabel: '200 Bags',
-        unitPriceLabel: '₹570',
-        total: 114000,
+        quantityLabel: '50 Bags',
+        unitPriceLabel: '₹425',
+        total: 21250,
         gstRate: 18,
-        gstAmount: 24857,
+        gstAmount: 3825,
       },
       {
         id: 'm2',
-        name: 'Jindal Panther TMT 12mm',
-        description: 'High-Ductility Reinforcement Bars',
+        name: 'JSW Neosteel TMT Bars',
+        description: '12mm Fe550D',
         imageSearch: 'jsw-neosteel',
-        quantityLabel: '5 Tons',
-        unitPriceLabel: '₹69,000',
-        total: 345000,
+        quantityLabel: '2 MT',
+        unitPriceLabel: '₹58,450',
+        total: 116900,
         gstRate: 18,
-        gstAmount: 62827,
+        gstAmount: 21042,
       },
     ],
     timeline: [
@@ -143,87 +177,65 @@ export const SAMPLE_ORDERS: Order[] = [
     invoiceId: 'BJW-INV-88294',
     invoiceFileName: 'Invoice_BJW_88294.pdf',
     invoiceFileSize: '1.2 MB',
-    totalPayable: 541564,
-    subtotal: 459000,
-    gst: 77564,
+    totalPayable: 138150,
+    subtotal: 138150,
+    gst: 24867,
     deliveryFee: 0,
-    total: 541564,
+    total: 138150,
     createdAt: new Date(),
+    eta: '4:15 PM Today',
+    deliveredEarly: false,
     paymentMethod: 'corporate_credit',
     paymentMethodLabel: 'Corporate Credit Line Ending in ••8821',
     deliveryETA: 'Today, 4:15 PM',
     arrivingBy: '4:15 PM Today',
     warehouse: 'Thane West Hub Warehouse',
     statusLabel: 'ON THE WAY',
-    quantitySummary: '100 Bags Cement',
+    quantitySummary: '50 Bags Cement + 2 MT Steel',
     productGrade: 'Ultratech Premium Grade',
   },
   {
-    id: 'BJW-88295',
-    status: 'processing',
-    productName: 'JSW Neosteel TMT Bars',
-    description: '12mm FE550D High Ductility bars for earthquake-resistant structures.',
-    price: 58450,
-    unit: 'ton',
-    imageSearch: 'jsw-neosteel',
-    badge: 'BULK SAVINGS',
-    isBulkDiscount: true,
-    bulkDiscountLabel: 'Bulk Discount',
-    items: [],
-    materials: [],
-    timeline: [
-      { label: 'Placed', time: '09:00 AM, Today', done: true },
-      { label: 'Packed', time: 'Pending', done: false },
-      { label: 'Dispatched', time: 'Pending', done: false },
-      { label: 'Out for Delivery', time: 'Pending', done: false },
-      { label: 'Delivered', time: 'Pending', done: false },
-    ],
-    trackingTimeline: [
-      { label: 'Dispatched', time: '', done: false },
-      { label: 'In Transit', time: '', done: false },
-      { label: 'Estimated Arrival', time: 'Tomorrow', done: false },
-    ],
-    deliverySite: SKYLINE_SITE,
-    driverName: 'Rajesh Kumar',
-    vehicleNumber: 'MH 01 AB 1234',
-    loyaltyPointsEarned: 850,
-    invoiceId: 'BJW-INV-88295',
-    invoiceFileName: 'Invoice_BJW_88295.pdf',
-    invoiceFileSize: '980 KB',
-    totalPayable: 58450,
-    subtotal: 49534,
-    gst: 8916,
-    deliveryFee: 0,
-    total: 58450,
-    createdAt: new Date(Date.now() - 86400000),
-    paymentMethod: 'upi',
-    paymentMethodLabel: 'Google Pay',
-    deliveryETA: 'Tomorrow, 11:00 AM',
-    arrivingBy: 'Tomorrow, 11:00 AM',
-    warehouse: 'Thane West Hub Warehouse',
-    statusLabel: 'PROCESSING',
-    quantitySummary: '1.5 Tons TMT Bars',
-    productGrade: 'FE550D Grade',
-  },
-  {
-    id: 'BJW-88296',
+    id: 'BJW-88251',
     status: 'delivered',
-    productName: 'Crushed Stone Aggregates',
-    description: '20mm Grade - Premium Blue Metal',
-    price: 1850,
-    unit: 'unit',
-    imageSearch: 'crushed stone aggregate construction',
+    productName: 'M-Sand Zone II',
+    description: 'Manufactured sand for concrete and plaster work',
+    price: 1800,
+    unit: 'ton',
+    imageSearch: 'manufactured sand construction',
     badge: null,
     isBulkDiscount: false,
-    minUnits: 15,
-    items: [],
-    materials: [],
+    items: [
+      {
+        id: 'sa1',
+        name: 'M-Sand (Manufactured)',
+        description: 'Zone II Grade',
+        image: 'manufactured sand construction',
+        unitPrice: 1800,
+        bulkPrice: 1550,
+        bulkThreshold: 5,
+        quantity: 5,
+        unit: 'Tons',
+      },
+    ],
+    materials: [
+      {
+        id: 'm1',
+        name: 'M-Sand Zone II',
+        description: 'Zone II Grade',
+        imageSearch: 'manufactured sand construction',
+        quantityLabel: '5 Tons',
+        unitPriceLabel: '₹1,800',
+        total: 9000,
+        gstRate: 18,
+        gstAmount: 1620,
+      },
+    ],
     timeline: [
-      { label: 'Placed', time: 'Oct 20, 10:00 AM', done: true },
-      { label: 'Packed', time: 'Oct 20, 12:00 PM', done: true },
-      { label: 'Dispatched', time: 'Oct 20, 2:00 PM', done: true },
-      { label: 'Out for Delivery', time: 'Oct 20, 3:30 PM', done: true },
-      { label: 'Delivered', time: 'Oct 20, 5:00 PM', done: true },
+      { label: 'Placed', time: 'Mon, 10:00 AM', done: true },
+      { label: 'Packed', time: 'Mon, 12:00 PM', done: true },
+      { label: 'Dispatched', time: 'Mon, 2:00 PM', done: true },
+      { label: 'Out for Delivery', time: 'Mon, 3:30 PM', done: true },
+      { label: 'Delivered', time: 'Mon, 4:30 PM', done: true },
     ],
     trackingTimeline: [
       { label: 'Dispatched', time: '', done: true },
@@ -233,23 +245,98 @@ export const SAMPLE_ORDERS: Order[] = [
     deliverySite: SKYLINE_SITE,
     driverName: 'Rajesh Kumar',
     vehicleNumber: 'MH 01 AB 1234',
-    loyaltyPointsEarned: 320,
-    invoiceId: 'BJW-INV-88296',
-    invoiceFileName: 'Invoice_BJW_88296.pdf',
-    invoiceFileSize: '750 KB',
-    totalPayable: 27750,
-    subtotal: 23517,
-    gst: 4233,
+    loyaltyPointsEarned: 90,
+    invoiceId: 'BJW-INV-88251',
+    invoiceFileName: 'Invoice_BJW_88251.pdf',
+    invoiceFileSize: '850 KB',
+    totalPayable: 9000,
+    subtotal: 9000,
+    gst: 1620,
     deliveryFee: 0,
-    total: 27750,
+    total: 9000,
+    createdAt: new Date(Date.now() - 3 * 86400000),
+    deliveredAt: new Date(Date.now() - 2 * 86400000),
+    deliveredEarly: true,
+    paymentMethod: 'upi',
+    paymentMethodLabel: 'Google Pay',
+    deliveryETA: 'Delivered',
+    arrivingBy: 'Delivered',
+    warehouse: 'Thane West Hub Warehouse',
+    statusLabel: 'DELIVERED',
+    quantitySummary: '5 Tons M-Sand',
+    productGrade: 'Zone II',
+  },
+  {
+    id: 'BJW-88200',
+    status: 'delivered',
+    productName: '20mm Stone Aggregate',
+    description: 'Premium crushed stone aggregate for concrete',
+    price: 1600,
+    unit: 'MT',
+    imageSearch: 'crushed stone aggregate construction',
+    badge: null,
+    isBulkDiscount: false,
+    items: [
+      {
+        id: 'sc1',
+        name: '20mm Stone Aggregate',
+        description: '20mm Grade',
+        image: 'stone aggregate construction',
+        unitPrice: 1600,
+        bulkPrice: 1380,
+        bulkThreshold: 5,
+        quantity: 3,
+        unit: 'MT',
+      },
+    ],
+    materials: [
+      {
+        id: 'm1',
+        name: '20mm Stone Aggregate',
+        description: '20mm Grade',
+        imageSearch: 'crushed stone aggregate construction',
+        quantityLabel: '3 MT',
+        unitPriceLabel: '₹1,600',
+        total: 4800,
+        gstRate: 18,
+        gstAmount: 864,
+      },
+    ],
+    timeline: [
+      { label: 'Placed', time: 'Wed, 10:00 AM', done: true },
+      { label: 'Packed', time: 'Wed, 12:00 PM', done: true },
+      { label: 'Dispatched', time: 'Wed, 2:00 PM', done: true },
+      { label: 'Out for Delivery', time: 'Wed, 3:30 PM', done: true },
+      { label: 'Delivered', time: 'Wed, 5:00 PM', done: true },
+    ],
+    trackingTimeline: [
+      { label: 'Dispatched', time: '', done: true },
+      { label: 'In Transit', time: '', done: true },
+      { label: 'Estimated Arrival', time: 'Delivered', done: true },
+    ],
+    deliverySite: SKYLINE_SITE,
+    driverName: 'Rajesh Kumar',
+    vehicleNumber: 'MH 01 AB 1234',
+    loyaltyPointsEarned: 48,
+    invoiceId: 'BJW-INV-88200',
+    invoiceFileName: 'Invoice_BJW_88200.pdf',
+    invoiceFileSize: '750 KB',
+    totalPayable: 4800,
+    subtotal: 4800,
+    gst: 864,
+    deliveryFee: 0,
+    total: 4800,
     createdAt: new Date(Date.now() - 7 * 86400000),
+    deliveredAt: new Date(Date.now() - 6 * 86400000),
+    deliveredEarly: false,
+    refundAmount: 339,
     paymentMethod: 'cod',
     paymentMethodLabel: 'Pay on Delivery',
     deliveryETA: 'Delivered',
-    arrivingBy: 'Delivered Oct 20',
+    arrivingBy: 'Delivered',
     warehouse: 'Thane West Hub Warehouse',
     statusLabel: 'DELIVERED',
-    quantitySummary: '15 Units Aggregate',
+    quantitySummary: '3 MT Aggregate',
     productGrade: '20mm Grade',
   },
 ];
@@ -286,4 +373,28 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set((state) => ({
       orders: [...state.orders].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     })),
+
+  getLastOrderedProducts: () => {
+    const state = get();
+    const seen = new Set<string>();
+    const result: LastOrderedProduct[] = [];
+
+    const sorted = [...state.orders].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    for (const order of sorted) {
+      for (const item of order.items) {
+        if (!seen.has(item.id) && result.length < 3) {
+          seen.add(item.id);
+          result.push({
+            ...item,
+            orderedAt: order.createdAt,
+            orderId: order.id,
+          });
+        }
+      }
+    }
+    return result;
+  },
 }));
