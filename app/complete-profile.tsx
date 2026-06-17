@@ -52,12 +52,11 @@ export default function CompleteProfileScreen() {
   const [gstSkipped, setGstSkipped] = useState(false);
 
   const handleContinue = () => {
+    if (loading) return;
     setLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/delivery-location' as Href);
-    }, 800);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    router.push('/delivery-location' as Href);
+    setLoading(false);
   };
 
   const handleLanguageSelect = (lang: AppLanguage) => {

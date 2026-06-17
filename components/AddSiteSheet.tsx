@@ -1,7 +1,11 @@
 import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { DeliverySite } from '@store/useSiteStore';
@@ -25,35 +29,21 @@ interface AddSiteSheetProps {
 type SiteFormKey = 'siteName' | 'address' | 'pincode' | 'gateInstructions';
 
 const FORM_FIELDS: {
-  label: string;
   placeholder: string;
   key: SiteFormKey;
   icon: keyof typeof Ionicons.glyphMap;
   multiline?: boolean;
   keyboard?: 'default' | 'number-pad';
 }[] = [
+  { placeholder: 'e.g. Skyline Tower Site', key: 'siteName', icon: 'business-outline' },
   {
-    label: 'Site Name',
-    placeholder: 'e.g. Skyline Tower Site',
-    key: 'siteName',
-    icon: 'business-outline',
-  },
-  {
-    label: 'Full Address',
     placeholder: 'Plot no, Street, Area',
     key: 'address',
     icon: 'location-outline',
     multiline: true,
   },
+  { placeholder: '110001', key: 'pincode', icon: 'mail-outline', keyboard: 'number-pad' },
   {
-    label: 'Pincode',
-    placeholder: '110001',
-    key: 'pincode',
-    icon: 'mail-outline',
-    keyboard: 'number-pad',
-  },
-  {
-    label: 'Gate Instructions',
     placeholder: 'e.g. Gate 4, call before arrival (Optional)',
     key: 'gateInstructions',
     icon: 'information-circle-outline',
@@ -61,7 +51,7 @@ const FORM_FIELDS: {
   },
 ];
 
-export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
+export const AddSiteSheet = forwardRef<BottomSheetModal, AddSiteSheetProps>(
   ({ editSite, labels, onSave, onClose }, ref) => {
     const [siteForm, setSiteForm] = useState({
       siteName: editSite?.name ?? '',
@@ -104,13 +94,12 @@ export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
     const canSave = Boolean(siteForm.siteName.trim() && siteForm.address.trim());
 
     return (
-      <BottomSheet
+      <BottomSheetModal
         ref={ref}
-        index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
-        onClose={onClose}
+        onDismiss={onClose}
         backgroundStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
         handleIndicatorStyle={{ backgroundColor: '#D4C89A', width: 40 }}>
         <BottomSheetScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
@@ -196,11 +185,6 @@ export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
               paddingVertical: 16,
               alignItems: 'center',
               marginTop: 8,
-              shadowColor: '#C8900A',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: canSave ? 0.25 : 0,
-              shadowRadius: 8,
-              elevation: canSave ? 6 : 0,
             }}>
             <Text
               style={{
@@ -212,7 +196,7 @@ export const AddSiteSheet = forwardRef<BottomSheet, AddSiteSheetProps>(
             </Text>
           </TouchableOpacity>
         </BottomSheetScrollView>
-      </BottomSheet>
+      </BottomSheetModal>
     );
   },
 );
