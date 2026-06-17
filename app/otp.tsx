@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { YellowBackHeader } from '@components/BackHeader';
 import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
 
@@ -69,23 +70,7 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: GOLD }} edges={['top', 'bottom']}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: GOLD,
-          gap: 8,
-        }}>
-        <Image
-          source={require('../assets/images/logo.png')}
-          style={{ width: 30, height: 30, borderRadius: 6 }}
-          resizeMode="contain"
-        />
-        <Text style={{ fontSize: 17, fontWeight: '800', color: DARK }}>Bajriwala</Text>
-      </View>
+      <YellowBackHeader />
 
       {/* Center content */}
       <View

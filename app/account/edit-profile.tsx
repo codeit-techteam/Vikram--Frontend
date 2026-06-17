@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { ProfileSiteSheet } from '@components/account/ProfileSiteSheet';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { ScaledPressable } from '@components/ScaledPressable';
@@ -113,23 +114,44 @@ export default function EditProfileScreen() {
     if (uri) setAvatar(uri);
   };
 
+  const handleBack = () => {
+    const hasChanges =
+      name !== user.name ||
+      phone !== user.phone ||
+      email !== user.email ||
+      gstNumber !== user.gstNumber ||
+      businessType !== user.businessType ||
+      procurement !== user.procurement ||
+      city !== user.city;
+
+    if (!hasChanges) {
+      safeGoBack('/(tabs)/account');
+      return;
+    }
+
+    Alert.alert('Discard Changes?', 'Your unsaved changes will be lost.', [
+      { text: 'Keep Editing', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: () => safeGoBack('/(tabs)/account') },
+    ]);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center justify-between border-b border-border bg-surface px-4 py-3">
-        <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="w-10">
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-base font-bold text-primary">{t('editProfile')}</Text>
-        <ScaledPressable onPress={handleSave} className="w-10 items-end">
-          {saveState === 'saving' ? (
-            <Ionicons name="hourglass-outline" size={20} color="#FEB623" />
-          ) : saveState === 'done' ? (
-            <Ionicons name="checkmark" size={22} color="#FEB623" />
-          ) : (
-            <Text className="text-sm font-semibold text-primary">{t('save')}</Text>
-          )}
-        </ScaledPressable>
-      </View>
+      <BackHeader
+        title={t('editProfile')}
+        onBack={handleBack}
+        rightElement={
+          <TouchableOpacity onPress={handleSave} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            {saveState === 'saving' ? (
+              <Ionicons name="hourglass-outline" size={20} color="#FEB623" />
+            ) : saveState === 'done' ? (
+              <Ionicons name="checkmark" size={22} color="#FEB623" />
+            ) : (
+              <Text style={{ color: '#FEB623', fontWeight: '700', fontSize: 15 }}>{t('save')}</Text>
+            )}
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="mb-6 items-center rounded-card border border-border bg-surface p-5">

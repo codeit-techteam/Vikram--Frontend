@@ -21,6 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
@@ -79,13 +80,9 @@ export default function InvoicesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 px-4 py-3">
-        <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')} className="mb-2 self-start">
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">{t('invoicesTitle')}</Text>
-
-        <View className="mt-3 flex-row items-center rounded-pill border border-border bg-surface px-4 py-2.5">
+      <BackHeader title={t('invoicesTitle')} onBack={() => safeGoBack('/(tabs)/account')} />
+      <View className="mb-4 px-4">
+        <View className="flex-row items-center rounded-pill border border-border bg-surface px-4 py-2.5">
           <Ionicons name="search" size={18} color="#999999" />
           <TextInput
             value={search}

@@ -3,6 +3,7 @@ import { View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { YellowBackHeader } from '@components/BackHeader';
 import { BrandLogo } from '@components/BrandLogo';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { RoleCard } from '@components/RoleCard';
@@ -71,6 +72,7 @@ export default function RoleSelectionScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-primary-light" edges={['top', 'bottom']}>
+      <YellowBackHeader />
       <View className="mb-4 px-5 pt-2">
         <BrandLogo size="sm" />
       </View>

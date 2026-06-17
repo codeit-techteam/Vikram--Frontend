@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { FlatList, Linking, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -8,17 +7,16 @@ import MapView, { Marker } from 'react-native-maps';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { ProjectSiteSheet } from '@components/account/ProjectSiteSheet';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { ProjectSite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useTranslation } from '@store/languageStore';
-import { useUserStore } from '@store/userStore';
 import { safeGoBack } from '@utils/navigation';
 
 export default function AddSitesScreen() {
   const { t } = useTranslation();
-  const user = useUserStore((st) => st.user);
   const projectSites = useDeliveryStore((st) => st.projectSites);
   const addProjectSite = useDeliveryStore((st) => st.addProjectSite);
   const updateProjectSite = useDeliveryStore((st) => st.updateProjectSite);
@@ -38,20 +36,7 @@ export default function AddSitesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center justify-between border-b border-border bg-surface px-4 py-3">
-        <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="menu" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-base font-bold text-text">{t('deliverySites')}</Text>
-        <View className="flex-row items-center gap-3">
-          <Ionicons name="notifications-outline" size={22} color="#333333" />
-          <Image
-            source={{ uri: user.avatar ?? undefined }}
-            style={{ width: 28, height: 28, borderRadius: 14 }}
-            contentFit="cover"
-          />
-        </View>
-      </View>
+      <BackHeader title={t('deliverySites')} onBack={() => safeGoBack('/(tabs)/account')} />
 
       <FlatList
         data={projectSites}

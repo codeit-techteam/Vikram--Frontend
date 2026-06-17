@@ -1,8 +1,8 @@
 import { FlatList, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
@@ -16,12 +16,7 @@ export default function OrderHistoryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center gap-3 px-4 py-3">
-        <ScaledPressable onPress={() => safeGoBack('/(tabs)/orders')}>
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">{t('orderHistory')}</Text>
-      </View>
+      <BackHeader title={t('orderHistory')} onBack={() => safeGoBack('/(tabs)/orders')} />
 
       <FlatList
         key={language}

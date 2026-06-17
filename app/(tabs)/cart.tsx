@@ -10,14 +10,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
+import { NotificationBell } from '@components/HeaderIcons';
 import { BrandLogo } from '@components/BrandLogo';
 import { CartItemCard } from '@components/cart/CartItemCard';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
-import { useNotificationStore } from '@store/notificationStore';
-import { safeGoBack } from '@utils/navigation';
 
 function SummaryRow({
   label,
@@ -43,26 +43,14 @@ function SummaryRow({
   );
 }
 
-function CartHeader({ unreadCount }: { unreadCount: number }) {
+function CartScreenHeader() {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.header}>
-      <Pressable onPress={() => safeGoBack()} hitSlop={10}>
-        <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
-      </Pressable>
-      <Text style={styles.headerTitle}>{t('yourCart')}</Text>
-      <Pressable onPress={() => router.push('/notifications')} hitSlop={10}>
-        <View>
-          <Ionicons name="notifications-outline" size={22} color="#1A1A1A" />
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </View>
-      </Pressable>
-    </View>
+    <BackHeader
+      title={t('yourCart')}
+      rightElement={<NotificationBell />}
+    />
   );
 }
 
@@ -228,8 +216,6 @@ export default function CartScreen() {
   const loyaltyDiscount = useCartStore((s) => s.loyaltyDiscount());
   const grandTotal = useCartStore((s) => s.grandTotal());
 
-  const unreadCount = useNotificationStore((s) => s.unreadCount);
-
   const selectedSite = useDeliveryStore((s) => {
     const site = s.sites.find((x) => x.id === s.selectedSiteId);
     return site ?? s.sites[0];
@@ -243,7 +229,7 @@ export default function CartScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View key={language} style={styles.container}>
-        <CartHeader unreadCount={unreadCount} />
+        <CartScreenHeader />
 
         <ScrollView
           style={styles.scroll}
@@ -312,39 +298,6 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#E5E5E5',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#FEB623',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  badgeText: {
-    color: '#1A1A1A',
-    fontSize: 9,
-    fontWeight: '700',
   },
   scroll: {
     flex: 1,

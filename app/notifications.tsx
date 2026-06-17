@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { SwipeableNotificationCard } from '@components/notifications/SwipeableNotificationCard';
 import type { StringKey } from '@constants/strings';
 import {
@@ -22,7 +23,6 @@ import {
 } from '@constants/notificationData';
 import { useTranslation } from '@store/languageStore';
 import { useNotificationStore } from '@store/notificationStore';
-import { safeGoBack } from '@utils/navigation';
 
 const FILTER_KEYS: { key: NotificationFilter; labelKey: StringKey }[] = [
   { key: 'all', labelKey: 'allNotifications' },
@@ -69,19 +69,17 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => safeGoBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('notifications')}</Text>
-        <Pressable
-          onPress={markAllRead}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="options-outline" size={22} color="#FEB623" />
-        </Pressable>
-      </View>
+      <BackHeader
+        title={t('notifications')}
+        titleColor="#FEB623"
+        rightElement={
+          <Pressable
+            onPress={markAllRead}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="options-outline" size={20} color="#FEB623" />
+          </Pressable>
+        }
+      />
 
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color="#AAAAAA" />
@@ -157,19 +155,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F5F5F5',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FEB623',
   },
   searchBar: {
     marginHorizontal: 16,

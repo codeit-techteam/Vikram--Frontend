@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { Toast } from '@components/Toast';
 import { useLoyaltyStore, type ActivityItem, type LoyaltyTier } from '@store/loyaltyStore';
 import { safeGoBack } from '@utils/navigation';
@@ -465,29 +466,13 @@ export default function LoyaltyWalletScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }} edges={['top']}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: '#F5F5F5',
-        }}>
-        <TouchableOpacity onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
-        <Text
-          style={{
-            flex: 1,
-            textAlign: 'center',
-            fontSize: 17,
-            fontWeight: '700',
-            color: '#FEB623',
-          }}>
-          Loyalty Rewards
-        </Text>
-        <View style={{ width: 22 }} />
-      </View>
+      <BackHeader
+        title="Loyalty Rewards"
+        titleColor="#FEB623"
+        backgroundColor="#F5F5F5"
+        borderBottom={false}
+        onBack={() => safeGoBack('/(tabs)/account')}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useTranslation } from '@store/languageStore';
@@ -49,13 +50,11 @@ export default function GstComplianceScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center justify-between px-4 py-3">
-        <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-base font-bold text-text">{t('businessVerification')}</Text>
-        <Ionicons name="information-circle" size={22} color="#FEB623" />
-      </View>
+      <BackHeader
+        title={t('businessVerification')}
+        onBack={() => safeGoBack('/(tabs)/account')}
+        rightElement={<Ionicons name="information-circle-outline" size={20} color="#1A1A1A" />}
+      />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="mb-4 rounded-card border border-border bg-surface p-4">

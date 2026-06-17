@@ -1,12 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@components/AppHeader';
+import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useAuthStore } from '@store/useAuthStore';
 import { getLineTotal, useCartStore } from '@store/cartStore';
@@ -28,6 +21,7 @@ import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { generateOrderId, useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { getCartItemImageSource } from '@utils/cartHelpers';
+import { safeGoBack } from '@utils/navigation';
 import { formatINR } from '@utils/formatCurrency';
 
 type PaymentMethod = 'google_pay' | 'phonepe' | 'paytm' | 'netbanking' | 'card' | 'cod';
@@ -143,7 +137,20 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <AppHeader showBack title={t('checkout')} />
+      <BackHeader
+        title={t('checkout')}
+        onBack={() => {
+          Alert.alert('Leave Checkout?', 'Your cart items will be saved.', [
+            { text: 'Stay', style: 'cancel' },
+            { text: 'Leave', onPress: () => safeGoBack() },
+          ]);
+        }}
+        rightElement={
+          <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="qr-code-outline" size={20} color="#1A1A1A" />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         key={language}

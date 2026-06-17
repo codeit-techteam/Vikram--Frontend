@@ -6,9 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DrawerShell } from '@components/DrawerShell';
+import { BackHeader } from '@components/BackHeader';
 import { PulseDot } from '@components/orders/PulseDot';
-import { OrdersScreenHeader } from '@components/orders/OrdersScreenHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
@@ -31,7 +30,6 @@ export default function OrderDetailsScreen() {
   const { t } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => s.getOrder(orderId ?? ''));
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [truckPos, setTruckPos] = useState(WAREHOUSE);
   const progress = useRef(0);
 
@@ -60,12 +58,8 @@ export default function OrderDetailsScreen() {
   }
 
   return (
-    <DrawerShell
-      isOpen={drawerOpen}
-      onOpen={() => setDrawerOpen(true)}
-      onClose={() => setDrawerOpen(false)}>
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <OrdersScreenHeader onMenuPress={() => setDrawerOpen(true)} />
+      <BackHeader title={t('trackOrder')} />
       <ScrollView key={language} contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="px-5 pt-2">
           <View className="self-start rounded-full bg-success/15 px-3 py-1">
@@ -164,6 +158,5 @@ export default function OrderDetailsScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-    </DrawerShell>
   );
 }

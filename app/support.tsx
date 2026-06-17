@@ -13,11 +13,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { PulseDot } from '@components/orders/PulseDot';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
-import { safeGoBack } from '@utils/navigation';
 
 type DisputeType = 'wrong_item' | 'damaged' | 'missing' | 'refund';
 
@@ -91,12 +91,7 @@ export default function SupportScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center gap-3 px-5 py-3">
-        <ScaledPressable onPress={() => safeGoBack()}>
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">{t('supportDisputes')}</Text>
-      </View>
+      <BackHeader title={t('supportDisputes')} />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <Text className="text-sm text-text-secondary">

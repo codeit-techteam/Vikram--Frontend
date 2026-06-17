@@ -8,6 +8,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
 import { getProductImageUrl } from '@constants/catalogData';
@@ -67,15 +68,13 @@ export default function InvoiceScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center justify-between px-5 py-3">
-        <View className="flex-row items-center gap-3">
-          <ScaledPressable onPress={() => safeGoBack('/account/invoices')}>
-            <Ionicons name="arrow-back" size={22} color="#FEB623" />
-          </ScaledPressable>
-          <Text className="text-xl font-bold text-primary">{t('invoiceDetails')}</Text>
-        </View>
-        <Ionicons name="ellipsis-vertical" size={20} color="#666666" />
-      </View>
+      <BackHeader
+        title={t('invoiceDetails')}
+        onBack={() => safeGoBack('/account/invoices')}
+        rightElement={
+          <Ionicons name="ellipsis-vertical" size={20} color="#1A1A1A" />
+        }
+      />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View className="mb-4 rounded-card border border-border bg-surface p-4">

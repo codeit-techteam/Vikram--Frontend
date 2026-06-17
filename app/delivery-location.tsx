@@ -5,6 +5,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { router, type Href } from 'expo-router';
@@ -13,13 +14,13 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { AddSiteSheet } from '@components/AddSiteSheet';
 import { PrimaryButton } from '@components/PrimaryButton';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { SiteCard } from '@components/SiteCard';
 import { useTranslation } from '@store/languageStore';
 import { useSiteStore, type DeliverySite } from '@store/useSiteStore';
-import { safeGoBack } from '@utils/navigation';
 
 export default function DeliveryLocationScreen() {
   const { t } = useTranslation();
@@ -86,18 +87,28 @@ export default function DeliveryLocationScreen() {
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View className="mb-4 flex-row items-center justify-between bg-surface px-4 py-3">
-          <ScaledPressable onPress={() => safeGoBack('/complete-profile')} className="p-1">
-            <Ionicons name="arrow-back" size={24} color="#FEB623" />
-          </ScaledPressable>
-          <Text className="text-lg font-bold text-primary">{t('deliveryLocation')}</Text>
-          <View className="flex-row items-center gap-3">
-            <Ionicons name="location-outline" size={22} color="#1A1A1A" />
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
-              <Text className="text-xs font-bold text-onPrimary">CP</Text>
+        <BackHeader
+          title={t('deliveryLocation')}
+          titleColor="#FEB623"
+          rightElement={
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="location-outline" size={20} color="#FEB623" />
+              </TouchableOpacity>
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: '#FEB623',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#1A1A1A' }}>CP</Text>
+              </View>
             </View>
-          </View>
-        </View>
+          }
+        />
 
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <View className="relative mx-4 mt-3 overflow-hidden rounded-card" style={{ height: 220 }}>

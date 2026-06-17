@@ -1,12 +1,13 @@
 import { useRef } from 'react';
-import { FlatList, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
+import { CartIcon, NotificationBell } from '@components/HeaderIcons';
 import { ActiveFilterSummaryBar } from '@components/ActiveFilterSummaryBar';
-import { AppHeader } from '@components/AppHeader';
 import {
   FilterBottomSheet,
   type FilterBottomSheetRef,
@@ -84,7 +85,20 @@ export default function ProductListingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <AppHeader showBack title={title} />
+      <BackHeader
+        title={title}
+        rightElement={
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={() => router.push('/search')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="mic-outline" size={21} color="#FEB623" />
+            </TouchableOpacity>
+            <NotificationBell color="#FEB623" size={21} />
+            <CartIcon color="#FEB623" size={21} />
+          </View>
+        }
+      />
 
       <View className="mx-5 mt-4 flex-row items-center rounded-input border border-border bg-surface px-4 py-3">
         <Ionicons name="search" size={20} color="#FEB623" />

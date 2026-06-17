@@ -311,6 +311,7 @@ export default function SearchScreen() {
   }, [searchState, suggestions.length, suggestionsHeight]);
 
   const handleBack = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setQuery('');
     setDebouncedQuery('');
     setResults([]);

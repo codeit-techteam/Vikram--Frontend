@@ -2,9 +2,9 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { useTranslation } from '@store/languageStore';
-import { safeGoBack } from '@utils/navigation';
 
 const GOLD = '#FEB623';
 const DARK = '#1A1A1A';
@@ -21,19 +21,7 @@ export default function EmergencyOrderScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }} edges={['top']}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          gap: 10,
-        }}>
-        <TouchableOpacity onPress={() => safeGoBack()}>
-          <Ionicons name="arrow-back" size={22} color={GOLD} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '800', color: GOLD }}>{t('emergencyOrder')}</Text>
-      </View>
+      <BackHeader title={t('emergencyOrder')} titleColor="#FEB623" backgroundColor="#F5F5F5" borderBottom={false} />
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <View

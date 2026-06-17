@@ -4,6 +4,7 @@ import {
   Linking,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -15,9 +16,8 @@ import * as Sharing from 'expo-sharing';
 import Animated, { FadeInLeft } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DrawerShell } from '@components/DrawerShell';
+import { BackHeader } from '@components/BackHeader';
 import { PulseDot } from '@components/orders/PulseDot';
-import { OrdersScreenHeader } from '@components/orders/OrdersScreenHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
@@ -34,7 +34,6 @@ export default function ViewOrderScreen() {
   const { t } = useTranslation();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => s.getOrder(orderId ?? ''));
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [visibleSteps, setVisibleSteps] = useState(0);
 
@@ -79,12 +78,17 @@ export default function ViewOrderScreen() {
   };
 
   return (
-    <DrawerShell
-      isOpen={drawerOpen}
-      onOpen={() => setDrawerOpen(true)}
-      onClose={() => setDrawerOpen(false)}>
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <OrdersScreenHeader onMenuPress={() => setDrawerOpen(true)} />
+      <BackHeader
+        title={t('orderDetails')}
+        rightElement={
+          <TouchableOpacity
+            onPress={shareWhatsApp}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="share-outline" size={20} color="#1A1A1A" />
+          </TouchableOpacity>
+        }
+      />
       <ScrollView
         key={language}
         showsVerticalScrollIndicator={false}
@@ -329,6 +333,5 @@ export default function ViewOrderScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-    </DrawerShell>
   );
 }

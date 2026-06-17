@@ -2,6 +2,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useTranslation } from '@store/languageStore';
 import { safeGoBack } from '@utils/navigation';
@@ -17,12 +18,7 @@ export default function PaymentMethodsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="mb-4 flex-row items-center gap-3 px-4 py-3">
-        <ScaledPressable onPress={() => safeGoBack('/(tabs)/account')}>
-          <Ionicons name="arrow-back" size={22} color="#FEB623" />
-        </ScaledPressable>
-        <Text className="text-xl font-bold text-primary">{t('paymentMethods')}</Text>
-      </View>
+      <BackHeader title={t('paymentMethods')} onBack={() => safeGoBack('/(tabs)/account')} />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {METHODS.map((method) => (

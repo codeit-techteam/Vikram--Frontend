@@ -12,7 +12,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { AppHeader } from '@components/AppHeader';
+import { BackHeader } from '@components/BackHeader';
+import { CartIcon } from '@components/HeaderIcons';
 import { safeGoBack } from '@utils/navigation';
 import { DeliveryOptions, type DeliveryType } from '@components/DeliveryOptions';
 import { FrequentlyBoughtTogether } from '@components/FrequentlyBoughtTogether';
@@ -162,7 +163,10 @@ export default function ProductDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <AppHeader showBack title={displayName} />
+      <BackHeader
+        title={displayName}
+        rightElement={<CartIcon />}
+      />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
       <ProductImageCarousel images={carouselImages} />
 

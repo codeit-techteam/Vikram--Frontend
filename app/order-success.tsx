@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -50,17 +51,32 @@ export default function OrderSuccessScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView key={language} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <View className="flex-row items-center justify-between">
-          <ScaledPressable
-            onPress={() => router.replace('/(tabs)')}
-            className="flex-row items-center gap-2">
-            <Ionicons name="close" size={22} color="#FEB623" />
-            <Text className="text-lg font-bold text-primary">{t('orderSuccess')}</Text>
-          </ScaledPressable>
-        </View>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'flex-end',
+          padding: 16,
+        }}>
+        <TouchableOpacity
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.replace('/(tabs)');
+          }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: '#F0F0F0',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Ionicons name="close" size={18} color="#666" />
+        </TouchableOpacity>
+      </View>
+      <ScrollView key={language} contentContainerStyle={{ padding: 20, paddingBottom: 40, paddingTop: 0 }}>
 
-        <View className="mt-8 items-center rounded-card border border-border bg-surface p-6">
+        <View className="items-center rounded-card border border-border bg-surface p-6">
           <Animated.View
             style={checkStyle}
             className="h-24 w-24 items-center justify-center rounded-full bg-primary">
