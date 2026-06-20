@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   ImageBackground,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +29,7 @@ import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
+import HeroVideoSection from '@components/HeroVideoSection';
 import { LastOrderCard } from '@components/LastOrderCard';
 import { getProductById, getProductImageUrl } from '@constants/catalogData';
 import { images } from '@constants/images';
@@ -37,7 +37,7 @@ import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
 import { useSearch } from '@hooks/useSearch';
-import type { LastOrderedProduct, Order } from '@store/orderStore';
+import type { LastOrderedProduct } from '@store/orderStore';
 import { useOrderStore } from '@store/orderStore';
 
 const CATEGORIES: {
@@ -129,49 +129,6 @@ function CategoryCard({
   );
 }
 
-function LiveDeliveryCard({ order }: { order: Order }) {
-  const { t } = useTranslation();
-
-  const handleCallDriver = async (e: { stopPropagation?: () => void }) => {
-    e.stopPropagation?.();
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL('tel:+919999999999');
-  };
-
-  return (
-    <View className="rounded-card bg-surface p-4 shadow-sm">
-      <View className="flex-row items-center justify-between">
-        <View className="rounded-full bg-success/15 px-3 py-1">
-          <Text className="text-[10px] font-bold text-success">{t('enRoute')}</Text>
-        </View>
-        <Text className="text-xs text-text-secondary">{order.id}</Text>
-      </View>
-      <Text className="mt-3 text-xl font-bold text-text">{t('deliveryIn')}</Text>
-      <Text className="mt-1 text-sm text-text-secondary">{order.quantitySummary}</Text>
-      <View className="mt-3">
-        <AnimatedProgressBar progress={0.7} height={8} />
-      </View>
-      <Pressable
-        onPress={handleCallDriver}
-        hitSlop={12}
-        className="mt-3 items-center rounded-lg border border-secondary py-2.5">
-        <Text className="text-sm font-semibold text-secondary">{t('callDriver')}</Text>
-      </Pressable>
-      <View className="mt-3 overflow-hidden rounded-card">
-        <Image
-          source={{ uri: images.deliveryTruck }}
-          style={{ width: '100%', height: 120 }}
-          contentFit="cover"
-        />
-        <View className="absolute bottom-2 left-3 flex-row items-center gap-1.5">
-          <Ionicons name="bus-outline" size={14} color="#FFFFFF" />
-          <Text className="text-xs font-medium text-text-inverse">{order.vehicleNumber}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 export default function HomeScreen() {
   const { t, language } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -195,11 +152,6 @@ export default function HomeScreen() {
   const orders = useOrderStore((s) => s.orders);
   const lastOrderedItems = useMemo(
     () => useOrderStore.getState().getLastOrderedProducts(),
-    [orders],
-  );
-
-  const activeOrder = useMemo(
-    () => orders.find((o) => o.status === 'in_transit' || o.status === 'dispatched'),
     [orders],
   );
 
@@ -384,16 +336,7 @@ export default function HomeScreen() {
                 </ImageBackground>
               </Pressable>
 
-              {activeOrder ? (
-                <Pressable
-                  onPress={async () => {
-                    await Haptics.selectionAsync();
-                    router.push(`/orders/view/${activeOrder.id}` as Href);
-                  }}
-                  style={styles.liveDeliveryWrap}>
-                  <LiveDeliveryCard order={activeOrder} />
-                </Pressable>
-              ) : null}
+              <HeroVideoSection />
 
               {lastOrderedItems.length === 0 && orders.length === 0 ? (
                 <View style={styles.lastOrdersEmpty}>
@@ -616,10 +559,6 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     fontSize: 15,
     fontWeight: '700',
-  },
-  liveDeliveryWrap: {
-    marginHorizontal: 16,
-    marginTop: 16,
   },
   lastOrdersSection: {
     marginHorizontal: 16,

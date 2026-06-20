@@ -101,6 +101,11 @@ export default function RootLayout() {
               <Stack.Screen name="account/privacy" options={{ headerShown: false }} />
               <Stack.Screen name="account/payment-methods" options={{ headerShown: false }} />
               <Stack.Screen name="bulk-procurement" options={{ headerShown: false }} />
+              <Stack.Screen name="bulk-procurement/enquiry" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="bulk-procurement/enquiry-success"
+                options={{ headerShown: false, gestureEnabled: false }}
+              />
             </Stack>
             <VoiceAssistantSheet />
           </BottomSheetModalProvider>
