@@ -35,8 +35,8 @@ export default function ProductListingScreen() {
   const fullSheetRef = useRef<FilterBottomSheetRef>(null);
   const quickSheetRef = useRef<QuickFilterSheetRef>(null);
 
-  const category = CATALOG_CATEGORIES.find((c) => c.id === (categoryId ?? '1'));
-  const products = PRODUCTS_BY_CATEGORY[categoryId ?? '1'] ?? [];
+  const category = CATALOG_CATEGORIES.find((c) => c.id === (categoryId ?? 'cement'));
+  const products = PRODUCTS_BY_CATEGORY[categoryId ?? 'cement'] ?? [];
   const title = category ? t(category.labelKey) : (categoryName ?? t('catalogLabel'));
 
   const {
@@ -53,7 +53,7 @@ export default function ProductListingScreen() {
     syncDraft,
     setDraft,
     updateFilters,
-  } = useFilterState({ products, categoryId: categoryId ?? '1' });
+  } = useFilterState({ products, categoryId: categoryId ?? 'cement' });
 
   const openQuickFilterSheet = (key: FilterKey) => {
     syncDraft();

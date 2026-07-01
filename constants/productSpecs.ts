@@ -31,6 +31,42 @@ export const SPECS_BY_TYPE: Record<ProductCategoryType, TechSpecItem[]> = {
     { icon: 'hammer-outline', label: 'CRUSHING VALUE', value: '≤30%' },
     { icon: 'document-text-outline', label: 'IS STANDARD', value: 'IS 383' },
   ],
+  aggregates: [
+    { icon: 'resize-outline', label: 'GRADE', value: 'Standard' },
+    { icon: 'ellipse-outline', label: 'SIZE', value: 'Jeera Rodi' },
+    { icon: 'hammer-outline', label: 'CRUSHING VALUE', value: '≤30%' },
+    { icon: 'document-text-outline', label: 'IS STANDARD', value: 'IS 383' },
+  ],
+  adhesives: [
+    { icon: 'water-outline', label: 'TYPE', value: 'Synthetic Resin' },
+    { icon: 'time-outline', label: 'SETTING TIME', value: '15–30 mins' },
+    { icon: 'thermometer-outline', label: 'TEMP RANGE', value: '-10°C to 60°C' },
+    { icon: 'shield-checkmark-outline', label: 'APPLICATION', value: 'Interior / Exterior' },
+  ],
+  'wall-repair': [
+    { icon: 'resize-outline', label: 'COVERAGE', value: '12–14 sq.ft/kg' },
+    { icon: 'water-outline', label: 'BASE', value: 'White Cement' },
+    { icon: 'time-outline', label: 'DRYING TIME', value: '4–6 hours' },
+    { icon: 'brush-outline', label: 'FINISH', value: 'Smooth Matte' },
+  ],
+  waterproofing: [
+    { icon: 'water-outline', label: 'TYPE', value: 'Polymer Modified' },
+    { icon: 'shield-checkmark-outline', label: 'PROTECTION', value: 'Water & Damp' },
+    { icon: 'time-outline', label: 'CURING TIME', value: '24 hours' },
+    { icon: 'home-outline', label: 'APPLICATION', value: 'Terrace / Bathroom' },
+  ],
+  'quick-repair': [
+    { icon: 'time-outline', label: 'SETTING TIME', value: 'Instant – 5 mins' },
+    { icon: 'hammer-outline', label: 'BOND STRENGTH', value: 'High' },
+    { icon: 'color-fill-outline', label: 'TYPE', value: 'Cyanoacrylate / Epoxy' },
+    { icon: 'build-outline', label: 'USE', value: 'On-site Quick Fix' },
+  ],
+  putty: [
+    { icon: 'resize-outline', label: 'COVERAGE', value: '25–30 sq.ft/L' },
+    { icon: 'water-outline', label: 'BASE', value: 'Acrylic' },
+    { icon: 'time-outline', label: 'DRYING TIME', value: '4–6 hours' },
+    { icon: 'brush-outline', label: 'FINISH', value: 'Paint Ready' },
+  ],
 };
 
 export const FREQUENTLY_BOUGHT: import('@/types/catalog').FrequentlyBoughtItem[] = [

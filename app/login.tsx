@@ -4,7 +4,6 @@ import {
   Image,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -12,6 +11,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MobileInput, isValidMobileNumber } from '@components/MobileInput';
 import { images } from '@constants/images';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
@@ -20,7 +20,6 @@ import { storage } from '@lib/storage';
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
 const DARK = '#1A1A1A';
-const WARM_BORDER = '#E8E0C8';
 const WARM_SHADOW = '#C8900A';
 const RETURNING_USER_KEY = '@bajriwala/returning_user';
 
@@ -28,9 +27,10 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [showPhoneError, setShowPhoneError] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(true);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
+  const isPhoneValid = isValidMobileNumber(phone);
 
   useEffect(() => {
     storage.getItem(RETURNING_USER_KEY).then((flag) => {
@@ -39,8 +39,13 @@ export default function LoginScreen() {
   }, []);
 
   const handleLogin = () => {
+    if (!isPhoneValid) {
+      setShowPhoneError(true);
+      return;
+    }
+
     setLoading(true);
-    setPhoneNumber(phone.replace(/\s/g, ''));
+    setPhoneNumber(phone);
     setTimeout(() => {
       setLoading(false);
       router.push('/otp');
@@ -141,61 +146,26 @@ export default function LoginScreen() {
             </>
           )}
 
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: DARK,
-              marginBottom: 8,
-            }}>
-            {t('loginMobileLabel')}
-          </Text>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#FFFFFF',
-              borderRadius: 12,
-              borderWidth: 1.5,
-              borderColor: phoneFocused ? GOLD : WARM_BORDER,
-              marginBottom: 20,
-              overflow: 'hidden',
-            }}>
-            <View
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 14,
-                borderRightWidth: 1,
-                borderRightColor: WARM_BORDER,
-              }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: DARK }}>+91</Text>
-            </View>
-
-            <TextInput
-              style={{
-                flex: 1,
-                paddingHorizontal: 14,
-                paddingVertical: 14,
-                fontSize: 15,
-                color: DARK,
-              }}
-              placeholder="Enter mobile number"
-              placeholderTextColor="#BBAA88"
-              keyboardType="phone-pad"
-              maxLength={10}
+          <View style={{ marginBottom: 20 }}>
+            <MobileInput
+              label={t('loginMobileLabel')}
               value={phone}
-              onChangeText={setPhone}
-              onFocus={() => setPhoneFocused(true)}
-              onBlur={() => setPhoneFocused(false)}
+              onChangeText={(value) => {
+                setPhone(value);
+                if (showPhoneError && isValidMobileNumber(value)) {
+                  setShowPhoneError(false);
+                }
+              }}
+              showError={showPhoneError}
             />
           </View>
 
           <TouchableOpacity
             onPress={handleLogin}
+            disabled={!isPhoneValid || loading}
             activeOpacity={0.85}
             style={{
-              backgroundColor: GOLD,
+              backgroundColor: isPhoneValid ? GOLD : '#E0D5B8',
               borderRadius: 50,
               paddingVertical: 16,
               alignItems: 'center',
@@ -203,9 +173,10 @@ export default function LoginScreen() {
               marginBottom: 16,
               shadowColor: WARM_SHADOW,
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.35,
+              shadowOpacity: isPhoneValid ? 0.35 : 0,
               shadowRadius: 10,
-              elevation: 8,
+              elevation: isPhoneValid ? 8 : 0,
+              opacity: isPhoneValid ? 1 : 0.7,
             }}>
             {loading ? (
               <ActivityIndicator color={DARK} size="small" />

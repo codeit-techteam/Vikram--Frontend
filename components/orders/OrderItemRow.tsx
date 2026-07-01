@@ -1,20 +1,21 @@
 import { Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { CartItemImage } from '@components/cart/CartItemImage';
 import { getCategoryIdForProduct, getProductById } from '@constants/catalogData';
 import type { CartItem } from '@store/cartStore';
-import { getCartItemImageSource } from '@utils/cartHelpers';
+import { resolveCartProductId } from '@utils/cartHelpers';
 
 interface OrderItemRowProps {
   item: CartItem;
 }
 
 export function OrderItemRow({ item }: OrderItemRowProps) {
-  const product = getProductById(item.id);
+  const productId = resolveCartProductId(item);
+  const product = getProductById(productId);
   const spec = item.description || product?.description;
 
   const handlePress = async () => {
@@ -22,10 +23,10 @@ export function OrderItemRow({ item }: OrderItemRowProps) {
     router.push({
       pathname: '/products/detail/[productId]',
       params: {
-        productId: item.id,
-        categoryId: getCategoryIdForProduct(item.id) ?? '',
+        productId,
+        categoryId: getCategoryIdForProduct(productId) ?? '',
         categoryName: product?.category ?? product?.categoryType ?? '',
-        productName: product?.detailName ?? product?.name ?? item.name,
+        productName: product?.detailName ?? product?.name ?? item.productName ?? item.name,
       },
     } as Href);
   };
@@ -49,11 +50,7 @@ export function OrderItemRow({ item }: OrderItemRowProps) {
           borderWidth: 1,
           borderColor: '#F0F0F0',
         }}>
-        <Image
-          source={getCartItemImageSource(item)}
-          style={{ width: '100%', height: '100%' }}
-          contentFit="cover"
-        />
+        <CartItemImage item={item} style={{ width: '100%', height: '100%' }} contentFit="cover" />
       </View>
 
       <View style={{ flex: 1 }}>

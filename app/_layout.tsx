@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { VoiceAssistantSheet } from '@components/VoiceAssistantSheet';
+import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
 import { QueryProvider } from '@providers/QueryProvider';
 import { useLanguageStore } from '@store/languageStore';
 
@@ -106,8 +107,10 @@ export default function RootLayout() {
                 name="bulk-procurement/enquiry-success"
                 options={{ headerShown: false, gestureEnabled: false }}
               />
+              <Stack.Screen name="bulk-procurement/my-enquiries" options={{ headerShown: false }} />
             </Stack>
             <VoiceAssistantSheet />
+            <AddToCartSuccessToast />
           </BottomSheetModalProvider>
         </QueryProvider>
       </SafeAreaProvider>

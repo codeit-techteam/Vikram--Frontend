@@ -1,43 +1,42 @@
-import type { ImageSource } from 'expo-image';
-
-import { images } from '@constants/images';
 import type { CartItem } from '@store/cartStore';
+import { getLineTotal } from '@store/cartStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import {
   generateInvoiceId,
   type Order,
   type OrderMaterial,
 } from '@store/orderStore';
-import { getLineTotal } from '@store/cartStore';
+import { getCartItemImageSource } from '@utils/cartHelpers';
 
-export function getOrderImageUrl(searchTerm: string): string {
-  const query = encodeURIComponent(searchTerm.replace(/\s+/g, ','));
-  return `https://source.unsplash.com/featured/800x400/?${query}`;
+/** Primary order hero image — same resolver as cart/catalog. */
+export function getOrderPrimaryImageSource(order: Order) {
+  const first = order.items[0];
+  if (first) return getCartItemImageSource(first);
+  return null;
 }
 
-export function getOrderImageSource(searchTerm: string): ImageSource {
-  const key = searchTerm.toLowerCase();
-
-  if (key === 'ultratech' || key.includes('ultratech') || key.includes('cement')) {
-    return images.productUltratechBags;
+/** Material row image — prefers linked cart line, then product id. */
+export function getOrderMaterialImageSource(
+  material: OrderMaterial,
+  cartItem?: CartItem,
+) {
+  if (cartItem) return getCartItemImageSource(cartItem);
+  if (material.cartLineId || material.productId) {
+    return getCartItemImageSource({
+      id: material.cartLineId ?? material.productId ?? material.id,
+      productId: material.productId,
+      imageSearch: material.imageSearch,
+      image: material.imageSearch,
+      name: material.name,
+      description: material.description,
+      unitPrice: 0,
+      bulkPrice: 0,
+      bulkThreshold: 0,
+      quantity: 1,
+      unit: '',
+    });
   }
-  if (
-    key === 'jsw-neosteel' ||
-    key.includes('jsw') ||
-    key.includes('neosteel') ||
-    (key.includes('tmt') && key.includes('steel'))
-  ) {
-    return images.productJswNeosteel;
-  }
-  if (
-    key.includes('crushed stone') ||
-    key.includes('stone aggregate') ||
-    key.includes('blue metal')
-  ) {
-    return images.productCrushedStoneAggregate;
-  }
-
-  return { uri: getOrderImageUrl(searchTerm) };
+  return null;
 }
 
 export function buildOrderFromCheckout(params: {
@@ -57,7 +56,9 @@ export function buildOrderFromCheckout(params: {
     id: `m-${idx}`,
     name: item.name,
     description: item.description,
-    imageSearch: item.image,
+    imageSearch: item.imageSearch ?? item.image,
+    productId: item.productId,
+    cartLineId: item.id,
     quantityLabel: `${item.quantity} ${item.unit}`,
     unitPriceLabel: `₹${item.unitPrice.toLocaleString('en-IN')}`,
     total: getLineTotal(item),
@@ -72,7 +73,7 @@ export function buildOrderFromCheckout(params: {
     description: primary?.description ?? '',
     price: primary?.unitPrice ?? 0,
     unit: primary?.unit ?? 'unit',
-    imageSearch: primary?.image ?? 'construction materials',
+    imageSearch: primary?.imageSearch ?? primary?.image ?? 'construction materials',
     badge: 'GET READY',
     isBulkDiscount: false,
     items: params.items,

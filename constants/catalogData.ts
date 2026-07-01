@@ -1,6 +1,10 @@
 import type { ImageSourcePropType } from 'react-native';
 
 import { images, productImageUrls } from '@constants/images';
+import {
+  mergeCategoryProducts,
+  PRODUCT_IMAGE_OVERRIDES,
+} from '@constants/catalogExtensions';
 import type { CatalogCategory, Product, ProductCategoryType } from '@/types/catalog';
 
 const PRODUCT_IMAGE_BASE: Record<string, string> = {
@@ -78,17 +82,23 @@ function toImageUri(searchTerm: string, size = '800x440'): ImageSourcePropType {
 }
 
 export const CATALOG_CATEGORIES: CatalogCategory[] = [
-  { id: '1', labelKey: 'cement', image: images.categoryCement },
-  { id: '2', labelKey: 'steel', image: images.categorySteel },
-  { id: '3', labelKey: 'sand', image: images.categorySand },
-  { id: '4', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
+  { id: 'cement', labelKey: 'cement', image: images.categoryCement },
+  { id: 'steel', labelKey: 'steel', image: images.categorySteel },
+  { id: 'sand', labelKey: 'sand', image: images.categorySand },
+  { id: 'bricks', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
   {
-    id: '5',
+    id: 'grey-fill-sand',
     labelKey: 'greyFillSand',
     image: images.categoryGreyFillSand,
     imageSearch: 'grey fill sand construction',
   },
-  { id: '6', labelKey: 'stoneChip', image: images.categoryStone },
+  { id: 'stone-chips', labelKey: 'stoneChip', image: images.categoryStone },
+  { id: 'aggregates', labelKey: 'aggregates', image: images.categoryAggregates },
+  { id: 'adhesives', labelKey: 'adhesives', image: images.categoryAdhesives },
+  { id: 'wall-repair', labelKey: 'wallRepair', image: images.categoryWallRepair },
+  { id: 'waterproofing', labelKey: 'waterproofing', image: images.categoryWaterproofing },
+  { id: 'quick-repair', labelKey: 'quickRepair', image: images.categoryQuickRepair },
+  { id: 'putty', labelKey: 'putty', image: images.categoryPutty },
 ];
 
 const cementProducts: Product[] = [
@@ -203,117 +213,9 @@ const steelProducts: Product[] = [
   },
 ];
 
-const sandProducts: Product[] = [
-  {
-    id: 'sa1',
-    badge: '⚡ Same Day',
-    image: toImageUri('manufactured sand construction'),
-    imageSearch: 'manufactured sand construction',
-    category: 'SAND & AGGREGATES',
-    name: 'M-Sand (Manufactured)',
-    nameHi: 'M-Sand (निर्मित)',
-    detailName: 'M-Sand (Manufactured)',
-    grade: 'Zone 2',
-    status: 'IN STOCK',
-    spec: 'Min 500 Kg',
-    retailPrice: '₹1,800 / Ton',
-    retailPriceValue: 1800,
-    bulkLabel: 'Bulk (5T+)',
-    bulkPrice: '₹1,550',
-    bulkPriceValue: 1550,
-    unit: 'Ton',
-    defaultQuantity: 1,
-    bulkThreshold: 5,
-    categoryType: 'sand',
-    description:
-      'Manufactured sand with controlled gradation ideal for concrete mixing and plastering applications.',
-    descriptionHi:
-      'नियंत्रित ग्रेडेशन वाली निर्मित रेत, कंक्रीट मिश्रण और प्लास्टरिंग के लिए आदर्श।',
-  },
-  {
-    id: 'sa2',
-    badge: '🟠 Limited',
-    image: toImageUri('river sand pile construction'),
-    imageSearch: 'river sand pile construction',
-    category: 'SAND & AGGREGATES',
-    name: 'River Sand Premium',
-    nameHi: 'प्रीमियम नदी रेत',
-    detailName: 'River Sand Premium',
-    grade: 'Fine',
-    status: 'LIMITED STOCK',
-    spec: 'Min 1 Ton',
-    retailPrice: '₹2,200 / Ton',
-    retailPriceValue: 2200,
-    bulkLabel: 'Bulk (10T+)',
-    bulkPrice: '₹1,950',
-    bulkPriceValue: 1950,
-    unit: 'Ton',
-    defaultQuantity: 1,
-    bulkThreshold: 10,
-    categoryType: 'sand',
-    description:
-      'Naturally sourced river sand with low silt content, perfect for premium finishing and masonry work.',
-    descriptionHi:
-      'कम गाद वाली प्राकृतिक नदी रेत, प्रीमियम फिनिशिंग और चिनाई कार्य के लिए उपयुक्त।',
-  },
-];
+const sandProducts: Product[] = [];
 
-const bricksProducts: Product[] = [
-  {
-    id: 'b1',
-    badge: '⚡ 90 min ETA',
-    image: toImageUri('red clay bricks construction'),
-    imageSearch: 'red clay bricks construction',
-    category: 'BRICKS & MASONRY',
-    name: 'Red Clay Bricks ISI',
-    nameHi: 'ISI लाल मिट्टी की ईंट',
-    detailName: 'Red Clay Bricks ISI',
-    grade: 'Class A',
-    status: 'IN STOCK',
-    spec: 'Min 500 pcs',
-    retailPrice: '₹8.50 / pc',
-    retailPriceValue: 8.5,
-    bulkLabel: 'Bulk (5000+)',
-    bulkPrice: '₹7.20',
-    bulkPriceValue: 7.2,
-    unit: 'pc',
-    defaultQuantity: 500,
-    minOrder: 500,
-    incrementStep: 100,
-    bulkThreshold: 5000,
-    categoryType: 'bricks',
-    description:
-      'ISI-marked red clay bricks with uniform dimensions and high compressive strength for load-bearing walls.',
-    descriptionHi:
-      'ISI-चिह्नित लाल मिट्टी की ईंट, समान आयाम और भार वहन दीवारों के लिए उच्च संपीड़न strength।',
-  },
-  {
-    id: 'b2',
-    badge: '⚡ 90 min ETA',
-    image: toImageUri('aac blocks construction'),
-    imageSearch: 'aac blocks construction',
-    category: 'BRICKS & MASONRY',
-    name: 'AAC Blocks (600x200)',
-    nameHi: 'AAC Blocks (600x200)',
-    detailName: 'AAC Blocks (600x200)',
-    grade: 'Grade 2',
-    status: 'READY FOR DISPATCH',
-    spec: 'Min 50 pcs',
-    retailPrice: '₹45.00 / pc',
-    retailPriceValue: 45,
-    bulkLabel: 'Contractor (500+)',
-    bulkPrice: '₹39.50',
-    bulkPriceValue: 39.5,
-    unit: 'pc',
-    defaultQuantity: 50,
-    bulkThreshold: 500,
-    categoryType: 'bricks',
-    description:
-      'Lightweight autoclaved aerated concrete blocks offering excellent thermal insulation and faster construction.',
-    descriptionHi:
-      'हल्के autoclaved aerated concrete blocks, उत्कृष्ट थर्मल इंसुलेशन और तेज़ निर्माण के लिए।',
-  },
-];
+const bricksProducts: Product[] = [];
 
 const greyFillSandProducts: Product[] = [
   {
@@ -399,23 +301,40 @@ const stoneChipProducts: Product[] = [
   },
 ];
 
+
 export const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
-  '1': cementProducts,
-  '2': steelProducts,
-  '3': sandProducts,
-  '4': bricksProducts,
-  '5': greyFillSandProducts,
-  '6': stoneChipProducts,
+  cement: mergeCategoryProducts(cementProducts, 'cement'),
+  steel: mergeCategoryProducts(steelProducts, 'steel'),
+  sand: mergeCategoryProducts(sandProducts, 'sand'),
+  bricks: mergeCategoryProducts(bricksProducts, 'bricks'),
+  'grey-fill-sand': mergeCategoryProducts(greyFillSandProducts, 'grey-fill-sand'),
+  'stone-chips': mergeCategoryProducts(stoneChipProducts, 'stone-chips'),
+  aggregates: mergeCategoryProducts([], 'aggregates'),
+  adhesives: mergeCategoryProducts([], 'adhesives'),
+  'wall-repair': mergeCategoryProducts([], 'wall-repair'),
+  waterproofing: mergeCategoryProducts([], 'waterproofing'),
+  'quick-repair': mergeCategoryProducts([], 'quick-repair'),
+  putty: mergeCategoryProducts([], 'putty'),
 };
 
 const CATEGORY_TYPE_MAP: Record<string, ProductCategoryType> = {
-  '1': 'cement',
-  '2': 'steel',
-  '3': 'sand',
-  '4': 'bricks',
-  '5': 'sand',
-  '6': 'stone',
+  cement: 'cement',
+  steel: 'steel',
+  sand: 'sand',
+  bricks: 'bricks',
+  'grey-fill-sand': 'sand',
+  'stone-chips': 'stone',
+  aggregates: 'aggregates',
+  adhesives: 'adhesives',
+  'wall-repair': 'wall-repair',
+  waterproofing: 'waterproofing',
+  'quick-repair': 'quick-repair',
+  putty: 'putty',
 };
+
+export function getProductCountForCategory(categoryId: string): number {
+  return PRODUCTS_BY_CATEGORY[categoryId]?.length ?? 0;
+}
 
 export function getProductImageUrl(searchTerm: string, size = '400x200') {
   const base = PRODUCT_IMAGE_BASE[searchTerm] ?? productImageUrls.constructionSite;
@@ -438,6 +357,7 @@ export function getCategoryIdForProduct(productId: string): string | undefined {
 }
 
 export function getProductImageSource(product: Product): ImageSourcePropType {
+  if (PRODUCT_IMAGE_OVERRIDES[product.id]) return PRODUCT_IMAGE_OVERRIDES[product.id];
   if (product.image) return product.image;
   if (product.imageSearch === 'jsw steel rods construction') {
     return images.productJswNeosteel;

@@ -753,7 +753,7 @@ export default function LoyaltyWalletScreen() {
           <TouchableOpacity
             onPress={() => {
               void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push({ pathname: '/products/[categoryId]', params: { categoryId: '2' } });
+              router.push({ pathname: '/products/[categoryId]', params: { categoryId: 'steel' } });
             }}
             style={{
               backgroundColor: '#fff',

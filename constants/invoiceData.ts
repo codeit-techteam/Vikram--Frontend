@@ -6,6 +6,8 @@ export interface InvoiceLineItem {
   name: string;
   spec: string;
   imageSearch: string;
+  productId?: string;
+  cartLineId?: string;
   qty: number;
   unitPrice: number;
   total: number;
@@ -91,6 +93,8 @@ export function getInvoiceData(invoiceId: string, order?: Order): InvoiceData {
           name: m.name,
           spec: m.description,
           imageSearch: m.imageSearch,
+          productId: m.productId,
+          cartLineId: m.cartLineId,
           qty: 1,
           unitPrice: m.total,
           total: m.total,
@@ -99,7 +103,9 @@ export function getInvoiceData(invoiceId: string, order?: Order): InvoiceData {
           id: `inv-${idx}`,
           name: item.name,
           spec: `${item.unit} • Qty ${item.quantity}`,
-          imageSearch: 'construction materials',
+          imageSearch: item.imageSearch ?? item.image,
+          productId: item.productId,
+          cartLineId: item.id,
           qty: item.quantity,
           unitPrice: item.quantity >= item.bulkThreshold ? item.bulkPrice : item.unitPrice,
           total:

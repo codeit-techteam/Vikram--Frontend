@@ -2,14 +2,32 @@ import { create } from 'zustand';
 
 export interface CartItem {
   id: string;
+  productId?: string;
   name: string;
+  productName?: string;
+  brand?: string;
+  category?: string;
   description: string;
+  /** @deprecated Use getCartItemImageSource — kept for legacy persisted carts */
   image: string;
+  imageSearch?: string;
   unitPrice: number;
   bulkPrice: number;
   bulkThreshold: number;
   quantity: number;
   unit: string;
+  variantId?: string;
+  variantLabel?: string;
+}
+
+export type CartAddResult = 'added' | 'quantity_updated';
+
+export interface CartAddOutcome {
+  result: CartAddResult;
+  item: CartItem;
+  quantityAdded: number;
+  totalQuantity: number;
+  lineTotal: number;
 }
 
 export function getEffectivePrice(item: CartItem): number {
@@ -25,7 +43,7 @@ interface CartState {
   savedForLater: CartItem[];
   pointsApplied: boolean;
   cartBumpVersion: number;
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem) => CartAddOutcome;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, qty: number) => void;
   saveForLater: (id: string) => void;
@@ -48,22 +66,38 @@ export const useCartStore = create<CartState>((set, get) => ({
   pointsApplied: true,
   cartBumpVersion: 0,
 
-  addItem: (item) =>
-    set((state) => {
-      const existing = state.items.find((i) => i.id === item.id);
-      if (existing) {
-        return {
-          cartBumpVersion: state.cartBumpVersion + 1,
-          items: state.items.map((i) =>
-            i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i,
-          ),
-        };
-      }
-      return {
+  addItem: (item) => {
+    const state = get();
+    const existing = state.items.find((i) => i.id === item.id);
+
+    if (existing) {
+      const totalQuantity = existing.quantity + item.quantity;
+      const merged: CartItem = { ...existing, ...item, quantity: totalQuantity };
+      set({
         cartBumpVersion: state.cartBumpVersion + 1,
-        items: [...state.items, item],
+        items: state.items.map((i) => (i.id === item.id ? merged : i)),
+      });
+      return {
+        result: 'quantity_updated',
+        item: merged,
+        quantityAdded: item.quantity,
+        totalQuantity,
+        lineTotal: getLineTotal(merged),
       };
-    }),
+    }
+
+    set({
+      cartBumpVersion: state.cartBumpVersion + 1,
+      items: [...state.items, item],
+    });
+    return {
+      result: 'added',
+      item,
+      quantityAdded: item.quantity,
+      totalQuantity: item.quantity,
+      lineTotal: getLineTotal(item),
+    };
+  },
 
   removeItem: (id) =>
     set((state) => ({
@@ -103,12 +137,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   loyaltyDiscount: () => (get().pointsApplied ? LOYALTY_DISCOUNT : 0),
 
   grandTotal: () => {
-    const state = get();
-    return (
-      state.itemsTotal() +
-      state.gst() +
-      state.deliveryCharge() -
-      state.loyaltyDiscount()
-    );
+    const s = get();
+    return s.itemsTotal() + s.gst() + s.deliveryCharge() - s.loyaltyDiscount();
   },
 }));

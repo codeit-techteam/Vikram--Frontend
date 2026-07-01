@@ -1,5 +1,4 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -10,12 +9,12 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useTranslation } from '@store/languageStore';
+import { CartItemImage } from '@components/cart/CartItemImage';
 import {
   getEffectivePrice,
   getLineTotal,
   type CartItem,
 } from '@store/cartStore';
-import { getCartItemImageSource } from '@utils/cartHelpers';
 
 interface CartItemCardProps {
   item: CartItem;
@@ -46,7 +45,7 @@ export function CartItemCard({
   return (
     <View style={styles.card}>
       <View style={styles.imageWrap}>
-        <Image source={getCartItemImageSource(item)} style={styles.image} contentFit="cover" />
+        <CartItemImage item={item} style={styles.image} contentFit="cover" />
         <Pressable onPress={() => onRemove(item.id)} style={styles.deleteButton}>
           <Ionicons name="trash-outline" size={18} color="#666" />
         </Pressable>
@@ -54,6 +53,12 @@ export function CartItemCard({
 
       <View style={styles.content}>
         <Text style={styles.name}>{item.name}</Text>
+        {item.variantLabel ? (
+          <View style={styles.variantRow}>
+            <Text style={styles.variantLabel}>Variant</Text>
+            <Text style={styles.variantValue}>{item.variantLabel}</Text>
+          </View>
+        ) : null}
         <Text style={styles.description} numberOfLines={2}>
           {item.description}
         </Text>
@@ -73,7 +78,7 @@ export function CartItemCard({
           </View>
 
           <View style={styles.subtotalWrap}>
-            <Text style={styles.subtotalLabel}>{t('subtotal').toUpperCase()}</Text>
+            <Text style={styles.subtotalLabel}>QTY {item.quantity}</Text>
             <Text style={styles.subtotalValue}>₹{lineTotal.toLocaleString('en-IN')}</Text>
           </View>
         </View>
@@ -123,6 +128,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: 4,
+  },
+  variantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+    backgroundColor: '#FFF8E8',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  variantLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#888',
+    textTransform: 'uppercase',
+  },
+  variantValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   description: {
     fontSize: 13,

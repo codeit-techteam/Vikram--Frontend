@@ -31,7 +31,7 @@ import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
 import HeroVideoSection from '@components/HeroVideoSection';
 import { LastOrderCard } from '@components/LastOrderCard';
-import { getProductById, getProductImageUrl } from '@constants/catalogData';
+import { getProductById } from '@constants/catalogData';
 import { images } from '@constants/images';
 import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
@@ -46,24 +46,28 @@ const CATEGORIES: {
   labelKey: StringKey;
   image: number;
 }[] = [
-  { id: 'cement', routeId: '1', labelKey: 'cement', image: images.categoryCement },
-  { id: 'steel', routeId: '2', labelKey: 'steel', image: images.categorySteel },
-  { id: 'stone', routeId: '6', labelKey: 'stoneChip', image: images.categoryStone },
-  { id: 'sand', routeId: '3', labelKey: 'sand', image: images.categorySand },
-  { id: 'bricks', routeId: '4', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
+  { id: 'cement', routeId: 'cement', labelKey: 'cement', image: images.categoryCement },
+  { id: 'steel', routeId: 'steel', labelKey: 'steel', image: images.categorySteel },
+  { id: 'stone', routeId: 'stone-chips', labelKey: 'stoneChip', image: images.categoryStone },
+  { id: 'sand', routeId: 'sand', labelKey: 'sand', image: images.categorySand },
+  { id: 'bricks', routeId: 'bricks', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
 ];
 
 function buildFallbackLastOrders(): LastOrderedProduct[] {
   const steel = getProductById('s2');
   const cement = getProductById('c1');
+  const bricks = getProductById('bricks_red');
   const items: LastOrderedProduct[] = [];
 
   if (steel) {
     items.push({
       id: steel.id,
+      productId: steel.id,
       name: steel.detailName ?? steel.name,
+      productName: steel.detailName ?? steel.name,
       description: steel.description,
-      image: getProductImageUrl(steel.imageSearch, '80x80'),
+      imageSearch: steel.imageSearch,
+      image: steel.imageSearch,
       unitPrice: steel.retailPriceValue,
       bulkPrice: steel.bulkPriceValue,
       bulkThreshold: steel.bulkThreshold,
@@ -77,15 +81,39 @@ function buildFallbackLastOrders(): LastOrderedProduct[] {
   if (cement) {
     items.push({
       id: cement.id,
+      productId: cement.id,
       name: cement.detailName ?? cement.name,
+      productName: cement.detailName ?? cement.name,
       description: cement.description,
-      image: getProductImageUrl(cement.imageSearch, '80x80'),
+      imageSearch: cement.imageSearch,
+      image: cement.imageSearch,
       unitPrice: cement.retailPriceValue,
       bulkPrice: cement.bulkPriceValue,
       bulkThreshold: cement.bulkThreshold,
       quantity: 1,
       unit: cement.unit,
       orderedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      orderId: 'fallback',
+    });
+  }
+
+  if (bricks) {
+    items.push({
+      id: 'bricks_red_rb_500',
+      productId: bricks.id,
+      name: `${bricks.name} (500 Pieces)`,
+      productName: bricks.name,
+      description: bricks.description,
+      imageSearch: bricks.imageSearch,
+      image: bricks.imageSearch,
+      unitPrice: 4075,
+      bulkPrice: 3750,
+      bulkThreshold: bricks.bulkThreshold,
+      quantity: 1,
+      unit: bricks.unit,
+      variantId: 'rb_500',
+      variantLabel: '500 Pieces',
+      orderedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       orderId: 'fallback',
     });
   }

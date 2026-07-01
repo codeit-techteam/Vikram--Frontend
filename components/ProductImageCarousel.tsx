@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, ImageSourcePropType, ScrollView, View } from 'react-native';
+import {
+  Dimensions,
+  FlatList,
+  ImageSourcePropType,
+  Modal,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '@components/BrandLogo';
@@ -17,7 +26,10 @@ interface ProductImageCarouselProps {
 export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarouselProps) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const galleryRef = useRef<FlatList<ImageSourcePropType>>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,8 +42,14 @@ export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarous
     return () => clearInterval(interval);
   }, [images.length]);
 
+  const openGallery = (index: number) => {
+    setGalleryIndex(index);
+    setGalleryOpen(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   return (
-    <View style={{ height: 220 }}>
+    <View style={{ height: 280 }}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -42,12 +60,13 @@ export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarous
           setActiveIndex(index);
         }}>
         {images.map((source, i) => (
-          <Image
-            key={i}
-            source={source}
-            style={{ width: SCREEN_WIDTH, height: 220 }}
-            contentFit="cover"
-          />
+          <ScaledPressable key={i} onPress={() => openGallery(i)}>
+            <Image
+              source={source}
+              style={{ width: SCREEN_WIDTH, height: 280 }}
+              contentFit="cover"
+            />
+          </ScaledPressable>
         ))}
       </ScrollView>
 
@@ -73,6 +92,77 @@ export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarous
           />
         ))}
       </View>
+
+      <Modal visible={galleryOpen} transparent animationType="fade" statusBarTranslucent>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.95)',
+            justifyContent: 'center',
+          }}>
+          <ScaledPressable
+            onPress={() => setGalleryOpen(false)}
+            style={{
+              position: 'absolute',
+              top: insets.top + 12,
+              right: 16,
+              zIndex: 10,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <Ionicons name="close" size={20} color="#fff" />
+          </ScaledPressable>
+
+          <Text
+            style={{
+              position: 'absolute',
+              top: insets.top + 18,
+              alignSelf: 'center',
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: '600',
+              zIndex: 10,
+            }}>
+            {galleryIndex + 1} / {images.length}
+          </Text>
+
+          <FlatList
+            ref={galleryRef}
+            horizontal
+            pagingEnabled
+            initialScrollIndex={galleryIndex}
+            getItemLayout={(_, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
+            data={images}
+            keyExtractor={(_, i) => String(i)}
+            onMomentumScrollEnd={(e) => {
+              const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setGalleryIndex(index);
+            }}
+            renderItem={({ item: source }) => (
+              <View
+                style={{
+                  width: SCREEN_WIDTH,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                <Image
+                  source={source}
+                  style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
+                  contentFit="contain"
+                />
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -1,23 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
+import { CartItemImage } from '@components/cart/CartItemImage';
 import { getCategoryIdForProduct, getProductById } from '@constants/catalogData';
 import type { LastOrderedProduct } from '@store/orderStore';
 import { useTranslation } from '@store/languageStore';
-import { getCartItemImageSource } from '@utils/cartHelpers';
+import { resolveCartProductId } from '@utils/cartHelpers';
 import { getTimeAgo } from '@utils/timeAgo';
-import type { ProductCategoryType } from '@/types/catalog';
-
-const CATEGORY_ICONS: Record<ProductCategoryType, keyof typeof Ionicons.glyphMap> = {
-  cement: 'cube-outline',
-  steel: 'layers-outline',
-  sand: 'hourglass-outline',
-  bricks: 'grid-outline',
-  stone: 'diamond-outline',
-};
 
 interface LastOrderCardProps {
   item: LastOrderedProduct;
@@ -26,20 +17,18 @@ interface LastOrderCardProps {
 export function LastOrderCard({ item }: LastOrderCardProps) {
   const { t } = useTranslation();
   const timeAgo = getTimeAgo(item.orderedAt);
-  const product = getProductById(item.id);
-  const categoryType = product?.categoryType;
-  const categoryIcon = categoryType ? CATEGORY_ICONS[categoryType] : 'cube-outline';
-  const imageSource = getCartItemImageSource(item);
+  const productId = resolveCartProductId(item);
+  const product = getProductById(productId);
 
   const handleViewProduct = async () => {
     await Haptics.selectionAsync();
     router.push({
       pathname: '/products/detail/[productId]',
       params: {
-        productId: item.id,
-        categoryId: getCategoryIdForProduct(item.id) ?? '',
-        categoryName: product?.category ?? categoryType ?? '',
-        productName: product?.detailName ?? product?.name ?? item.name,
+        productId,
+        categoryId: getCategoryIdForProduct(productId) ?? '',
+        categoryName: product?.category ?? product?.categoryType ?? '',
+        productName: product?.detailName ?? product?.name ?? item.productName ?? item.name,
       },
     } as Href);
   };
@@ -47,11 +36,7 @@ export function LastOrderCard({ item }: LastOrderCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.imageWrap}>
-        {item.image || product?.image ? (
-          <Image source={imageSource} style={styles.image} contentFit="cover" />
-        ) : (
-          <Ionicons name={categoryIcon} size={24} color="#FEB623" />
-        )}
+        <CartItemImage item={item} style={styles.image} contentFit="cover" />
       </View>
 
       <View style={styles.info}>

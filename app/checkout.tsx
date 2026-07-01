@@ -20,7 +20,7 @@ import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { generateOrderId, useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
-import { getCartItemImageSource } from '@utils/cartHelpers';
+import { CartItemImage } from '@components/cart/CartItemImage';
 import { safeGoBack } from '@utils/navigation';
 import { formatINR } from '@utils/formatCurrency';
 
@@ -462,8 +462,8 @@ export default function CheckoutScreen() {
           </View>
           {items.map((item) => (
             <View key={item.id} className="mt-3 flex-row items-center gap-3">
-              <Image
-                source={getCartItemImageSource(item)}
+              <CartItemImage
+                item={item}
                 style={{ width: 48, height: 48, borderRadius: 8 }}
                 contentFit="cover"
               />

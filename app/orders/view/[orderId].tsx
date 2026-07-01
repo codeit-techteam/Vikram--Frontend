@@ -23,7 +23,8 @@ import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { safeGoBack } from '@utils/navigation';
-import { getOrderImageSource } from '@utils/orderHelpers';
+import { CartItemImage } from '@components/cart/CartItemImage';
+import { getOrderMaterialImageSource, getOrderPrimaryImageSource } from '@utils/orderHelpers';
 import { formatINR } from '@utils/formatCurrency';
 
 const DRIVER_AVATAR =
@@ -56,6 +57,7 @@ export default function ViewOrderScreen() {
   }
 
   const invoice = getInvoiceData(order.invoiceId, order);
+  const heroImage = getOrderPrimaryImageSource(order);
 
   const downloadInvoice = async () => {
     setDownloading(true);
@@ -112,11 +114,25 @@ export default function ViewOrderScreen() {
         </View>
 
         <View className="relative mx-5 mt-4">
-          <Image
-            source={getOrderImageSource(order.imageSearch)}
-            style={{ width: '100%', height: 200, borderRadius: 12 }}
-            contentFit="cover"
-          />
+          {heroImage ? (
+            <Image
+              source={heroImage}
+              style={{ width: '100%', height: 200, borderRadius: 12 }}
+              contentFit="cover"
+            />
+          ) : order.items[0] ? (
+            <CartItemImage
+              item={order.items[0]}
+              style={{ width: '100%', height: 200, borderRadius: 12 }}
+              contentFit="cover"
+            />
+          ) : (
+            <View
+              className="items-center justify-center bg-surface"
+              style={{ width: '100%', height: 200, borderRadius: 12 }}>
+              <Ionicons name="image-outline" size={32} color="#CCC" />
+            </View>
+          )}
           {order.badge && (
             <View className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1">
               <Text className="text-[10px] font-bold text-onPrimary">{order.badge}</Text>
@@ -165,13 +181,28 @@ export default function ViewOrderScreen() {
             <Ionicons name="cube-outline" size={18} color="#FEB623" />
             <Text className="text-base font-bold text-text">{t('orderedMaterials')}</Text>
           </View>
-          {order.materials.map((mat) => (
+          {order.materials.map((mat, idx) => {
+            const cartItem = order.items[idx];
+            const matImage = getOrderMaterialImageSource(mat, cartItem);
+            return (
             <View key={mat.id} className="mb-4 overflow-hidden rounded-card border border-border bg-surface">
-              <Image
-                source={getOrderImageSource(mat.imageSearch)}
-                style={{ width: '100%', height: 140 }}
-                contentFit="cover"
-              />
+              {matImage ? (
+                <Image
+                  source={matImage}
+                  style={{ width: '100%', height: 140 }}
+                  contentFit="cover"
+                />
+              ) : cartItem ? (
+                <CartItemImage
+                  item={cartItem}
+                  style={{ width: '100%', height: 140 }}
+                  contentFit="cover"
+                />
+              ) : (
+                <View className="h-[140px] items-center justify-center bg-background">
+                  <Ionicons name="image-outline" size={28} color="#CCC" />
+                </View>
+              )}
               <View className="p-4">
                 <View className="flex-row justify-between">
                   <Text className="flex-1 text-base font-bold text-text">{mat.name}</Text>
@@ -193,7 +224,8 @@ export default function ViewOrderScreen() {
                 </View>
               </View>
             </View>
-          ))}
+            );
+          })}
         </View>
 
         <View className="mx-5 mt-2 rounded-card border border-border bg-trust p-4">

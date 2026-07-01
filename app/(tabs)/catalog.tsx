@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { type Href, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
 import { CategoryCard } from '@components/CategoryCard';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { CATALOG_CATEGORIES } from '@constants/catalogData';
+import { CATALOG_CATEGORIES, getProductCountForCategory, PRODUCTS_BY_CATEGORY } from '@constants/catalogData';
 import { useTranslation } from '@store/languageStore';
 
 export default function CatalogScreen() {
@@ -25,6 +26,11 @@ export default function CatalogScreen() {
       pathname: '/products/[categoryId]',
       params: { categoryId: id, categoryName: t(labelKey) },
     } as Href);
+  };
+
+  const handleBulkEnquiry = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/bulk-procurement/enquiry' as Href);
   };
 
   return (
@@ -51,6 +57,10 @@ export default function CatalogScreen() {
                   key={cat.id}
                   name={t(cat.labelKey)}
                   image={cat.image}
+                  productCountLabel={t('productsCount').replace(
+                    '{count}',
+                    String(getProductCountForCategory(cat.id)),
+                  )}
                   onPress={() => navigateToCategory(cat.id, cat.labelKey)}
                 />
               ))}
@@ -64,7 +74,9 @@ export default function CatalogScreen() {
           <Text className="mt-2 text-sm leading-5 text-onPrimary/90">
             {t('bulkProcurementSubtitle')}
           </Text>
-          <ScaledPressable className="mt-4 self-center rounded-pill border-2 border-surface bg-surface px-8 py-2.5">
+          <ScaledPressable
+            onPress={handleBulkEnquiry}
+            className="mt-4 self-center rounded-pill border-2 border-surface bg-surface px-8 py-2.5">
             <Text className="text-sm font-bold text-primary">{t('inquireNow')}</Text>
           </ScaledPressable>
         </View>

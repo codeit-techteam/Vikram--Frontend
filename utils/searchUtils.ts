@@ -3,6 +3,7 @@ import {
   SEARCH_CATEGORIES,
   type SearchProduct,
 } from '@constants/searchData';
+import { getExtensionSearchProducts } from '@constants/catalogExtensions';
 
 export interface TextSegment {
   text: string;
@@ -89,7 +90,8 @@ export function searchProducts(query: string): SearchProduct[] {
   if (!trimmed) return [];
 
   const q = trimmed.toLowerCase();
-  return ALL_PRODUCTS.filter(
+  const catalog = [...ALL_PRODUCTS, ...getExtensionSearchProducts()];
+  return catalog.filter(
     (p) =>
       p.name.toLowerCase().includes(q) ||
       p.brand.toLowerCase().includes(q) ||
@@ -113,7 +115,9 @@ export function fetchSuggestions(query: string): Suggestion[] {
     suggestions.push(suggestion);
   };
 
-  ALL_PRODUCTS.filter((p) => p.name.toLowerCase().includes(q))
+  const catalog = [...ALL_PRODUCTS, ...getExtensionSearchProducts()];
+
+  catalog.filter((p) => p.name.toLowerCase().includes(q))
     .sort((a, b) => scoreProduct(b, trimmed) - scoreProduct(a, trimmed))
     .slice(0, 4)
     .forEach((p) => {

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ActivityIndicator, LayoutAnimation, Linking, Platform, ScrollView, Text, UIManager, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -11,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
-import { getProductImageUrl } from '@constants/catalogData';
+import { CartItemImage } from '@components/cart/CartItemImage';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { formatINR } from '@utils/formatCurrency';
@@ -126,8 +125,20 @@ export default function InvoiceScreen() {
           {invoice.items.map((item) => (
             <View key={item.id} className="mt-3 flex-row items-center">
               <View className="flex-[2] flex-row items-center gap-2">
-                <Image
-                  source={{ uri: getProductImageUrl(item.imageSearch, '80x80') }}
+                <CartItemImage
+                  item={{
+                    id: item.cartLineId ?? item.productId ?? item.id,
+                    productId: item.productId,
+                    imageSearch: item.imageSearch,
+                    image: item.imageSearch,
+                    name: item.name,
+                    description: item.spec,
+                    unitPrice: item.unitPrice,
+                    bulkPrice: item.unitPrice,
+                    bulkThreshold: 9999,
+                    quantity: item.qty,
+                    unit: '',
+                  }}
                   style={{ width: 40, height: 40, borderRadius: 6 }}
                   contentFit="cover"
                 />

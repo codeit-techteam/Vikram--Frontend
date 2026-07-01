@@ -10,7 +10,7 @@ export function validateName(name: string): string | null {
 export function validatePhone(phone: string): string | null {
   const digits = phone.replace(/\D/g, '');
   if (!digits) return 'Mobile number is required';
-  if (digits.length < 10) return 'Enter a valid 10-digit mobile number';
+  if (digits.length !== 10) return 'Please enter a valid 10-digit mobile number.';
   return null;
 }
 

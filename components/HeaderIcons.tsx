@@ -1,6 +1,13 @@
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { useCartStore } from '@store/cartStore';
 import { useNotificationStore } from '@store/notificationStore';
@@ -31,19 +38,42 @@ export function NotificationBell({ color = '#1A1A1A', size = 20 }: HeaderIconPro
 
 export function CartIcon({ color = '#1A1A1A', size = 20 }: HeaderIconProps) {
   const cartCount = useCartStore((s) => s.items.reduce((sum, item) => sum + item.quantity, 0));
+  const cartBumpVersion = useCartStore((s) => s.cartBumpVersion);
+  const cartScale = useSharedValue(1);
+  const badgeScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (cartBumpVersion === 0) return;
+    cartScale.value = withSequence(
+      withSpring(1.2, { damping: 8, stiffness: 280 }),
+      withSpring(1, { damping: 12 }),
+    );
+    badgeScale.value = withSequence(
+      withSpring(1.45, { damping: 6, stiffness: 320 }),
+      withSpring(1, { damping: 10 }),
+    );
+  }, [cartBumpVersion, cartScale, badgeScale]);
+
+  const cartAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cartScale.value }],
+  }));
+
+  const badgeAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: badgeScale.value }],
+  }));
 
   return (
     <Pressable
       onPress={() => router.push('/cart')}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-      <View>
+      <Animated.View style={cartAnimStyle}>
         <Ionicons name="cart-outline" size={size} color={color} />
         {cartCount > 0 ? (
-          <View style={styles.badge}>
+          <Animated.View style={[styles.badge, badgeAnimStyle]}>
             <Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text>
-          </View>
+          </Animated.View>
         ) : null}
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }

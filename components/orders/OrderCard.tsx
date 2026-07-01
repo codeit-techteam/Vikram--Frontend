@@ -8,7 +8,7 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
 import type { Order } from '@store/orderStore';
-import { getOrderImageSource } from '@utils/orderHelpers';
+import { getOrderPrimaryImageSource } from '@utils/orderHelpers';
 import { formatINR } from '@utils/formatCurrency';
 
 interface OrderCardProps {
@@ -29,15 +29,25 @@ function translateBadge(badge: string, t: (key: StringKey) => string): string {
 export function OrderCard({ order, searchQuery = '' }: OrderCardProps) {
   const { t } = useTranslation();
   const priceLabel = `${formatINR(order.price, false)} /${order.unit}`;
+  const heroImage = getOrderPrimaryImageSource(order);
 
   return (
     <View className="mb-5 overflow-hidden rounded-card border border-border bg-surface shadow-sm">
       <View className="relative" style={{ height: 160 }}>
-        <Image
-          source={getOrderImageSource(order.imageSearch)}
-          style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
-          contentFit="cover"
-        />
+        {heroImage ? (
+          <Image
+            source={heroImage}
+            style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
+            contentFit="cover"
+          />
+        ) : (
+          <View
+            className="items-center justify-center bg-background"
+            style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+            <Ionicons name="image-outline" size={32} color="#CCC" />
+            <Text className="mt-1 text-xs font-semibold text-text-secondary">No Product Image</Text>
+          </View>
+        )}
         {order.badge && (
           <View className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1">
             <Text className="text-[10px] font-bold text-onPrimary">

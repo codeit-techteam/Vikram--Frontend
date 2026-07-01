@@ -180,9 +180,14 @@ export function getSearchProductById(id: string): SearchProduct | undefined {
 export function searchProductToCartItem(product: SearchProduct): CartItem {
   return {
     id: product.id,
+    productId: product.id,
     name: product.name,
+    productName: product.name,
+    brand: product.brand,
+    category: product.category,
     description: `${product.brand} · ${product.unit}`,
-    image: getProductImageUrl(product.image, '144x144'),
+    imageSearch: product.image,
+    image: product.image,
     unitPrice: product.price,
     bulkPrice: product.price,
     bulkThreshold: 9999,

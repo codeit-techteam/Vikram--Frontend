@@ -27,39 +27,58 @@ export const PRICE_PRESETS: { label: string; range: [number, number] }[] = [
 ];
 
 const GRADES_BY_CATEGORY: Record<string, string[]> = {
-  '1': ['OPC 43', 'OPC 53', 'PPC'],
-  '2': ['Fe500', 'Fe550', 'Fe600'],
-  '3': ['Zone 1', 'Zone 2', 'Fine'],
-  '4': ['Class A', 'Class B', 'Grade 2'],
-  '5': ['G1', 'G2', 'G3', 'Premium'],
-  '6': ['Grade A', 'Grade B', 'Grade C'],
+  cement: ['OPC 43', 'OPC 53', 'PPC'],
+  steel: ['Fe500', 'Fe550', 'Fe600'],
+  sand: ['Zone 1', 'Zone 2', 'Fine'],
+  bricks: ['Class A', 'Class B', 'Grade 2'],
+  'grey-fill-sand': ['G1', 'G2', 'G3', 'Premium'],
+  'stone-chips': ['Grade A', 'Grade B', 'Grade C'],
+  aggregates: ['Standard', 'Fine', 'Coarse'],
+  adhesives: ['Standard'],
+  'wall-repair': ['Standard'],
+  waterproofing: ['Standard'],
+  'quick-repair': ['Standard'],
+  putty: ['Standard'],
 };
 
 const BRANDS_BY_CATEGORY: Record<string, BrandOption[]> = {
-  '1': [
+  cement: [
     { id: 'ultratech', name: 'UltraTech', count: 1, logoText: 'UT' },
-    { id: 'acc', name: 'ACC', count: 1, logoText: 'ACC' },
+    { id: 'acc', name: 'ACC', count: 0, logoText: 'ACC' },
     { id: 'ambuja', name: 'Ambuja', count: 0, logoText: 'AB' },
   ],
-  '2': [
+  steel: [
     { id: 'tata', name: 'TATA', count: 1, logoText: 'TT' },
     { id: 'jsw', name: 'JSW', count: 1, logoText: 'JSW' },
     { id: 'jindal', name: 'Jindal', count: 0, logoText: 'J' },
   ],
-  '3': [
-    { id: 'regional', name: 'Regional Supplier', count: 2, logoText: 'RS' },
-  ],
-  '4': [
-    { id: 'regional', name: 'Regional Supplier', count: 2, logoText: 'RS' },
-  ],
-  '5': [
+  sand: [{ id: 'regional', name: 'Regional Supplier', count: 2, logoText: 'RS' }],
+  bricks: [{ id: 'regional', name: 'Regional Supplier', count: 2, logoText: 'RS' }],
+  'grey-fill-sand': [
     { id: 'local', name: 'Local Supplier', count: 1, logoText: 'LS' },
     { id: 'premium', name: 'Premium Sands', count: 0, logoText: 'PS' },
   ],
-  '6': [
+  'stone-chips': [
     { id: 'regional', name: 'Regional Aggregates', count: 2, logoText: 'RA' },
     { id: 'premium', name: 'Premium Stone', count: 0, logoText: 'PS' },
   ],
+  aggregates: [{ id: 'regional', name: 'Regional Aggregates', count: 1, logoText: 'RA' }],
+  adhesives: [
+    { id: 'fevicol', name: 'Fevicol', count: 6, logoText: 'FV' },
+    { id: 'jivantor', name: 'Jivantor', count: 1, logoText: 'JV' },
+  ],
+  'wall-repair': [
+    { id: 'jk', name: 'JK', count: 1, logoText: 'JK' },
+    { id: 'birla', name: 'Birla', count: 1, logoText: 'BR' },
+    { id: 'sakarni', name: 'Sakarni', count: 1, logoText: 'SK' },
+  ],
+  waterproofing: [{ id: 'dr-fixit', name: 'Dr Fixit', count: 6, logoText: 'DF' }],
+  'quick-repair': [
+    { id: 'polyfix', name: 'Polyfix', count: 1, logoText: 'PF' },
+    { id: 'araldite', name: 'Araldite', count: 1, logoText: 'AR' },
+    { id: 'fevikwik', name: 'FeviKwik', count: 1, logoText: 'FK' },
+  ],
+  putty: [{ id: 'asian-paints', name: 'Asian Paints', count: 1, logoText: 'AP' }],
 };
 
 export function extractEtaFromBadge(badge: string): string | null {
@@ -72,14 +91,31 @@ export function extractEtaFromBadge(badge: string): string | null {
 
 export function extractBrandFromProduct(product: Product, categoryId: string): string {
   const name = product.name;
-  const knownBrands = ['UltraTech', 'ACC', 'TATA', 'JSW', 'Ambuja', 'Jindal'];
+  const knownBrands = [
+    'UltraTech',
+    'ACC',
+    'TATA',
+    'JSW',
+    'Ambuja',
+    'Jindal',
+    'Fevicol',
+    'Jivantor',
+    'Dr Fixit',
+    'Asian Paints',
+    'JK',
+    'Birla',
+    'Sakarni',
+    'Polyfix',
+    'Araldite',
+    'FeviKwik',
+  ];
   for (const brand of knownBrands) {
     if (name.includes(brand)) return brand;
   }
 
-  if (categoryId === '5') return 'Local Supplier';
-  if (categoryId === '6') return 'Regional Aggregates';
-  if (categoryId === '3' || categoryId === '4') return 'Regional Supplier';
+  if (categoryId === 'grey-fill-sand') return 'Local Supplier';
+  if (categoryId === 'stone-chips' || categoryId === 'aggregates') return 'Regional Aggregates';
+  if (categoryId === 'sand' || categoryId === 'bricks') return 'Regional Supplier';
 
   return 'Other';
 }
@@ -91,7 +127,7 @@ export function normalizeGrade(productGrade: string, categoryId: string): string
   );
   if (direct) return direct;
 
-  if (categoryId === '1') {
+  if (categoryId === 'cement') {
     if (productGrade === '53') return 'OPC 53';
     if (productGrade === '43') return 'OPC 43';
     return 'PPC';

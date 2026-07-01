@@ -8,10 +8,18 @@ import { ScaledPressable } from '@components/ScaledPressable';
 interface CategoryCardProps {
   name: string;
   image: ImageSourcePropType;
+  productCount?: number;
+  productCountLabel?: string;
   onPress: () => void;
 }
 
-export function CategoryCard({ name, image, onPress }: CategoryCardProps) {
+export function CategoryCard({
+  name,
+  image,
+  productCount,
+  productCountLabel,
+  onPress,
+}: CategoryCardProps) {
   return (
     <ScaledPressable onPress={onPress} className="mb-3 flex-1 overflow-hidden rounded-card shadow-sm">
       <View style={{ aspectRatio: 1.1 }}>
@@ -22,6 +30,15 @@ export function CategoryCard({ name, image, onPress }: CategoryCardProps) {
         />
         <View className="absolute bottom-0 left-0 right-0 p-3">
           <Text className="text-sm font-bold text-text-inverse">{name}</Text>
+          {productCountLabel ? (
+            <Text className="mt-0.5 text-xs font-medium text-text-inverse/80">
+              {productCountLabel}
+            </Text>
+          ) : productCount !== undefined ? (
+            <Text className="mt-0.5 text-xs font-medium text-text-inverse/80">
+              {productCount} {productCount === 1 ? 'Product' : 'Products'}
+            </Text>
+          ) : null}
         </View>
       </View>
     </ScaledPressable>
