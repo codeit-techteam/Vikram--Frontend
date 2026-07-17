@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { generateOrderId, useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
+import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
 import { CartItemImage } from '@components/cart/CartItemImage';
 import { safeGoBack } from '@utils/navigation';
 import { formatINR } from '@utils/formatCurrency';
@@ -46,6 +48,7 @@ export default function CheckoutScreen() {
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
   const addOrder = useOrderStore((s) => s.addOrder);
+  const queryClient = useQueryClient();
 
   const selectedSite = useDeliveryStore((s) => {
     const site = s.sites.find((x) => x.id === s.selectedSiteId);
@@ -126,6 +129,8 @@ export default function CheckoutScreen() {
         deliveryETA: 'Today, 5:00 PM',
       }),
     );
+
+    await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
 
     clearCart();
     setPaying(false);

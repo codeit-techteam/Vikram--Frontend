@@ -32,7 +32,7 @@ export function EmptyOrdersState() {
           color: '#1A1A1A',
           marginBottom: 6,
         }}>
-        No orders yet
+        No Orders Yet
       </Text>
       <Text
         style={{
@@ -54,7 +54,7 @@ export function EmptyOrdersState() {
           marginTop: 20,
         }}>
         <Text style={{ color: '#1A1A1A', fontWeight: '800', fontSize: 14 }}>
-          Browse Catalog
+          Start Shopping
         </Text>
       </ScaledPressable>
     </View>

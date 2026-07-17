@@ -1,114 +1,368 @@
+import { memo, useCallback, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
-import { HighlightedText } from '@components/search/HighlightedText';
+import { OrderCardActions } from '@components/orders/OrderCardActions';
+import { ActiveOrderProgress } from '@components/orders/OrderTimeline';
+import { EnRouteBadge, OrderStatusBadge } from '@components/orders/OrderStatusBadge';
+import { OrderProductPreview } from '@components/orders/OrderProducts';
 import { ScaledPressable } from '@components/ScaledPressable';
-import type { StringKey } from '@constants/strings';
-import { useTranslation } from '@store/languageStore';
-import type { Order } from '@store/orderStore';
-import { getOrderPrimaryImageSource } from '@utils/orderHelpers';
+import { STATUS_PROGRESS_INDEX } from '@constants/orderStatus';
+import type { Order } from '@/types/order';
 import { formatINR } from '@utils/formatCurrency';
+import { formatDateKey } from '@utils/orderDateHelpers';
+import { borderRadius, theme } from '@constants/theme';
 
-interface OrderCardProps {
+interface OrderCardBaseProps {
   order: Order;
-  searchQuery?: string;
+  index?: number;
+  onPress?: (order: Order) => void;
+  onReorder?: (orderId: string) => void;
+  onCancel?: (orderId: string) => void;
+  isReordering?: boolean;
+  isCancelling?: boolean;
 }
 
-const BADGE_KEYS: Record<string, StringKey> = {
-  'GET READY': 'getReady',
-  'BULK SAVINGS': 'bulkSavings',
-};
-
-function translateBadge(badge: string, t: (key: StringKey) => string): string {
-  const key = BADGE_KEYS[badge];
-  return key ? t(key) : badge;
-}
-
-export function OrderCard({ order, searchQuery = '' }: OrderCardProps) {
-  const { t } = useTranslation();
-  const priceLabel = `${formatINR(order.price, false)} /${order.unit}`;
-  const heroImage = getOrderPrimaryImageSource(order);
+function OrderCardShell({
+  order,
+  index = 0,
+  onPress,
+  children,
+  footer,
+}: OrderCardBaseProps & { children: ReactNode; footer?: ReactNode }) {
+  const handlePress = useCallback(async () => {
+    await Haptics.selectionAsync();
+    onPress?.(order);
+    router.push(`/orders/view/${order.id}`);
+  }, [onPress, order]);
 
   return (
-    <View className="mb-5 overflow-hidden rounded-card border border-border bg-surface shadow-sm">
-      <View className="relative" style={{ height: 160 }}>
-        {heroImage ? (
-          <Image
-            source={heroImage}
-            style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
-            contentFit="cover"
-          />
-        ) : (
-          <View
-            className="items-center justify-center bg-background"
-            style={{ width: '100%', height: 160, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-            <Ionicons name="image-outline" size={32} color="#CCC" />
-            <Text className="mt-1 text-xs font-semibold text-text-secondary">No Product Image</Text>
-          </View>
-        )}
-        {order.badge && (
-          <View className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1">
-            <Text className="text-[10px] font-bold text-onPrimary">
-              {translateBadge(order.badge, t)}
-            </Text>
-          </View>
-        )}
-        <ScaledPressable className="absolute right-3 top-3 h-9 w-9 items-center justify-center rounded-full bg-primary/90">
-          <Ionicons name="refresh" size={18} color="#FFFFFF" />
-        </ScaledPressable>
-        {order.isBulkDiscount && !order.badge && (
-          <View className="absolute bottom-3 right-3 rounded-full bg-primary px-2 py-0.5">
-            <Text className="text-[9px] font-bold text-onPrimary">{t('bulkSavings')}</Text>
-          </View>
-        )}
-      </View>
-
-      <View className="p-4">
-        {searchQuery ? (
-          <HighlightedText
-            text={order.productName}
-            query={searchQuery}
-            style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}
-            numberOfLines={2}
-          />
-        ) : (
-          <Text className="text-lg font-bold text-text">{order.productName}</Text>
-        )}
-        <Text className="mt-1 text-sm leading-5 text-text-secondary" numberOfLines={2}>
-          {order.description}
-        </Text>
-
-        <View className="mt-3 flex-row items-center justify-between">
-          <View>
-            <Text className="text-base font-bold text-primary">{priceLabel}</Text>
-            {order.isBulkDiscount && order.bulkDiscountLabel && (
-              <Text className="text-xs font-semibold text-primary">{t('bulkDiscount')}</Text>
-            )}
-          </View>
-          {order.minUnits && (
-            <View className="rounded-full border border-border bg-background px-2 py-1">
-              <Text className="text-[10px] font-semibold text-text-secondary">
-                {t('minUnits').replace('{{count}}', String(order.minUnits))}
-              </Text>
-            </View>
-          )}
+    <Animated.View entering={FadeInUp.delay(index * 60).duration(350).springify()}>
+      <ScaledPressable
+        onPress={handlePress}
+        style={{
+          marginHorizontal: 12,
+          marginBottom: 12,
+          borderRadius: borderRadius.xl,
+          backgroundColor: theme.white,
+          overflow: 'hidden',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
+        }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingTop: 14,
+            paddingBottom: 8,
+          }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textMuted }}>
+            Order ID: {order.orderNumber}{' '}
+            <Text style={{ color: '#BBB' }}>{formatDateKey(order.createdAt)}</Text>
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color="#CCC" />
         </View>
-
-        <View className="mt-4 flex-row gap-2">
-          <ScaledPressable
-            onPress={() => router.push(`/orders/view/${order.id}`)}
-            className="flex-[0.7] items-center rounded-lg bg-primary py-3">
-            <Text className="text-sm font-bold text-onPrimary">{t('viewOrder')}</Text>
-          </ScaledPressable>
-          <ScaledPressable
-            onPress={() => router.push(`/orders/details/${order.id}`)}
-            className="flex-[0.28] items-center rounded-lg border border-border py-3">
-            <Text className="text-sm font-semibold text-text-secondary">{t('details')}</Text>
-          </ScaledPressable>
-        </View>
-      </View>
-    </View>
+        {children}
+        {footer}
+      </ScaledPressable>
+    </Animated.View>
   );
 }
+
+export const ActiveOrderCard = memo(function ActiveOrderCard(props: OrderCardBaseProps) {
+  const { order } = props;
+  const eta =
+    order.tracking?.estimatedMinutes != null
+      ? `Delivering in ${order.tracking.estimatedMinutes} mins`
+      : order.tracking?.estimatedArrival
+        ? `Arriving by ${order.tracking.estimatedArrival}`
+        : order.expectedDelivery
+          ? `Arriving by ${order.expectedDelivery}`
+          : null;
+
+  const progressIndex = STATUS_PROGRESS_INDEX[order.status] ?? 0;
+
+  return (
+    <OrderCardShell
+      {...props}
+      footer={
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <ScaledPressable
+            onPress={async () => {
+              await Haptics.selectionAsync();
+              router.push(`/orders/details/${order.id}`);
+            }}
+            style={{
+              backgroundColor: theme.primary,
+              borderRadius: borderRadius.md,
+              paddingVertical: 12,
+              alignItems: 'center',
+              marginTop: 8,
+            }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary }}>
+              Track Order
+            </Text>
+          </ScaledPressable>
+        </View>
+      }>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            {eta ? (
+              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary }}>{eta}</Text>
+            ) : (
+              <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+                Order in progress
+              </Text>
+            )}
+          </View>
+          {order.status === 'out_for_delivery' ? <EnRouteBadge /> : <OrderStatusBadge status={order.status} compact />}
+        </View>
+        <ActiveOrderProgress currentIndex={progressIndex} />
+        <View style={{ marginTop: 12 }}>
+          <OrderProductPreview products={order.products} />
+        </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: '#F5F5F5',
+          }}>
+          <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+            {order.products.length} item{order.products.length > 1 ? 's' : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
+            {formatINR(order.grandTotal, false)}
+          </Text>
+        </View>
+      </View>
+    </OrderCardShell>
+  );
+});
+
+export const DeliveredOrderCard = memo(function DeliveredOrderCard(props: OrderCardBaseProps) {
+  const { order } = props;
+  const deliveredDate = order.deliveredAt
+    ? formatDateKey(order.deliveredAt)
+    : order.expectedDelivery;
+
+  return (
+    <OrderCardShell
+      {...props}
+      footer={
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          {order.refund?.status === 'credited' ? (
+            <View
+              style={{
+                backgroundColor: '#E8F5E9',
+                borderRadius: borderRadius.md,
+                padding: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 8,
+              }}>
+              <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+              <Text style={{ fontSize: 13, color: '#2E7D32', fontWeight: '600', flex: 1 }}>
+                Refund credited
+              </Text>
+              <Text style={{ fontSize: 13, color: '#2E7D32', fontWeight: '700' }}>
+                ₹{order.refund.amount.toLocaleString('en-IN')}
+              </Text>
+            </View>
+          ) : null}
+          <OrderCardActions {...props} />
+        </View>
+      }>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>Delivered</Text>
+            {deliveredDate ? (
+              <Text style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
+                On {deliveredDate}
+              </Text>
+            ) : null}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+            {order.deliveredEarly ? (
+              <View
+                style={{
+                  backgroundColor: '#E8F5E9',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: borderRadius.full,
+                }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#34C759' }}>Early</Text>
+              </View>
+            ) : null}
+            <OrderStatusBadge status="delivered" compact />
+          </View>
+        </View>
+        <View style={{ marginTop: 12 }}>
+          <OrderProductPreview products={order.products} />
+        </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: '#F5F5F5',
+          }}>
+          <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+            {order.products.length} item{order.products.length > 1 ? 's' : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
+            {formatINR(order.grandTotal, false)}
+          </Text>
+        </View>
+      </View>
+    </OrderCardShell>
+  );
+});
+
+export const CancelledOrderCard = memo(function CancelledOrderCard(props: OrderCardBaseProps) {
+  const { order } = props;
+
+  return (
+    <OrderCardShell
+      {...props}
+      footer={
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <OrderCardActions {...props} />
+        </View>
+      }>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+              {order.status === 'payment_failed' ? 'Payment Failed' : 'Cancelled'}
+            </Text>
+            {order.cancellationReason ? (
+              <Text style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }} numberOfLines={2}>
+                {order.cancellationReason}
+              </Text>
+            ) : null}
+          </View>
+          <OrderStatusBadge status={order.status} compact />
+        </View>
+        {order.refund ? (
+          <View
+            style={{
+              marginTop: 10,
+              backgroundColor: theme.ultraLightGray,
+              borderRadius: borderRadius.md,
+              padding: 10,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+            }}>
+            <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+              Refund: {order.refund.status}
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary }}>
+              ₹{order.refund.amount.toLocaleString('en-IN')}
+            </Text>
+          </View>
+        ) : null}
+        <View style={{ marginTop: 12 }}>
+          <OrderProductPreview products={order.products} />
+        </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: '#F5F5F5',
+          }}>
+          <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+            {order.products.length} item{order.products.length > 1 ? 's' : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
+            {formatINR(order.grandTotal, false)}
+          </Text>
+        </View>
+      </View>
+    </OrderCardShell>
+  );
+});
+
+export const DefaultOrderCard = memo(function DefaultOrderCard(props: OrderCardBaseProps) {
+  const { order } = props;
+
+  return (
+    <OrderCardShell
+      {...props}
+      footer={
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <OrderCardActions {...props} />
+        </View>
+      }>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+              {order.expectedDelivery ? `Expected: ${order.expectedDelivery}` : 'Processing'}
+            </Text>
+          </View>
+          <OrderStatusBadge status={order.status} compact />
+        </View>
+        <View style={{ marginTop: 12 }}>
+          <OrderProductPreview products={order.products} />
+        </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: '#F5F5F5',
+          }}>
+          <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+            {order.products.length} item{order.products.length > 1 ? 's' : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
+            {formatINR(order.grandTotal, false)}
+          </Text>
+        </View>
+      </View>
+    </OrderCardShell>
+  );
+});
+
+export const OrderCard = memo(function OrderCard(props: OrderCardBaseProps) {
+  const { order } = props;
+
+  if (
+    order.status === 'out_for_delivery' ||
+    order.status === 'ready_for_dispatch' ||
+    (order.status === 'processing' && order.tracking)
+  ) {
+    return <ActiveOrderCard {...props} />;
+  }
+
+  if (order.status === 'delivered' || order.status === 'refunded') {
+    return <DeliveredOrderCard {...props} />;
+  }
+
+  if (order.status === 'cancelled' || order.status === 'payment_failed') {
+    return <CancelledOrderCard {...props} />;
+  }
+
+  return <DefaultOrderCard {...props} />;
+});

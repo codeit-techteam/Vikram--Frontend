@@ -11,6 +11,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { VoiceAssistantSheet } from '@components/VoiceAssistantSheet';
 import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
+import { ReorderToast } from '@components/orders/ReorderToast';
+import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
 import { useLanguageStore } from '@store/languageStore';
 
@@ -111,6 +113,8 @@ export default function RootLayout() {
             </Stack>
             <VoiceAssistantSheet />
             <AddToCartSuccessToast />
+            <ReorderToast />
+            <ReorderUnavailableSheet />
           </BottomSheetModalProvider>
         </QueryProvider>
       </SafeAreaProvider>
