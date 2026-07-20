@@ -37,7 +37,9 @@ export function AppHeader({
   isDrawerOpen = false,
   menuIconStyle,
 }: AppHeaderProps) {
-  const cartCount = useCartStore((s) => s.items.reduce((sum, item) => sum + item.quantity, 0));
+  const cartCount = useCartStore((s) =>
+    s.items.reduce((sum, item) => sum + item.quantity, 0),
+  );
   const cartBumpVersion = useCartStore((s) => s.cartBumpVersion);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 

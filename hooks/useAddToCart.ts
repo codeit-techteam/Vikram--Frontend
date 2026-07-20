@@ -8,11 +8,14 @@ import { productToCartItem, type CartItemOptions } from '@utils/cartHelpers';
 
 export type AddToCartButtonState = 'idle' | 'loading' | 'success';
 
-const LOADING_MS = 300;
-const SUCCESS_MS = 1200;
+const LOADING_MS = 280;
 
+/**
+ * Adds or updates cart with an absolute quantity.
+ * Cart badge updates only when this runs — not when local qty changes.
+ */
 export function useAddToCart() {
-  const addItem = useCartStore((s) => s.addItem);
+  const upsertItem = useCartStore((s) => s.upsertItem);
   const showFeedback = useCartFeedbackStore((s) => s.showFeedback);
   const [buttonState, setButtonState] = useState<AddToCartButtonState>('idle');
 
@@ -24,17 +27,17 @@ export function useAddToCart() {
       await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
 
       const cartItem = productToCartItem(product, quantity, options);
-      const outcome = addItem(cartItem);
+      const outcome = upsertItem(cartItem);
 
       setButtonState('success');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
       showFeedback({ outcome });
 
-      setTimeout(() => setButtonState('idle'), SUCCESS_MS);
+      // Leave success briefly; callers own "Added ✓" via cart qty sync.
+      setTimeout(() => setButtonState('idle'), 600);
       return outcome;
     },
-    [addItem, buttonState, showFeedback],
+    [upsertItem, buttonState, showFeedback],
   );
 
   return { addToCart, buttonState };

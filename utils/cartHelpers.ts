@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 import { getAllProducts, getProductById, getProductImageSource, getProductImageUrl } from '@constants/catalogData';
 import {
+  getProductSkuUnit,
   getVariantById,
   getVariantDisplayUnit,
   productHasStructuredVariants,
@@ -43,7 +44,9 @@ export function productToCartItem(
   const cartId = hasVariant ? `${product.id}_${variantId}` : product.id;
   const baseName = product.detailName ?? product.name;
   const displayName = hasVariant ? `${baseName} (${variant.label})` : baseName;
-  const unit = hasVariant ? getVariantDisplayUnit(variant) || variant.label : product.unit;
+  const unit = hasVariant
+    ? getVariantDisplayUnit(variant) || getProductSkuUnit(product)
+    : product.unit;
 
   return {
     id: cartId,

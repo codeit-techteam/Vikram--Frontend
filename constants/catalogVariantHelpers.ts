@@ -20,9 +20,12 @@ export const ML_L_VARIANTS = ['250 ml', '500 ml', '1 L', '4 L'];
 
 export const JIVANTOR_VARIANTS = ['250 ml', '500 ml', '1 L', '4 L', '10 L', '20 L'];
 
-export const KG_VARIANTS_STANDARD = ['1 kg', '5 kg', '10 kg', '20 kg'];
+export const BUCKET_VARIANTS_STANDARD = ['5 Kg Bucket', '10 Kg Bucket', '20 Kg Bucket'];
 
-export const SAKARNI_POP_VARIANTS = ['1 kg', '5 kg', '10 kg', '20 kg', '50 kg'];
+export const SAKARNI_POP_VARIANTS = ['5 Kg Bag', '10 Kg Bag', '20 Kg Bag', '50 Kg Bag'];
+
+/** @deprecated Use BUCKET_VARIANTS_STANDARD */
+export const KG_VARIANTS_STANDARD = BUCKET_VARIANTS_STANDARD;
 
 export const L_VARIANTS = ['10 L', '20 L'];
 
@@ -106,17 +109,28 @@ export const BRICK_PACK_VARIANTS: ProductVariant[] = [
   brickVariant('b11', 6000, 43200, 39000),
 ];
 
-function kgVariant(id: string, kg: number, pricePerKg: number): ProductVariant {
-  const price = Math.round(pricePerKg * kg * (kg >= 5 ? 0.97 : 1));
+function packVariant(
+  id: string,
+  label: string,
+  displayUnit: string,
+  size: number,
+  price: number,
+): ProductVariant {
   return {
     id,
-    label: `${kg} kg`,
-    size: kg,
-    sizeUnit: 'kg',
+    label,
+    displayUnit,
+    size,
+    sizeUnit: displayUnit,
     price,
     bulkPrice: null,
     inStock: true,
   };
+}
+
+function bucketVariant(id: string, kg: number, pricePerKg: number): ProductVariant {
+  const price = Math.round(pricePerKg * kg * (kg >= 5 ? 0.97 : 1));
+  return packVariant(id, `${kg} Kg Bucket`, 'Bucket', kg, price);
 }
 
 export function createKgPackVariants(
@@ -124,7 +138,7 @@ export function createKgPackVariants(
   pricePerKg: number,
   sizes: number[],
 ): ProductVariant[] {
-  return sizes.map((kg, i) => kgVariant(`${prefix}-k${i + 1}`, kg, pricePerKg));
+  return sizes.map((kg, i) => bucketVariant(`${prefix}-k${i + 1}`, kg, pricePerKg));
 }
 
 export function getVariantDisplayUnit(variant: ProductVariant | undefined): string {
@@ -198,7 +212,7 @@ export function getVariantAvailabilityText(product: Product): string | null {
   return `${count} Variants Available`;
 }
 
-/** SKU-level unit label (Pieces, CFT, Bags, kg, L, etc.) */
+/** SKU-level unit label (Pieces, CFT, Bags, Bucket, L, etc.) */
 export function getProductSkuUnit(product: Product): string {
   switch (product.categoryType) {
     case 'adhesives':
@@ -209,11 +223,11 @@ export function getProductSkuUnit(product: Product): string {
     case 'aggregates':
       return 'CFT';
     case 'cement':
-      return 'Bags';
+      return 'Bag';
     case 'wall-repair':
-      return 'kg';
+      return product.unit === 'Bag' ? 'Bag' : 'Bucket';
     case 'putty':
-      return 'L';
+      return 'Bucket';
     default:
       if (product.unit === 'ml/L') return 'L';
       return product.unit;

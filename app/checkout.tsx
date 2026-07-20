@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -14,6 +13,8 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
+import { DeliveryDestinationCard } from '@components/checkout/DeliveryDestinationCard';
+import { ProductUnit } from '@components/product/ProductUnit';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useAuthStore } from '@store/useAuthStore';
 import { getLineTotal, useCartStore } from '@store/cartStore';
@@ -24,20 +25,20 @@ import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
 import { CartItemImage } from '@components/cart/CartItemImage';
 import { safeGoBack } from '@utils/navigation';
+import { MOCK_WALLET } from '@constants/walletData';
+import { requireAuth } from '@utils/requireAuth';
 import { formatINR } from '@utils/formatCurrency';
 
-type PaymentMethod = 'google_pay' | 'phonepe' | 'paytm' | 'netbanking' | 'card' | 'cod';
+type PaymentMethod = 'wallet' | 'upi' | 'cod';
 
-const UPI_OPTIONS: { id: PaymentMethod; label: string }[] = [
-  { id: 'google_pay', label: 'Google Pay' },
-  { id: 'phonepe', label: 'PhonePe' },
-  { id: 'paytm', label: 'Paytm' },
-];
-
-const OTHER_OPTIONS: { id: PaymentMethod; labelKey: 'netBanking' | 'creditDebitCard' | 'payOnDelivery'; icon: string }[] = [
-  { id: 'netbanking', labelKey: 'netBanking', icon: 'business-outline' },
-  { id: 'card', labelKey: 'creditDebitCard', icon: 'card-outline' },
-  { id: 'cod', labelKey: 'payOnDelivery', icon: 'cube-outline' },
+const PAYMENT_OPTIONS: {
+  id: PaymentMethod;
+  labelKey: 'paymentWallet' | 'paymentUpi' | 'cashOnDelivery';
+  icon: string;
+}[] = [
+  { id: 'wallet', labelKey: 'paymentWallet', icon: 'wallet-outline' },
+  { id: 'upi', labelKey: 'paymentUpi', icon: 'phone-portrait-outline' },
+  { id: 'cod', labelKey: 'cashOnDelivery', icon: 'cube-outline' },
 ];
 
 const QUICK_CHIP_KEYS = ['callOnArrival', 'leaveAtSecurity', 'heavyVehicleAccess'] as const;
@@ -58,17 +59,21 @@ export default function CheckoutScreen() {
   const companyName = useAuthStore((s) => s.companyName) || 'Prime Construction Ltd.';
   const gstFromAuth = useAuthStore((s) => s.gstNumber) || '27AAACR1234F1Z5';
 
+  const walletBalance = MOCK_WALLET.balance;
+  const walletDisabled = walletBalance <= 0;
+
   const [gstInput, setGstInput] = useState(gstFromAuth);
   const [gstVerifying, setGstVerifying] = useState(false);
   const [gstVerified, setGstVerified] = useState(true);
   const [billingEnabled, setBillingEnabled] = useState(true);
   const [invoiceNeeded, setInvoiceNeeded] = useState(true);
   const [saveGst, setSaveGst] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('google_pay');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
   const [instructions, setInstructions] = useState('');
   const [loyaltyPoints, setLoyaltyPoints] = useState(1000);
   const [paying, setPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
+  const [bikeDelivery, setBikeDelivery] = useState(false);
 
   const savingsOpacity = useSharedValue(1);
 
@@ -76,9 +81,23 @@ export default function CheckoutScreen() {
     () => items.reduce((sum, i) => sum + getLineTotal(i), 0),
     [items],
   );
-  const gst = subtotal * 0.18;
+  const deliveryCharge = bikeDelivery ? 0 : 150;
+  const loadingCharges = 200;
+  const unloadingCharges = 150;
+  const walletApplied =
+    paymentMethod === 'wallet' && walletBalance > 0
+      ? Math.min(walletBalance, subtotal + deliveryCharge + loadingCharges + unloadingCharges)
+      : 0;
   const loyaltyRedemption = loyaltyPoints / 10;
-  const checkoutTotal = subtotal + gst - loyaltyRedemption;
+  const checkoutTotal = Math.max(
+    0,
+    subtotal +
+      deliveryCharge +
+      loadingCharges +
+      unloadingCharges -
+      walletApplied -
+      loyaltyRedemption,
+  );
   const corporateSavings = useMemo(
     () =>
       items.reduce((sum, item) => {
@@ -110,7 +129,9 @@ export default function CheckoutScreen() {
   };
 
   const handlePay = async () => {
+    if (!requireAuth('Please log in to place an order.')) return;
     if (!paymentMethod || items.length === 0) return;
+    if (paymentMethod === 'wallet' && walletDisabled) return;
     setPaying(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await new Promise((r) => setTimeout(r, 2000));
@@ -126,7 +147,7 @@ export default function CheckoutScreen() {
         total: checkoutTotal,
         site: selectedSite,
         paymentMethod,
-        deliveryETA: 'Today, 5:00 PM',
+        deliveryETA: bikeDelivery ? '30–90 mins' : 'Today, 5:00 PM',
       }),
     );
 
@@ -161,27 +182,7 @@ export default function CheckoutScreen() {
         key={language}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
-        <View className="mb-4 rounded-card border border-border bg-surface p-4">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-row gap-2">
-              <Ionicons name="location" size={20} color="#FEB623" />
-              <View className="flex-1">
-                <Text className="text-[10px] font-bold tracking-wider text-text-secondary">
-                  {t('deliveryDestination')}
-                </Text>
-                <Text className="mt-1 text-sm font-bold text-text">
-                  Site A – Mumbai North Industrial Estate
-                </Text>
-                <Text className="mt-1 text-xs text-text-secondary">
-                  Plot 42, Sector 12, Kandivali West, Mumbai, 400067
-                </Text>
-              </View>
-            </View>
-            <ScaledPressable onPress={() => router.push('/delivery-location')}>
-              <Text className="text-sm font-semibold text-primary">{t('change')}</Text>
-            </ScaledPressable>
-          </View>
-        </View>
+        <DeliveryDestinationCard site={selectedSite} />
 
         <View className="mb-4 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center gap-2">
@@ -327,44 +328,70 @@ export default function CheckoutScreen() {
         <Text className="mb-2 text-[10px] font-bold tracking-widest text-text-secondary">
           {t('paymentMethod').toUpperCase()}
         </Text>
-        <Text className="mb-3 text-xs font-semibold text-text-secondary">
-          {t('upiPayments')}
-        </Text>
-        {UPI_OPTIONS.map((opt) => {
+        {PAYMENT_OPTIONS.map((opt) => {
+          const isWallet = opt.id === 'wallet';
+          const disabled = isWallet && walletDisabled;
           const selected = paymentMethod === opt.id;
           return (
             <ScaledPressable
               key={opt.id}
+              disabled={disabled}
               onPress={() => setPaymentMethod(opt.id)}
-              className={`mb-2 flex-row items-center rounded-card border-2 p-4 ${
-                selected ? 'border-primary bg-primary/5' : 'border-border bg-surface'
+              className={`mb-2 flex-row items-center justify-between rounded-card border-2 p-4 ${
+                disabled
+                  ? 'border-border bg-background opacity-55'
+                  : selected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-surface'
               }`}>
-              <View
-                className={`mr-3 h-5 w-5 rounded-full border-2 ${
-                  selected ? 'border-primary bg-primary' : 'border-border'
-                }`}
-              />
-              <Text className={`font-semibold ${selected ? 'text-primary' : 'text-text'}`}>
-                {opt.label}
-              </Text>
+              <View className="flex-row items-center gap-3">
+                <View
+                  className={`h-5 w-5 rounded-full border-2 ${
+                    selected && !disabled ? 'border-primary bg-primary' : 'border-border'
+                  }`}
+                />
+                <Ionicons
+                  name={opt.icon as keyof typeof Ionicons.glyphMap}
+                  size={20}
+                  color={disabled ? '#999' : '#666'}
+                />
+                <View>
+                  <Text
+                    className={`font-semibold ${
+                      selected && !disabled ? 'text-primary' : 'text-text'
+                    }`}>
+                    {t(opt.labelKey)}
+                  </Text>
+                  {disabled ? (
+                    <Text className="mt-0.5 text-[11px] text-text-secondary">
+                      {t('walletDisabledHint')}
+                    </Text>
+                  ) : isWallet ? (
+                    <Text className="mt-0.5 text-[11px] text-text-secondary">
+                      {formatINR(walletBalance, false)}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
             </ScaledPressable>
           );
         })}
 
-        <Text className="mb-3 mt-2 text-xs font-semibold text-text-secondary">{t('otherOptions')}</Text>
-        {OTHER_OPTIONS.map((opt) => (
-          <ScaledPressable
-            key={opt.id}
-            onPress={() => setPaymentMethod(opt.id)}
-            className="mb-2 flex-row items-center justify-between rounded-card border border-border bg-surface p-4">
-            <View className="flex-row items-center gap-3">
-              <Ionicons name={opt.icon as keyof typeof Ionicons.glyphMap} size={20} color="#666" />
-              <Text className="text-sm font-medium text-text">{t(opt.labelKey)}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#999" />
-          </ScaledPressable>
-        ))}
-
+        <ScaledPressable
+          onPress={() => setBikeDelivery((v) => !v)}
+          className={`mb-4 mt-2 flex-row items-center justify-between rounded-card border p-4 ${
+            bikeDelivery ? 'border-primary bg-primary/5' : 'border-border bg-surface'
+          }`}>
+          <View className="flex-row items-center gap-3">
+            <Ionicons name="bicycle-outline" size={22} color="#FEB623" />
+            <Text className="text-sm font-bold text-text">{t('bikeDelivery')}</Text>
+          </View>
+          <View className="rounded-md bg-success/15 px-2.5 py-1">
+            <Text className="text-[11px] font-800 font-bold text-success">
+              {t('bikeDeliveryFree')}
+            </Text>
+          </View>
+        </ScaledPressable>
         <View className="mb-4 mt-4 rounded-card border border-border bg-surface p-4">
           <Text className="mb-3 font-bold text-text">{t('deliveryInstructions')}</Text>
           <TextInput
@@ -476,9 +503,12 @@ export default function CheckoutScreen() {
                 <Text className="text-sm font-bold text-text" numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text className="text-xs text-text-secondary">
-                  {item.unit} × {item.quantity}
-                </Text>
+                <ProductUnit
+                  unit={item.unit}
+                  quantity={item.quantity}
+                  variant="inline"
+                  style={{ fontSize: 12, color: '#888888' }}
+                />
               </View>
               <Text className="text-sm font-bold text-text">{formatINR(getLineTotal(item))}</Text>
             </View>
@@ -489,13 +519,32 @@ export default function CheckoutScreen() {
               <Text className="text-sm font-semibold">{formatINR(subtotal)}</Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-sm text-text-secondary">{t('shippingLogistics')}</Text>
-              <Text className="text-sm font-bold text-success">{t('free')}</Text>
+              <Text className="text-sm text-text-secondary">{t('deliveryCharge')}</Text>
+              <Text
+                className={`text-sm font-semibold ${
+                  bikeDelivery || deliveryCharge === 0 ? 'text-success' : ''
+                }`}>
+                {bikeDelivery || deliveryCharge === 0
+                  ? t('free')
+                  : formatINR(deliveryCharge)}
+              </Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-sm text-text-secondary">{t('taxes')}</Text>
-              <Text className="text-sm font-semibold">{formatINR(gst)}</Text>
+              <Text className="text-sm text-text-secondary">{t('loadingCharges')}</Text>
+              <Text className="text-sm font-semibold">{formatINR(loadingCharges)}</Text>
             </View>
+            <View className="flex-row justify-between">
+              <Text className="text-sm text-text-secondary">{t('unloadingCharges')}</Text>
+              <Text className="text-sm font-semibold">{formatINR(unloadingCharges)}</Text>
+            </View>
+            {walletApplied > 0 && (
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-primary">{t('walletDeduction')}</Text>
+                <Text className="text-sm font-semibold text-primary">
+                  -{formatINR(walletApplied)}
+                </Text>
+              </View>
+            )}
             {loyaltyRedemption > 0 && (
               <View className="flex-row justify-between">
                 <Text className="text-sm text-primary">{t('loyaltyRedemption')}</Text>
@@ -507,7 +556,7 @@ export default function CheckoutScreen() {
           </View>
           <View className="my-3 h-px bg-border" />
           <View className="flex-row justify-between">
-            <Text className="font-bold text-text">{t('totalAmount')}</Text>
+            <Text className="font-bold text-text">{t('grandTotal')}</Text>
             <Text className="text-xl font-bold text-primary">{formatINR(checkoutTotal)}</Text>
           </View>
           {corporateSavings > 0 && (

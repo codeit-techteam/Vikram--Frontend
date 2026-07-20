@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import BottomSheet from '@gorhom/bottom-sheet';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +19,7 @@ import {
   type QuickFilterSheetRef,
 } from '@components/QuickFilterSheet';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
+import { MaterialExpertCTA, MaterialExpertSheet } from '@components/MaterialExpertSheet';
 import { ProductCard } from '@components/ProductCard';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { CATALOG_CATEGORIES, PRODUCTS_BY_CATEGORY } from '@constants/catalogData';
@@ -34,6 +36,7 @@ export default function ProductListingScreen() {
 
   const fullSheetRef = useRef<FilterBottomSheetRef>(null);
   const quickSheetRef = useRef<QuickFilterSheetRef>(null);
+  const expertSheetRef = useRef<BottomSheet>(null);
 
   const category = CATALOG_CATEGORIES.find((c) => c.id === (categoryId ?? 'cement'));
   const products = PRODUCTS_BY_CATEGORY[categoryId ?? 'cement'] ?? [];
@@ -129,15 +132,32 @@ export default function ProductListingScreen() {
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 80).duration(400)}>
+          <Animated.View entering={FadeInDown.delay(index * 60).duration(350)}>
             <ProductCard product={item} categoryId={categoryId} categoryName={title} />
           </Animated.View>
         )}
         ListEmptyComponent={
-          <Text className="mt-8 text-center text-text-secondary">{t('noProductsFound')}</Text>
+          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <Text className="text-center text-text-secondary">{t('noProductsFound')}</Text>
+            {categoryId === 'hardware' ? (
+              <Text
+                style={{
+                  marginTop: 8,
+                  fontSize: 13,
+                  color: '#999',
+                  textAlign: 'center',
+                  paddingHorizontal: 24,
+                }}>
+                {t('comingSoon')}
+              </Text>
+            ) : null}
+          </View>
+        }
+        ListFooterComponent={
+          <MaterialExpertCTA onPress={() => expertSheetRef.current?.expand()} />
         }
       />
 
@@ -163,6 +183,8 @@ export default function ProductListingScreen() {
         onApply={applyDraft}
         onClearSection={clearFilter}
       />
+
+      <MaterialExpertSheet ref={expertSheetRef} />
     </SafeAreaView>
   );
 }

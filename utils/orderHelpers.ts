@@ -39,6 +39,12 @@ export function getOrderMaterialImageSource(
   return null;
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  wallet: 'Wallet',
+  upi: 'UPI',
+  cod: 'Cash on Delivery',
+};
+
 export function buildOrderFromCheckout(params: {
   id: string;
   items: CartItem[];
@@ -104,7 +110,9 @@ export function buildOrderFromCheckout(params: {
     total: params.total,
     createdAt: new Date(),
     paymentMethod: params.paymentMethod,
-    paymentMethodLabel: params.paymentMethod.replace('_', ' '),
+    paymentMethodLabel:
+      PAYMENT_METHOD_LABELS[params.paymentMethod] ??
+      params.paymentMethod.replace(/_/g, ' '),
     deliveryETA: params.deliveryETA,
     arrivingBy: params.deliveryETA,
     eta: params.deliveryETA,

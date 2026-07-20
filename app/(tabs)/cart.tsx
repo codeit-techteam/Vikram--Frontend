@@ -18,6 +18,7 @@ import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { requireAuth } from '@utils/requireAuth';
 
 function SummaryRow({
   label,
@@ -223,6 +224,7 @@ export default function CartScreen() {
 
   const goCheckout = () => {
     if (items.length === 0) return;
+    if (!requireAuth('Please log in to checkout.')) return;
     router.push('/checkout');
   };
 

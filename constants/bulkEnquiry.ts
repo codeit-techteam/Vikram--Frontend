@@ -15,10 +15,10 @@ export const MATERIAL_CATEGORIES: MaterialCategory[] = [
   { id: 'bricks', label: 'Bricks', icon: 'grid-outline', units: ['Pieces'] },
   { id: 'aggregates', label: 'Aggregates', icon: 'ellipse-outline', units: ['Tons', 'CFT'] },
   { id: 'adhesives', label: 'Adhesives', icon: 'color-fill-outline', units: ['L', 'ml'] },
-  { id: 'putty', label: 'Wall Putty', icon: 'brush-outline', units: ['Kg'] },
-  { id: 'waterproofing', label: 'Waterproofing', icon: 'umbrella-outline', units: ['L', 'Kg'] },
-  { id: 'quick-repair', label: 'Quick Repair', icon: 'construct-outline', units: ['Units', 'Kg'] },
-  { id: 'mixed', label: 'Mixed Load', icon: 'layers-outline', units: ['Bags', 'CFT', 'Pieces', 'Tons', 'Kg', 'L'] },
+  { id: 'putty', label: 'Wall Putty', icon: 'brush-outline', units: ['Bucket'] },
+  { id: 'waterproofing', label: 'Waterproofing', icon: 'umbrella-outline', units: ['L', 'Bucket'] },
+  { id: 'quick-repair', label: 'Quick Repair', icon: 'construct-outline', units: ['Units', 'Bucket'] },
+  { id: 'mixed', label: 'Mixed Load', icon: 'layers-outline', units: ['Bag', 'CFT', 'Pieces', 'Ton', 'Bucket', 'L'] },
 ];
 
 export const DELIVERY_REQUIREMENTS = [

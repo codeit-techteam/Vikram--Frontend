@@ -83,7 +83,7 @@ function toImageUri(searchTerm: string, size = '800x440'): ImageSourcePropType {
 
 export const CATALOG_CATEGORIES: CatalogCategory[] = [
   { id: 'cement', labelKey: 'cement', image: images.categoryCement },
-  { id: 'steel', labelKey: 'steel', image: images.categorySteel },
+  { id: 'hardware', labelKey: 'hardware', image: images.categoryAggregates },
   { id: 'sand', labelKey: 'sand', image: images.categorySand },
   { id: 'bricks', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
   {
@@ -305,6 +305,8 @@ const stoneChipProducts: Product[] = [
 export const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
   cement: mergeCategoryProducts(cementProducts, 'cement'),
   steel: mergeCategoryProducts(steelProducts, 'steel'),
+  /** Placeholder category replacing TMT/Steel in catalog UI */
+  hardware: [],
   sand: mergeCategoryProducts(sandProducts, 'sand'),
   bricks: mergeCategoryProducts(bricksProducts, 'bricks'),
   'grey-fill-sand': mergeCategoryProducts(greyFillSandProducts, 'grey-fill-sand'),

@@ -30,6 +30,8 @@ export default function LoginScreen() {
   const [showPhoneError, setShowPhoneError] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(true);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
+  const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
+  const clearGuestMode = useAuthStore((s) => s.clearGuestMode);
   const isPhoneValid = isValidMobileNumber(phone);
 
   useEffect(() => {
@@ -38,18 +40,24 @@ export default function LoginScreen() {
     });
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!isPhoneValid) {
       setShowPhoneError(true);
       return;
     }
 
     setLoading(true);
+    await clearGuestMode();
     setPhoneNumber(phone);
     setTimeout(() => {
       setLoading(false);
       router.push('/otp');
     }, 1200);
+  };
+
+  const handleSkip = async () => {
+    await enterGuestMode();
+    router.replace('/(tabs)');
   };
 
   return (
@@ -170,7 +178,7 @@ export default function LoginScreen() {
               paddingVertical: 16,
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 16,
+              marginBottom: 12,
               shadowColor: WARM_SHADOW,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: isPhoneValid ? 0.35 : 0,
@@ -191,6 +199,25 @@ export default function LoginScreen() {
                 {t('loginBtn')}
               </Text>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleSkip}
+            activeOpacity={0.7}
+            style={{
+              paddingVertical: 12,
+              alignItems: 'center',
+              marginBottom: 16,
+            }}>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: '700',
+                color: DARK,
+                opacity: 0.75,
+              }}>
+              {t('skipForNow')}
+            </Text>
           </TouchableOpacity>
 
           <View

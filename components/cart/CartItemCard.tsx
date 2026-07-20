@@ -10,6 +10,7 @@ import Animated, {
 
 import { useTranslation } from '@store/languageStore';
 import { CartItemImage } from '@components/cart/CartItemImage';
+import { ProductUnit } from '@components/product/ProductUnit';
 import {
   getEffectivePrice,
   getLineTotal,
@@ -39,7 +40,7 @@ export function CartItemCard({
   const changeQty = async (delta: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     qtyOpacity.value = withSequence(withTiming(0, { duration: 80 }), withTiming(1, { duration: 150 }));
-    onUpdateQuantity(item.id, Math.max(1, item.quantity + delta));
+    onUpdateQuantity(item.id, item.quantity + delta);
   };
 
   return (
@@ -63,7 +64,8 @@ export function CartItemCard({
           {item.description}
         </Text>
         <Text style={styles.price}>
-          ₹{unitPrice.toLocaleString('en-IN')} / {item.unit}
+          ₹{unitPrice.toLocaleString('en-IN')}
+          <ProductUnit unit={item.unit} variant="price" />
         </Text>
 
         <View style={styles.controlsRow}>
@@ -78,7 +80,9 @@ export function CartItemCard({
           </View>
 
           <View style={styles.subtotalWrap}>
-            <Text style={styles.subtotalLabel}>QTY {item.quantity}</Text>
+            <Text style={styles.subtotalLabel}>
+              <ProductUnit unit={item.unit} quantity={item.quantity} variant="qty" />
+            </Text>
             <Text style={styles.subtotalValue}>₹{lineTotal.toLocaleString('en-IN')}</Text>
           </View>
         </View>

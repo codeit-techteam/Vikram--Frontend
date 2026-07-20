@@ -8,7 +8,7 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { images } from '@constants/images';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 40;
+const CARD_WIDTH = SCREEN_WIDTH - 32;
 
 interface HeroSlide {
   badge: string;
@@ -49,7 +49,7 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
   };
 
   return (
-    <View>
+    <View style={{ marginHorizontal: 16 }}>
       <ScrollView
         ref={scrollRef}
         horizontal

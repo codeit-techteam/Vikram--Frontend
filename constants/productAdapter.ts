@@ -51,7 +51,7 @@ function toProductVariant(v: CatalogVariant): ProductVariant {
     count: v.count,
     quantity: v.quantity,
     size: v.weight ?? v.volume,
-    sizeUnit: v.weight !== undefined ? 'kg' : v.volume !== undefined ? 'L' : undefined,
+    sizeUnit: v.displayUnit ?? (v.weight !== undefined ? 'Bag' : v.volume !== undefined ? 'L' : undefined),
     price: v.price,
     bulkPrice: v.bulkPrice ?? null,
     inStock: true,

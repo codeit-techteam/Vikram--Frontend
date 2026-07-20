@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   ScrollView,
   Text,
   TextInput,
@@ -60,6 +59,12 @@ export default function CompleteProfileScreen() {
     setLoading(false);
   };
 
+  const handleSkipProfile = () => {
+    if (loading) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    router.replace('/(tabs)' as Href);
+  };
+
   const handleLanguageSelect = (lang: AppLanguage) => {
     setLanguage(lang);
     Haptics.selectionAsync();
@@ -85,7 +90,17 @@ export default function CompleteProfileScreen() {
         />
       </View>
 
-      <YellowBackHeader />
+      <YellowBackHeader
+        rightElement={
+          <TouchableOpacity
+            onPress={handleSkipProfile}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('skipProfile')}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: DARK }}>{t('skipProfile')}</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={{
@@ -174,7 +189,7 @@ export default function CompleteProfileScreen() {
             </View>
           )}
 
-          {/* GST Number with Skip */}
+          {/* GST Number — optional, can skip this section */}
           <View style={{ marginBottom: 28 }}>
             <View
               style={{
@@ -183,64 +198,87 @@ export default function CompleteProfileScreen() {
                 justifyContent: 'space-between',
                 marginBottom: 8,
               }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                 <Ionicons name="shield-outline" size={15} color="#888" />
                 <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>
                   {t('gstNumber')}
                   <Text style={{ color: '#AAA', fontWeight: '400' }}> ({t('optional')})</Text>
                 </Text>
               </View>
-              <TouchableOpacity onPress={handleSkipGst}>
-                <Text style={{ fontSize: 12, color: GOLD, fontWeight: '700' }}>Skip →</Text>
-              </TouchableOpacity>
+              {!gstSkipped ? (
+                <TouchableOpacity
+                  onPress={handleSkipGst}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('skipForNow')}>
+                  <Text style={{ fontSize: 13, color: GOLD, fontWeight: '700' }}>
+                    {t('skipGst')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
 
-            {isIndividual && (
+            {gstSkipped ? (
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  gap: 6,
-                  backgroundColor: 'rgba(254,182,35,0.1)',
-                  borderRadius: 10,
-                  padding: 10,
-                  marginBottom: 8,
+                  backgroundColor: 'rgba(254,182,35,0.12)',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: 'rgba(254,182,35,0.35)',
+                  borderStyle: 'dashed',
+                  padding: 14,
                 }}>
-                <Ionicons name="information-circle-outline" size={16} color={GOLD} />
-                <Text style={{ flex: 1, fontSize: 12, color: '#666', lineHeight: 17 }}>
-                  If you have a GST certificate, add it to unlock Business pricing and GST invoices.
-                  You can skip this now and add it later in your profile.
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <Ionicons name="checkmark-circle" size={18} color={GOLD} />
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#666' }}>
+                    {t('gstSkippedLabel')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setGstSkipped(false);
+                    void Haptics.selectionAsync();
+                  }}
+                  accessibilityRole="button">
+                  <Text style={{ fontSize: 13, color: GOLD, fontWeight: '700' }}>
+                    {t('addGstNumber')}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            )}
+            ) : (
+              <>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: 6,
+                    backgroundColor: 'rgba(254,182,35,0.1)',
+                    borderRadius: 10,
+                    padding: 10,
+                    marginBottom: 10,
+                  }}>
+                  <Ionicons name="information-circle-outline" size={16} color={GOLD} />
+                  <Text style={{ flex: 1, fontSize: 12, color: '#666', lineHeight: 17 }}>
+                    {t('gstOptionalHint')}
+                  </Text>
+                </View>
 
-            <TextInput
-              style={{
-                ...inputStyle,
-                borderColor: gstFocused ? GOLD : WARM_BORDER,
-                opacity: gstSkipped ? 0.4 : 1,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-              placeholder={t('gstPlaceholder')}
-              placeholderTextColor="#BBAA88"
-              value={gstNumber}
-              onChangeText={(val) => {
-                setGstNumber(val);
-                setGstSkipped(false);
-              }}
-              autoCapitalize="characters"
-              editable={!gstSkipped}
-              onFocus={() => setGstFocused(true)}
-              onBlur={() => setGstFocused(false)}
-            />
-
-            {gstSkipped && (
-              <TouchableOpacity onPress={() => setGstSkipped(false)} style={{ marginTop: 4 }}>
-                <Text style={{ fontSize: 12, color: GOLD, fontWeight: '600' }}>
-                  + Add GST Number
-                </Text>
-              </TouchableOpacity>
+                <TextInput
+                  style={{
+                    ...inputStyle,
+                    borderColor: gstFocused ? GOLD : WARM_BORDER,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                  placeholder={t('gstPlaceholder')}
+                  placeholderTextColor="#BBAA88"
+                  value={gstNumber}
+                  onChangeText={setGstNumber}
+                  autoCapitalize="characters"
+                  onFocus={() => setGstFocused(true)}
+                  onBlur={() => setGstFocused(false)}
+                />
+              </>
             )}
           </View>
 

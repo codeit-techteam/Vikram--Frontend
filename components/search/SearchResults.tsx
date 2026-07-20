@@ -12,7 +12,7 @@ import type { SearchProduct } from '@constants/searchData';
 import { useTranslation } from '@store/languageStore';
 import type { SearchSortOption } from '@utils/searchUtils';
 
-const RESULT_CARD_HEIGHT = 400;
+const RESULT_CARD_HEIGHT = 168;
 
 const SORT_OPTIONS: { id: SearchSortOption; labelKey: 'relevance' | 'priceLowHigh' | 'priceHighLow' | 'newestFirst' }[] = [
   { id: 'relevance', labelKey: 'relevance' },

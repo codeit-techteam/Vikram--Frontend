@@ -1,0 +1,8 @@
+# Reduce EAS upload size — exclude unused large assets and local artifacts
+dist/
+.git/
+android/
+ios/
+assets/videos/cement2.mp4
+assets/videos/cement.mp4
+assets/videos/bricks2.mp4

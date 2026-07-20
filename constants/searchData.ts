@@ -33,7 +33,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     name: 'UltraTech PPC Cement',
     brand: 'UltraTech',
     price: 395,
-    unit: '50kg Bag',
+    unit: 'Bag',
     image: 'ultratech cement bags',
   },
   {
@@ -44,7 +44,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     name: 'ACC Gold Water Shield',
     brand: 'ACC',
     price: 410,
-    unit: '50kg Bag',
+    unit: 'Bag',
     image: 'acc cement bags construction',
   },
   {
@@ -54,7 +54,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     name: 'Ambuja Kawach Cement',
     brand: 'Ambuja',
     price: 405,
-    unit: '50kg Bag',
+    unit: 'Bag',
     image: 'ambuja cement construction',
   },
   {

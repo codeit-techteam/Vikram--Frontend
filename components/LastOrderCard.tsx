@@ -1,13 +1,17 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useState } from 'react';
 
 import { CartItemImage } from '@components/cart/CartItemImage';
+import { ProductUnit } from '@components/product/ProductUnit';
 import { getCategoryIdForProduct, getProductById } from '@constants/catalogData';
+import { allowsDirectAddToCart } from '@constants/catalogVariantHelpers';
 import type { LastOrderedProduct } from '@store/orderStore';
+import { useCartStore } from '@store/cartStore';
 import { useTranslation } from '@store/languageStore';
-import { resolveCartProductId } from '@utils/cartHelpers';
+import { productToCartItem, resolveCartProductId } from '@utils/cartHelpers';
 import { getTimeAgo } from '@utils/timeAgo';
 
 interface LastOrderCardProps {
@@ -19,6 +23,10 @@ export function LastOrderCard({ item }: LastOrderCardProps) {
   const timeAgo = getTimeAgo(item.orderedAt);
   const productId = resolveCartProductId(item);
   const product = getProductById(productId);
+  const addItem = useCartStore((s) => s.addItem);
+  const [isReordering, setIsReordering] = useState(false);
+
+  const canDirectAdd = product ? allowsDirectAddToCart(product) || Boolean(item.variantId) : false;
 
   const handleViewProduct = async () => {
     await Haptics.selectionAsync();
@@ -32,6 +40,32 @@ export function LastOrderCard({ item }: LastOrderCardProps) {
       },
     } as Href);
   };
+
+  const handleReorder = async () => {
+    if (isReordering) return;
+
+    if (!product || !canDirectAdd) {
+      await handleViewProduct();
+      return;
+    }
+
+    setIsReordering(true);
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const qty = Math.max(1, item.quantity);
+      addItem(productToCartItem(product, qty, { variantId: item.variantId }));
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.push('/(tabs)/cart');
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const orderedDate = item.orderedAt.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 
   return (
     <View style={styles.card}>
@@ -47,19 +81,42 @@ export function LastOrderCard({ item }: LastOrderCardProps) {
         <View style={styles.timeRow}>
           <Ionicons name="time-outline" size={12} color="#AAA" />
           <Text style={styles.timeText}>
-            {t('lastOrdered')} {timeAgo}
+            {t('lastOrdered')} {orderedDate} · {timeAgo}
           </Text>
         </View>
 
         <Text style={styles.price}>
-          ₹{item.unitPrice.toLocaleString('en-IN')} / {item.unit}
+          ₹{item.unitPrice.toLocaleString('en-IN')}
+          <ProductUnit unit={item.unit} variant="price" />
         </Text>
-      </View>
 
-      <Pressable onPress={handleViewProduct} style={styles.viewButton}>
-        <Ionicons name="eye-outline" size={16} color="#FEB623" />
-        <Text style={styles.viewText}>{t('viewProduct')}</Text>
-      </Pressable>
+        <View style={styles.actions}>
+          <Pressable
+            onPress={() => void handleReorder()}
+            disabled={isReordering}
+            style={[styles.reorderButton, isReordering && styles.reorderButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={t('reorder')}>
+            {isReordering ? (
+              <ActivityIndicator size="small" color="#1A1A1A" />
+            ) : (
+              <>
+                <Ionicons name="refresh-outline" size={14} color="#1A1A1A" />
+                <Text style={styles.reorderText}>{t('reorder')}</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => void handleViewProduct()}
+            style={styles.viewButton}
+            accessibilityRole="button"
+            accessibilityLabel={t('viewProduct')}>
+            <Ionicons name="eye-outline" size={14} color="#FEB623" />
+            <Text style={styles.viewText}>{t('viewProduct')}</Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -67,10 +124,10 @@ export function LastOrderCard({ item }: LastOrderCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     marginBottom: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 14,
     gap: 12,
     shadowColor: '#000',
@@ -82,8 +139,8 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
   },
   imageWrap: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: 12,
     backgroundColor: '#FFF4D1',
     alignItems: 'center',
@@ -91,8 +148,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   image: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
   },
   info: {
     flex: 1,
@@ -119,19 +176,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 3,
   },
+  actions: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reorderButton: {
+    flex: 1,
+    backgroundColor: '#FEB623',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    minHeight: 36,
+  },
+  reorderButtonDisabled: {
+    opacity: 0.6,
+  },
+  reorderText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
   viewButton: {
     backgroundColor: '#FFF4D1',
     borderWidth: 1.5,
     borderColor: '#FEB623',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
+    minHeight: 36,
   },
   viewText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FEB623',
   },

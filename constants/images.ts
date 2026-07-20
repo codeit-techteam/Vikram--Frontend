@@ -60,6 +60,7 @@ export const images = {
   product40mmCrushedStone: require('../assets/product-40mm-crushed-stone.png'),
   notificationProTip:
     'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80',
+  testimonialSandDelivery: require('../assets/testimonials/sand-delivery.png'),
 } as const;
 
 /** Curated Unsplash URLs for SKU product images (source.unsplash.com is deprecated). */

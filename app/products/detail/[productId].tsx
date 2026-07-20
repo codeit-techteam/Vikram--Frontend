@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 import { BackHeader } from '@components/BackHeader';
 import { CartIcon } from '@components/HeaderIcons';
+import { AddToCartButton, getAddToCartMode } from '@components/product/AddToCartButton';
+import { ProductBulkPrice } from '@components/product/ProductBulkPrice';
+import { ProductPrice } from '@components/product/ProductPrice';
+import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
+import { ProductStockInfo } from '@components/product/ProductStockInfo';
 import { safeGoBack } from '@utils/navigation';
 import { DeliveryOptions, type DeliveryType } from '@components/DeliveryOptions';
 import { FrequentlyBoughtTogether } from '@components/FrequentlyBoughtTogether';
@@ -40,11 +43,15 @@ import { getSearchProductById, searchProductToProduct } from '@constants/searchD
 import { useSearchStore } from '@store/searchStore';
 import { FREQUENTLY_BOUGHT, SPECS_BY_TYPE } from '@constants/productSpecs';
 import { useAddToCart } from '@hooks/useAddToCart';
+import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
-
-const DARK = '#1A1A1A';
+import {
+  getDeliveryEta,
+  getProductPricing,
+  getStockLeft,
+} from '@utils/productPricing';
 
 export default function ProductDetailScreen() {
   const language = useLanguageStore((s) => s.language);
@@ -67,19 +74,16 @@ export default function ProductDetailScreen() {
   const hasVariants = product ? productHasStructuredVariants(product) : false;
   const skuUnit = product ? getProductSkuUnit(product) : '';
 
-  const [quantity, setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
+  const [localQty, setLocalQty] = useState(1);
   const [specsExpanded, setSpecsExpanded] = useState(true);
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('priority');
-  const [cartFlash, setCartFlash] = useState(false);
 
   const sites = useDeliveryStore((s) => s.sites);
   const selectedSiteId = useDeliveryStore((s) => s.selectedSiteId);
   const setSelectedSite = useDeliveryStore((s) => s.setSelectedSite);
 
   const btnScale = useSharedValue(1);
-  const qtyOpacity = useSharedValue(1);
-  const priceScale = useSharedValue(1);
   const subtotalScale = useSharedValue(1);
 
   const selectedSite = sites.find((s) => s.id === selectedSiteId) ?? sites[0];
@@ -91,14 +95,42 @@ export default function ProductDetailScreen() {
 
   const selectionReady = !hasVariants || Boolean(selectedVariantId);
 
-  const unitPrice = useMemo(() => {
-    if (!product) return 0;
-    if (hasVariants && selectedVariant) return selectedVariant.price;
-    const isBulkPrice = product.bulkThreshold > 0 && quantity >= product.bulkThreshold;
-    return isBulkPrice ? product.bulkPriceValue : product.retailPriceValue;
-  }, [product, hasVariants, selectedVariant, quantity]);
+  const cartLineId = useMemo(() => {
+    if (!product || !selectionReady) return undefined;
+    if (hasVariants && selectedVariantId) return `${product.id}_${selectedVariantId}`;
+    return product.id;
+  }, [product, selectionReady, hasVariants, selectedVariantId]);
 
-  const subtotal = quantity * unitPrice;
+  const cartQty = useCartStore((s) =>
+    cartLineId ? (s.items.find((i) => i.id === cartLineId)?.quantity ?? 0) : 0,
+  );
+
+  // Seed local qty when product / variant changes — does not write to cart.
+  useEffect(() => {
+    if (!product) return;
+    const lineId =
+      hasVariants && selectedVariantId
+        ? `${product.id}_${selectedVariantId}`
+        : !hasVariants
+          ? product.id
+          : undefined;
+    const lineQty = lineId
+      ? (useCartStore.getState().items.find((i) => i.id === lineId)?.quantity ?? 0)
+      : 0;
+    setLocalQty(
+      lineQty > 0
+        ? lineQty
+        : Math.max(product.minOrder ?? 1, product.defaultQuantity || 1),
+    );
+  }, [product?.id, selectedVariantId, hasVariants, product]);
+
+  const pricing = useMemo(
+    () => (product ? getProductPricing(product, selectedVariant) : null),
+    [product, selectedVariant],
+  );
+
+  const unitPrice = pricing?.sellingPrice ?? 0;
+  const subtotal = localQty * unitPrice;
   const gst = subtotal * 0.18;
   const logistics = deliveryType === 'priority' ? 250 : 0;
   const estimatedTotal = subtotal + gst + logistics;
@@ -107,8 +139,9 @@ export default function ProductDetailScreen() {
     ? getVariantDisplayUnit(selectedVariant) || selectedVariant?.label || skuUnit
     : product?.unit ?? '';
 
-  const isBulkPrice =
-    !hasVariants && product ? product.bulkThreshold > 0 && quantity >= product.bulkThreshold : false;
+  const stockLeft = product ? getStockLeft(product) : null;
+  const deliveryEta = product ? getDeliveryEta(product) : '2–4 hrs';
+  const mode = getAddToCartMode(localQty, cartQty);
 
   const carouselImages = useMemo(
     () => (product ? getCarouselImages(product) : []),
@@ -118,54 +151,18 @@ export default function ProductDetailScreen() {
   const specs = product ? SPECS_BY_TYPE[product.categoryType] : [];
 
   useEffect(() => {
-    priceScale.value = withSequence(
-      withSpring(1.05, { damping: 12, stiffness: 280 }),
-      withSpring(1, { damping: 14 }),
-    );
     subtotalScale.value = withSequence(
       withSpring(1.06, { damping: 12, stiffness: 280 }),
       withSpring(1, { damping: 14 }),
     );
-  }, [unitPrice, subtotal, priceScale, subtotalScale]);
-
-  const animateQtyChange = useCallback(() => {
-    qtyOpacity.value = withSequence(withTiming(0, { duration: 80 }), withTiming(1, { duration: 150 }));
-  }, [qtyOpacity]);
-
-  const changeQuantity = useCallback(
-    async (delta: number) => {
-      if (!selectionReady) return;
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setQuantity((q) => {
-        const min = product?.minOrder ?? 1;
-        const max = product?.maxOrder;
-        const step = product?.incrementStep ?? 1;
-        let next = q + delta * step;
-        if (delta < 0) next = Math.max(min, next);
-        else next = Math.max(min, next);
-        if (max !== undefined) next = Math.min(max, next);
-        return next;
-      });
-      animateQtyChange();
-    },
-    [animateQtyChange, product?.minOrder, product?.maxOrder, product?.incrementStep, selectionReady],
-  );
+  }, [subtotal, subtotalScale]);
 
   const handleVariantSelect = useCallback((variantId: string) => {
     setSelectedVariantId(variantId);
-    setQuantity(1);
   }, []);
-
-  const qtyAnimStyle = useAnimatedStyle(() => ({
-    opacity: qtyOpacity.value,
-  }));
 
   const btnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
-  }));
-
-  const priceAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: priceScale.value }],
   }));
 
   const subtotalAnimStyle = useAnimatedStyle(() => ({
@@ -183,30 +180,18 @@ export default function ProductDetailScreen() {
       withSpring(1, { damping: 12 }),
     );
 
-    await addToCart(product, quantity, { variantId: selectedVariantId });
-    setCartFlash(true);
-    setTimeout(() => setCartFlash(false), 400);
+    await addToCart(product, localQty, { variantId: selectedVariantId });
   };
 
-  const addButtonLabel = (() => {
-    if (!canAddToCart) return 'Select Variant First';
-    if (buttonState === 'loading') return 'Adding...';
-    if (buttonState === 'success') return '✓ Added';
-    return t('addToCart');
-  })();
-
   useEffect(() => {
-    if (product) {
-      setQuantity(1);
-      setSelectedVariantId(undefined);
-    }
+    if (product) setSelectedVariantId(undefined);
   }, [product?.id]);
 
   useEffect(() => {
     if (searchProduct) addRecentlyViewed(searchProduct);
   }, [searchProduct?.id, addRecentlyViewed]);
 
-  if (!product) {
+  if (!product || !pricing) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <Text className="text-text-secondary">{t('productNotFound')}</Text>
@@ -243,7 +228,7 @@ export default function ProductDetailScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <ProductImageCarousel images={carouselImages} />
 
-        <View className="px-5 pt-4">
+        <View className="px-4 pt-4">
           <View className="flex-row flex-wrap items-center">
             <ScaledPressable onPress={() => navigateBreadcrumb('catalog')}>
               <Text className="text-sm text-text-secondary">{t('catalogLabel')}</Text>
@@ -326,50 +311,24 @@ export default function ProductDetailScreen() {
           onToggle={() => setSpecsExpanded((v) => !v)}
         />
 
-        <View className="mt-5 px-5">
+        <View className="mt-5 px-4 pb-2">
           {selectionReady ? (
             <>
-              <Animated.View style={priceAnimStyle}>
-                <Text className="text-2xl font-extrabold text-text">
-                  {formatINR(unitPrice)}
-                  <Text className="text-base font-normal text-text-secondary">
-                    {' '}/ {priceUnitLabel}
-                  </Text>
-                </Text>
-              </Animated.View>
+              <ProductPrice pricing={pricing} size="lg" showUnit />
+              <View className="mt-2">
+                <ProductStockInfo stockLeft={stockLeft} deliveryEta={deliveryEta} />
+              </View>
+              <ProductBulkPrice pricing={pricing} />
 
-              {!hasVariants && product.bulkThreshold > 0 && (
-                <View
-                  className={`mt-3 self-start rounded-full border-2 px-4 py-2 ${
-                    isBulkPrice ? 'border-primary bg-primary/10' : 'border-primary/40 bg-surface'
-                  }`}>
-                  <Text
-                    className={`text-sm font-semibold ${isBulkPrice ? 'text-primary' : 'text-text'}`}>
-                    🏷 {product.bulkLabel}: {product.bulkPrice}
-                    {isBulkPrice ? ` ✓ ${t('applied')}` : ''}
-                  </Text>
-                </View>
-              )}
-
-              <View className="mt-4 flex-row items-center">
-                <View className="flex-1 flex-row items-center rounded-card bg-trust px-2 py-2">
-                  <ScaledPressable
-                    onPress={() => changeQuantity(-1)}
-                    className="h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface">
-                    <Text className="text-xl font-bold text-text-secondary">−</Text>
-                  </ScaledPressable>
-                  <Animated.Text
-                    style={qtyAnimStyle}
-                    className="min-w-[48px] text-center text-xl font-bold text-text">
-                    {quantity}
-                  </Animated.Text>
-                  <ScaledPressable
-                    onPress={() => changeQuantity(1)}
-                    className="h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface">
-                    <Text className="text-xl font-bold text-text-secondary">+</Text>
-                  </ScaledPressable>
-                </View>
-
+              <View className="mt-5 flex-row items-center justify-between">
+                <ProductQuantitySelector
+                  quantity={localQty}
+                  onChange={setLocalQty}
+                  min={product.minOrder ?? 1}
+                  max={product.maxOrder}
+                  step={product.incrementStep ?? 1}
+                  size="lg"
+                />
                 <Animated.View style={subtotalAnimStyle} className="ml-4 items-end">
                   <Text className="text-xs text-text-secondary">{t('totalSubtotal')}</Text>
                   <Text className="text-lg font-extrabold text-primary">{formatINR(subtotal)}</Text>
@@ -379,7 +338,7 @@ export default function ProductDetailScreen() {
               <ProductSelectionSummary
                 productName={localizedName}
                 variantLabel={selectedVariant?.label}
-                quantity={quantity}
+                quantity={localQty}
                 unit={hasVariants ? skuUnit : product.unit}
                 total={subtotal}
               />
@@ -393,51 +352,18 @@ export default function ProductDetailScreen() {
           )}
 
           <Animated.View style={btnAnimStyle} className="mt-4">
-            <ScaledPressable
-              onPress={handleAddToCart}
-              disabled={!canAddToCart || buttonState === 'loading'}
-              className={`flex-row items-center justify-center rounded-pill py-4 ${
-                cartFlash || buttonState === 'success'
-                  ? 'bg-success'
-                  : canAddToCart
-                    ? 'bg-primary'
-                    : 'bg-border'
-              }`}>
-              {buttonState === 'loading' ? (
-                <ActivityIndicator size="small" color={DARK} />
-              ) : (
-                <Ionicons
-                  name={
-                    buttonState === 'success'
-                      ? 'checkmark-circle'
-                      : canAddToCart
-                        ? 'cart-outline'
-                        : 'options-outline'
-                  }
-                  size={20}
-                  color={
-                    cartFlash || buttonState === 'success'
-                      ? '#FFFFFF'
-                      : canAddToCart
-                        ? DARK
-                        : '#AAA'
-                  }
-                />
-              )}
-              <Text
-                className="ml-2 text-base font-bold"
-                style={{
-                  color:
-                    cartFlash || buttonState === 'success'
-                      ? '#FFFFFF'
-                      : canAddToCart
-                        ? DARK
-                        : '#AAA',
-                }}
-                numberOfLines={1}>
-                {addButtonLabel}
-              </Text>
-            </ScaledPressable>
+            <AddToCartButton
+              mode={mode}
+              onPress={() => void handleAddToCart()}
+              loading={buttonState === 'loading'}
+              disabled={!canAddToCart}
+              fullWidth
+              labelOverride={
+                !canAddToCart
+                  ? 'Select Variant First'
+                  : undefined
+              }
+            />
           </Animated.View>
         </View>
 

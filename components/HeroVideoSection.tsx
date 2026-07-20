@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,33 +6,30 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useIsFocused } from '@react-navigation/native';
 
+import { ExpoVideoPlayer } from '@components/video/ExpoVideoPlayer';
 import { getCategoryIdForProduct, getProductById } from '@constants/catalogData';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CEMENT_PRODUCT_ID = 'c1';
+const HERO_VIDEO = require('../assets/videos/delivery-hero.mp4');
 
-export default function HeroVideoSection() {
-  const videoRef = useRef<Video>(null);
+export function VideoBanner() {
   const [isMuted, setIsMuted] = useState(true);
   const isFocused = useIsFocused();
+  const [paused, setPaused] = useState(!isFocused);
 
   useEffect(() => {
-    if (isFocused) {
-      videoRef.current?.playAsync();
-    } else {
-      videoRef.current?.pauseAsync();
-    }
+    setPaused(!isFocused);
   }, [isFocused]);
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
+    setIsMuted((current) => !current);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -52,14 +49,13 @@ export default function HeroVideoSection() {
 
   return (
     <View style={styles.container}>
-      <Video
-        ref={videoRef}
-        source={require('../assets/videos/delivery-hero.mp4')}
-        style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        isLooping
-        isMuted={isMuted}
-        useNativeControls={false}
+      <ExpoVideoPlayer
+        source={HERO_VIDEO}
+        loop
+        muted={isMuted}
+        autoPlay
+        paused={paused}
+        contentFit="cover"
       />
 
       <LinearGradient
@@ -111,20 +107,17 @@ export default function HeroVideoSection() {
   );
 }
 
+/** @deprecated Use named export `VideoBanner` */
+export default VideoBanner;
+
 const styles = StyleSheet.create({
   container: {
     width: SCREEN_WIDTH - 32,
     height: 240,
     marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1A1A1A',
-  },
-  video: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
   },
   topContent: {
     position: 'absolute',

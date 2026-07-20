@@ -21,13 +21,13 @@ export type SearchSortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newes
 
 export const POPULAR_SEARCH_TERMS = [
   'UltraTech Cement',
-  'TMT Bars',
+  'Hardware Tools',
   'Sand & Gravel',
 ] as const;
 
 export const POPULAR_CATEGORIES = [
   { id: 'cement', label: 'Cement', icon: '🧱' },
-  { id: 'steel', label: 'TMT Steel', icon: '⚙️' },
+  { id: 'hardware', label: 'Hardware', icon: '🔧' },
   { id: 'stone', label: 'Aggregates', icon: '🪨' },
   { id: 'bricks', label: 'Bricks', icon: '🪵' },
 ] as const;
@@ -38,7 +38,8 @@ const BRAND_NAMES = [...new Set(ALL_PRODUCTS.map((p) => p.brand))];
 
 const CATEGORY_LABELS: Record<string, string> = {
   cement: 'Cement',
-  steel: 'TMT Bars',
+  steel: 'Steel',
+  hardware: 'Hardware',
   stone: 'Aggregates',
   sand: 'Sand',
   bricks: 'Bricks',

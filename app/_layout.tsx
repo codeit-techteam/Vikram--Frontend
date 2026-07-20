@@ -14,6 +14,7 @@ import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
 import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
+import { useAuthStore } from '@store/useAuthStore';
 import { useLanguageStore } from '@store/languageStore';
 
 SplashScreen.preventAutoHideAsync();
@@ -26,11 +27,13 @@ function isTabRoot(pathname: string) {
 
 export default function RootLayout() {
   const language = useLanguageStore((s) => s.language);
+  const hydrateGuestMode = useAuthStore((s) => s.hydrateGuestMode);
   const pathname = usePathname();
 
   useEffect(() => {
     SplashScreen.hideAsync();
-  }, []);
+    void hydrateGuestMode();
+  }, [hydrateGuestMode]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -98,6 +101,7 @@ export default function RootLayout() {
               <Stack.Screen name="invoice/[invoiceId]" options={{ headerShown: false }} />
               <Stack.Screen name="account/edit-profile" options={{ headerShown: false }} />
               <Stack.Screen name="account/loyalty" options={{ headerShown: false }} />
+              <Stack.Screen name="account/wallet" options={{ headerShown: false }} />
               <Stack.Screen name="account/invoices" options={{ headerShown: false }} />
               <Stack.Screen name="account/add-sites" options={{ headerShown: false }} />
               <Stack.Screen name="account/gst-compliance" options={{ headerShown: false }} />

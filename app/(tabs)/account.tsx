@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -26,12 +26,14 @@ import { CollapsibleSection } from '@components/account/CollapsibleSection';
 import { ProfileSiteSheet } from '@components/account/ProfileSiteSheet';
 import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
+import { InitialsAvatar } from '@components/InitialsAvatar';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { ProfileSite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
 import { pickAvatarImage } from '@utils/pickAvatar';
+import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -41,7 +43,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const QUICK_LINKS = [
   { key: 'history', icon: 'time-outline' as const, route: '/orders/history' },
   { key: 'invoices', icon: 'document-text-outline' as const, route: '/account/invoices' },
-  { key: 'loyalty', icon: 'wallet-outline' as const, route: '/account/loyalty' },
+  { key: 'wallet', icon: 'wallet-outline' as const, route: '/account/wallet' },
+  { key: 'loyalty', icon: 'diamond-outline' as const, route: '/account/loyalty' },
   { key: 'privacy', icon: 'shield-checkmark-outline' as const, route: '/account/privacy' },
 ] as const;
 
@@ -154,11 +157,15 @@ export default function AccountScreen() {
               <ScaledPressable onPress={handleAvatarPress}>
                 <Animated.View style={avatarStyle}>
                   <View>
-                    <Image
-                      source={{ uri: user.avatar ?? undefined }}
-                      style={{ width: 64, height: 64, borderRadius: 32 }}
-                      contentFit="cover"
-                    />
+                    {user.avatar ? (
+                      <Image
+                        source={{ uri: user.avatar }}
+                        style={{ width: 64, height: 64, borderRadius: 32 }}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <InitialsAvatar name={user.name} size={64} />
+                    )}
                     <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full bg-primary">
                       <Ionicons name="camera" size={12} color="#FFFFFF" />
                     </View>
@@ -290,7 +297,15 @@ export default function AccountScreen() {
             {QUICK_LINKS.map((link, i) => (
               <ScaledPressable
                 key={link.key}
-                onPress={() => router.push(link.route)}
+                onPress={() => {
+                  if (
+                    (link.key === 'wallet' || link.key === 'invoices' || link.key === 'loyalty') &&
+                    !requireAuth('Please log in to access this section.')
+                  ) {
+                    return;
+                  }
+                  router.push(link.route as Href);
+                }}
                 className={`flex-row items-center px-4 py-4 ${i < QUICK_LINKS.length - 1 ? 'border-b border-border' : ''}`}>
                 <Ionicons name={link.icon} size={20} color="#666666" />
                 <Text className="ml-3 flex-1 text-sm text-text">
@@ -298,9 +313,11 @@ export default function AccountScreen() {
                     ? t('orderHistoryMenu')
                     : link.key === 'invoices'
                       ? t('invoices')
-                      : link.key === 'loyalty'
-                        ? t('loyaltyWallet')
-                        : t('privacySecurity')}
+                      : link.key === 'wallet'
+                        ? t('wallet')
+                        : link.key === 'loyalty'
+                          ? t('loyaltyWallet')
+                          : t('privacySecurity')}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
               </ScaledPressable>

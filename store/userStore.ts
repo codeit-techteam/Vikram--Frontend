@@ -23,12 +23,12 @@ export interface User {
 }
 
 const DEFAULT_USER: User = {
-  name: 'Rajesh Kumar',
+  name: 'Karan Singh',
   company: 'Premier Construction Ltd.',
   phone: '+91 98765 43210',
-  email: 'rajesh@premierbuild.in',
+  email: 'karan@premierbuild.in',
   gstNumber: '27AAACR1234F1Z5',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&q=80',
+  avatar: null,
   memberTier: 'platinum',
   businessType: 'Construction Co.',
   procurement: '₹50L - ₹1Cr',

@@ -71,7 +71,12 @@ function triggerCloseHaptic() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
-export function useDrawerAnimation(isOpen: boolean, onOpen: () => void, onClose: () => void) {
+export function useDrawerAnimation(
+  isOpen: boolean,
+  onOpen: () => void,
+  onClose: () => void,
+  swipeEnabled = true,
+) {
   const translateX = useSharedValue(-DRAWER_WIDTH);
   const overlayOpacity = useSharedValue(0);
   const contentTranslate = useSharedValue(0);
@@ -79,6 +84,11 @@ export function useDrawerAnimation(isOpen: boolean, onOpen: () => void, onClose:
   const iconRotation = useSharedValue(0);
   const drawerProgress = useSharedValue(0);
   const isOpenShared = useSharedValue(false);
+  const drawerSwipeEnabled = useSharedValue(swipeEnabled);
+
+  useEffect(() => {
+    drawerSwipeEnabled.value = swipeEnabled;
+  }, [drawerSwipeEnabled, swipeEnabled]);
 
   const animateOpen = useCallback(() => {
     translateX.value = withSpring(0, OPEN_SPRING);
@@ -132,7 +142,20 @@ export function useDrawerAnimation(isOpen: boolean, onOpen: () => void, onClose:
   }, [isOpen, isOpenShared, animateOpen, animateClosed]);
 
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-12, 12])
+    .activeOffsetX([-18, 18])
+    .failOffsetY([-14, 14])
+    .onTouchesDown((event, state) => {
+      'worklet';
+      if (!drawerSwipeEnabled.value) {
+        state.fail();
+        return;
+      }
+      if (isOpenShared.value) return;
+      const touch = event.allTouches[0];
+      if (touch && touch.x > 36) {
+        state.fail();
+      }
+    })
     .onUpdate((e) => {
       'worklet';
       if (!isOpenShared.value) {

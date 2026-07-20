@@ -38,9 +38,11 @@ import {
   getResults,
   getSearchProductById,
   searchProductToCartItem,
+  searchProductToProduct,
   type SearchProduct,
 } from '@constants/searchData';
 import { getProductImageUrl } from '@constants/catalogData';
+import { ProductCard } from '@components/ProductCard';
 import { useCartStore } from '@store/cartStore';
 import { useSearchStore } from '@store/searchStore';
 import { useTranslation } from '@store/languageStore';
@@ -521,30 +523,15 @@ export default function SearchScreen() {
             {recentlyViewed.length > 0 ? (
               <View style={styles.recentlyViewedSection}>
                 <Text style={styles.sectionLabel}>{t('recentlyViewed')}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.recentlyViewedRow}>
-                    {recentlyViewed.map((product) => (
-                      <Pressable
-                        key={product.id}
-                        onPress={() => handleProductPress(product)}
-                        style={styles.recentlyViewedCard}>
-                        <Image
-                          source={{ uri: getProductImageUrl(product.image, '112x112') }}
-                          style={styles.recentlyViewedImage}
-                          contentFit="cover"
-                        />
-                        <View style={styles.recentlyViewedInfo}>
-                          <Text style={styles.recentlyViewedName} numberOfLines={2}>
-                            {product.name}
-                          </Text>
-                          <Text style={styles.recentlyViewedPrice}>
-                            {formatSearchPrice(product.price)}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
+                <View style={styles.recentlyViewedList}>
+                  {recentlyViewed.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={searchProductToProduct(product)}
+                      categoryName={product.category}
+                    />
+                  ))}
+                </View>
               </View>
             ) : null}
           </ScrollView>
@@ -903,6 +890,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 20,
     marginBottom: 30,
+  },
+  recentlyViewedList: {
+    marginTop: 10,
   },
   recentlyViewedRow: {
     flexDirection: 'row',

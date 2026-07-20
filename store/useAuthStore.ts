@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 
+import { GUEST_MODE_KEY } from '@constants/guest';
+import { storage } from '@lib/storage';
+
 export type UserRole =
   | 'individual'
   | 'contractor'
@@ -30,11 +33,16 @@ interface AuthState {
   companyName: string;
   gstNumber: string;
   selectedLanguage: string;
+  /** Temporary browse mode — protected flows prompt login. */
+  isGuest: boolean;
   setPhoneNumber: (phone: string) => void;
   setSelectedRole: (role: UserRole) => void;
   setCompanyName: (name: string) => void;
   setGstNumber: (gst: string) => void;
   setSelectedLanguage: (lang: string) => void;
+  enterGuestMode: () => Promise<void>;
+  clearGuestMode: () => Promise<void>;
+  hydrateGuestMode: () => Promise<void>;
   reset: () => void;
 }
 
@@ -44,6 +52,7 @@ const initialState = {
   companyName: '',
   gstNumber: '',
   selectedLanguage: 'hi',
+  isGuest: false,
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -53,5 +62,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   setCompanyName: (name) => set({ companyName: name }),
   setGstNumber: (gst) => set({ gstNumber: gst }),
   setSelectedLanguage: (lang) => set({ selectedLanguage: lang }),
-  reset: () => set(initialState),
+  enterGuestMode: async () => {
+    await storage.setItem(GUEST_MODE_KEY, 'true');
+    set({ isGuest: true });
+  },
+  clearGuestMode: async () => {
+    await storage.removeItem(GUEST_MODE_KEY);
+    set({ isGuest: false });
+  },
+  hydrateGuestMode: async () => {
+    const flag = await storage.getItem(GUEST_MODE_KEY);
+    set({ isGuest: flag === 'true' });
+  },
+  reset: () => {
+    void storage.removeItem(GUEST_MODE_KEY);
+    set(initialState);
+  },
 }));

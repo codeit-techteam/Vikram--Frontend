@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 
 import { ScaledPressable } from '@components/ScaledPressable';
 import { CartItemImage } from '@components/cart/CartItemImage';
+import { ProductUnit } from '@components/product/ProductUnit';
 import { getCategoryIdForProduct, getProductById } from '@constants/catalogData';
 import type { CartItem } from '@store/cartStore';
 import { resolveCartProductId } from '@utils/cartHelpers';
@@ -65,7 +66,7 @@ export function OrderItemRow({ item }: OrderItemRowProps) {
           {item.name}
         </Text>
         <Text style={{ fontSize: 13, color: '#888', marginTop: 3 }}>
-          {item.quantity} {item.unit}
+          <ProductUnit unit={item.unit} quantity={item.quantity} variant="qty" />
           {spec ? ` • ${spec}` : ''}
         </Text>
       </View>

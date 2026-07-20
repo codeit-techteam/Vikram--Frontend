@@ -57,9 +57,10 @@ export function BackHeader({
 interface YellowBackHeaderProps {
   title?: string;
   onBack?: () => void;
+  rightElement?: ReactNode;
 }
 
-export function YellowBackHeader({ title, onBack }: YellowBackHeaderProps) {
+export function YellowBackHeader({ title, onBack, rightElement }: YellowBackHeaderProps) {
   const handleBack = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (onBack) {
@@ -77,7 +78,14 @@ export function YellowBackHeader({ title, onBack }: YellowBackHeaderProps) {
         style={styles.yellowBackBtn}>
         <Ionicons name="arrow-back" size={20} color="#1A1A1A" />
       </TouchableOpacity>
-      {title ? <Text style={styles.yellowTitle}>{title}</Text> : null}
+      {title ? (
+        <Text style={styles.yellowTitle} numberOfLines={1}>
+          {title}
+        </Text>
+      ) : (
+        <View style={styles.yellowSpacer} />
+      )}
+      <View style={styles.yellowRight}>{rightElement}</View>
     </View>
   );
 }
@@ -130,9 +138,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   yellowTitle: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1A1A',
+  },
+  yellowSpacer: {
+    flex: 1,
+  },
+  yellowRight: {
+    minWidth: 34,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
 });
 

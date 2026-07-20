@@ -37,7 +37,9 @@ export function NotificationBell({ color = '#1A1A1A', size = 20 }: HeaderIconPro
 }
 
 export function CartIcon({ color = '#1A1A1A', size = 20 }: HeaderIconProps) {
-  const cartCount = useCartStore((s) => s.items.reduce((sum, item) => sum + item.quantity, 0));
+  const cartCount = useCartStore((s) =>
+    s.items.reduce((sum, item) => sum + item.quantity, 0),
+  );
   const cartBumpVersion = useCartStore((s) => s.cartBumpVersion);
   const cartScale = useSharedValue(1);
   const badgeScale = useSharedValue(1);

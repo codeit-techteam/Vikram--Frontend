@@ -45,7 +45,9 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Bajriwala to access your location for delivery site setup."
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "expo-video",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

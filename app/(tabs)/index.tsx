@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   BackHandler,
-  ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,36 +9,38 @@ import {
   View,
 } from 'react-native';
 import { router, type Href } from 'expo-router';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedProgressBar } from '@components/AnimatedProgressBar';
 import { AppHeader } from '@components/AppHeader';
 import { SearchBar } from '@components/SearchBar';
 import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
-import HeroVideoSection from '@components/HeroVideoSection';
-import { LastOrderCard } from '@components/LastOrderCard';
-import { getProductById } from '@constants/catalogData';
+import { MembershipCard } from '@components/home/MembershipCard';
+import { EmergencyCard } from '@components/home/EmergencyCard';
+import { LoyaltyCard } from '@components/home/LoyaltyCard';
+import { MaterialCategoryCard } from '@components/home/MaterialCategoryCard';
+import { BulkProcurementCard } from '@components/home/BulkProcurementCard';
+import { HomeRecommendedSection } from '@components/home/HomeRecommendedSection';
+import { TestimonialCarousel } from '@components/home/TestimonialSection';
+import { VideoBanner } from '@components/home/VideoBanner';
 import { images } from '@constants/images';
 import type { StringKey } from '@constants/strings';
 import { useTranslation } from '@store/languageStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
 import { useSearch } from '@hooks/useSearch';
-import type { LastOrderedProduct } from '@store/orderStore';
-import { useOrderStore } from '@store/orderStore';
+
+const SECTION_GAP = 24;
+const H_PAD = 16;
 
 const CATEGORIES: {
   id: string;
@@ -47,119 +49,16 @@ const CATEGORIES: {
   image: number;
 }[] = [
   { id: 'cement', routeId: 'cement', labelKey: 'cement', image: images.categoryCement },
-  { id: 'steel', routeId: 'steel', labelKey: 'steel', image: images.categorySteel },
+  { id: 'hardware', routeId: 'hardware', labelKey: 'hardware', image: images.categoryAggregates },
   { id: 'stone', routeId: 'stone-chips', labelKey: 'stoneChip', image: images.categoryStone },
   { id: 'sand', routeId: 'sand', labelKey: 'sand', image: images.categorySand },
   { id: 'bricks', routeId: 'bricks', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
 ];
 
-function buildFallbackLastOrders(): LastOrderedProduct[] {
-  const steel = getProductById('s2');
-  const cement = getProductById('c1');
-  const bricks = getProductById('bricks_red');
-  const items: LastOrderedProduct[] = [];
-
-  if (steel) {
-    items.push({
-      id: steel.id,
-      productId: steel.id,
-      name: steel.detailName ?? steel.name,
-      productName: steel.detailName ?? steel.name,
-      description: steel.description,
-      imageSearch: steel.imageSearch,
-      image: steel.imageSearch,
-      unitPrice: steel.retailPriceValue,
-      bulkPrice: steel.bulkPriceValue,
-      bulkThreshold: steel.bulkThreshold,
-      quantity: 1,
-      unit: steel.unit,
-      orderedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-      orderId: 'fallback',
-    });
-  }
-
-  if (cement) {
-    items.push({
-      id: cement.id,
-      productId: cement.id,
-      name: cement.detailName ?? cement.name,
-      productName: cement.detailName ?? cement.name,
-      description: cement.description,
-      imageSearch: cement.imageSearch,
-      image: cement.imageSearch,
-      unitPrice: cement.retailPriceValue,
-      bulkPrice: cement.bulkPriceValue,
-      bulkThreshold: cement.bulkThreshold,
-      quantity: 1,
-      unit: cement.unit,
-      orderedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      orderId: 'fallback',
-    });
-  }
-
-  if (bricks) {
-    items.push({
-      id: 'bricks_red_rb_500',
-      productId: bricks.id,
-      name: `${bricks.name} (500 Pieces)`,
-      productName: bricks.name,
-      description: bricks.description,
-      imageSearch: bricks.imageSearch,
-      image: bricks.imageSearch,
-      unitPrice: 4075,
-      bulkPrice: 3750,
-      bulkThreshold: bricks.bulkThreshold,
-      quantity: 1,
-      unit: bricks.unit,
-      variantId: 'rb_500',
-      variantLabel: '500 Pieces',
-      orderedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      orderId: 'fallback',
-    });
-  }
-
-  return items;
-}
-
-function CategoryCard({
-  label,
-  image,
-  onPress,
-}: {
-  label: string;
-  image: number;
-  onPress: () => void;
-}) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => {
-          scale.value = withSpring(0.93, { damping: 10, stiffness: 300 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1.0, { damping: 10, stiffness: 300 });
-        }}
-        style={styles.categoryCard}
-        hitSlop={4}>
-        <View style={styles.categoryImageWrap}>
-          <Image source={image} style={styles.categoryImage} contentFit="cover" />
-        </View>
-        <Text style={styles.categoryLabel}>{label}</Text>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
 export default function HomeScreen() {
   const { t, language } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSwipeEnabled, setDrawerSwipeEnabled] = useState(true);
   const screenOpacity = useSharedValue(1);
   const prevLang = useRef(language);
 
@@ -177,12 +76,6 @@ export default function HomeScreen() {
     }
   }, [language, screenOpacity]);
 
-  const orders = useOrderStore((s) => s.orders);
-  const lastOrderedItems = useMemo(
-    () => useOrderStore.getState().getLastOrderedProducts(),
-    [orders],
-  );
-
   const {
     panGesture,
     drawerStyle,
@@ -195,7 +88,12 @@ export default function HomeScreen() {
     drawerOpen,
     () => setDrawerOpen(true),
     () => setDrawerOpen(false),
+    drawerSwipeEnabled,
   );
+
+  const handleTestimonialScrollInteraction = useCallback((isInteracting: boolean) => {
+    setDrawerSwipeEnabled(!isInteracting);
+  }, []);
 
   const search = useSearch();
 
@@ -248,23 +146,19 @@ export default function HomeScreen() {
     router.push('/emergency-order' as Href);
   }, []);
 
+  const onJoinMembership = useCallback(async () => {
+    Alert.alert(t('membershipTitle'), t('membershipJoinMock'));
+  }, [t]);
+
   const heroSlides = [
     { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
     { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
     { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
   ];
 
-  const displayItems =
-    lastOrderedItems.length > 0 ? lastOrderedItems : buildFallbackLastOrders();
-
-  const onViewAllOrders = useCallback(async () => {
+  const onBulkProcurement = useCallback(async () => {
     await Haptics.selectionAsync();
-    router.push('/(tabs)/orders' as Href);
-  }, []);
-
-  const onShopCatalog = useCallback(async () => {
-    await Haptics.selectionAsync();
-    router.push('/(tabs)/catalog' as Href);
+    router.push('/bulk-procurement' as Href);
   }, []);
 
   return (
@@ -278,32 +172,35 @@ export default function HomeScreen() {
 
         <Animated.View style={[styles.content, contentStyle, fadeStyle]}>
           <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              className="flex-1"
+              contentContainerStyle={styles.scrollContent}>
+              {/* 1. Header: Logo · Notification · Cart · Search */}
               <AppHeader
                 onMenuPress={toggleDrawer}
                 isDrawerOpen={drawerOpen}
                 menuIconStyle={iconStyle}
               />
 
-              <View className="px-5">
-                <Text className="text-2xl font-bold text-text">{t('goodMorning')}</Text>
-                <Text className="mt-0.5 text-sm text-text-secondary">{t('homeSubtitle')}</Text>
+              <View style={styles.searchWrap}>
+                <SearchBar
+                  query={search.query}
+                  isActive={false}
+                  onChangeText={search.setQuery}
+                  onFocus={search.activateSearch}
+                  onSubmit={() => search.submitSearch()}
+                  onClear={search.clearQuery}
+                  onVoicePress={() => {
+                    search.deactivateSearch();
+                    openVoiceAssistant();
+                  }}
+                />
               </View>
 
-              <SearchBar
-                query={search.query}
-                isActive={false}
-                onChangeText={search.setQuery}
-                onFocus={search.activateSearch}
-                onSubmit={() => search.submitSearch()}
-                onClear={search.clearQuery}
-                onVoicePress={() => {
-                  search.deactivateSearch();
-                  openVoiceAssistant();
-                }}
-              />
-
-              <View className="mt-5 px-5">
+              {/* 2. Hero Banner Carousel */}
+              <View style={styles.section}>
                 <HeroCarousel
                   slides={heroSlides}
                   onShopNow={() => router.push('/(tabs)/catalog' as Href)}
@@ -311,116 +208,68 @@ export default function HomeScreen() {
                 />
               </View>
 
-              <Pressable onPress={goLoyalty} style={styles.loyaltyCard}>
-                <View style={styles.loyaltyTopRow}>
-                  <View style={styles.tierBadge}>
-                    <Text style={styles.tierText}>{t('platinumTier')}</Text>
-                  </View>
-                  <Text style={styles.pointsText}>12,450 {t('points')}</Text>
-                </View>
-                <View style={styles.loyaltyMidRow}>
-                  <Text style={styles.loyaltyTitle}>{t('loyaltyProgress')}</Text>
-                  <Text style={styles.loyaltyNext}>{t('platinumNext')} →</Text>
-                </View>
-                <AnimatedProgressBar progress={10 / 600} height={5} />
-                <Text style={styles.earnText}>{t('earnPoints')}</Text>
-              </Pressable>
-
-              <View className="mt-5 flex-row items-center justify-between px-5">
-                <Text className="text-base font-bold text-text">{t('materialCategories')}</Text>
-                <Pressable onPress={onViewAllCategories} hitSlop={12}>
-                  <Text className="text-sm font-semibold text-primary">{t('viewCat')}</Text>
-                </Pressable>
+              {/* 3. Loyalty Progress Card */}
+              <View style={styles.section}>
+                <LoyaltyCard onPress={goLoyalty} />
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoriesRow}>
-                {CATEGORIES.map((cat) => (
-                  <CategoryCard
-                    key={cat.id}
-                    label={t(cat.labelKey)}
-                    image={cat.image}
-                    onPress={() => onCategoryPress(cat)}
-                  />
-                ))}
-              </ScrollView>
-
-              <Pressable onPress={goEmergency} style={styles.emergencyWrap}>
-                <ImageBackground
-                  source={{ uri: images.emergencyBanner }}
-                  style={styles.emergencyBg}
-                  imageStyle={{ borderRadius: 16 }}>
-                  <View style={styles.emergencyOverlay} />
-                  <View style={styles.emergencyContent}>
-                    <Text style={styles.emergencyTitle}>{t('criticalShortage')}</Text>
-                    <Text style={styles.emergencySubtitle}>{t('criticalSubtitle')}</Text>
-                    <View style={styles.emergencyButton}>
-                      <Text style={styles.emergencyEmoji}>⚡</Text>
-                      <Text style={styles.emergencyButtonText}>{t('emergencyOrder')}</Text>
-                    </View>
-                  </View>
-                </ImageBackground>
-              </Pressable>
-
-              <HeroVideoSection />
-
-              {lastOrderedItems.length === 0 && orders.length === 0 ? (
-                <View style={styles.lastOrdersEmpty}>
-                  <View style={styles.lastOrdersEmptyIcon}>
-                    <Ionicons name="bag-outline" size={22} color="#1A1A1A" />
-                  </View>
-                  <View style={styles.lastOrdersEmptyText}>
-                    <Text style={styles.lastOrdersEmptyTitle}>{t('noLastOrdersPrompt')}</Text>
-                    <Text style={styles.lastOrdersEmptySubtitle}>{t('noLastOrdersSubtitle')}</Text>
-                  </View>
-                  <Pressable onPress={onShopCatalog} style={styles.lastOrdersShopButton}>
-                    <Text style={styles.lastOrdersShopText}>{t('shop')}</Text>
+              {/* 4. Material Categories */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{t('materialCategories')}</Text>
+                  <Pressable onPress={onViewAllCategories} hitSlop={12}>
+                    <Text style={styles.sectionLink}>{t('viewCat')}</Text>
                   </Pressable>
                 </View>
-              ) : displayItems.length > 0 ? (
-                <View style={styles.lastOrdersSection}>
-                  <View style={styles.lastOrdersHeader}>
-                    <View>
-                      <Text style={styles.lastOrdersTitle}>{t('lastOrders')}</Text>
-                      <Text style={styles.lastOrdersSubtitle}>{t('lastOrdersSubtitle')}</Text>
-                    </View>
-                    <Pressable
-                      onPress={onViewAllOrders}
-                      style={styles.lastOrdersViewAll}>
-                      <Text style={styles.lastOrdersViewAllText}>{t('viewAll')}</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#FEB623" />
-                    </Pressable>
-                  </View>
-
-                  {displayItems.map((item) => (
-                    <LastOrderCard key={item.id} item={item} />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoriesRow}>
+                  {CATEGORIES.map((cat) => (
+                    <MaterialCategoryCard
+                      key={cat.id}
+                      label={t(cat.labelKey)}
+                      image={cat.image}
+                      onPress={() => onCategoryPress(cat)}
+                    />
                   ))}
-                </View>
-              ) : null}
+                </ScrollView>
+              </View>
 
-              <Pressable onPress={goLoyalty} className="mx-5 mt-5 mb-8 rounded-card bg-[#1A2332] p-5">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-[10px] font-bold tracking-wider text-text-secondary">
-                    {t('proStatus')}
-                  </Text>
-                  <Ionicons name="medal-outline" size={18} color="#FFFFFF" />
-                </View>
-                <Text className="mt-2 text-3xl font-bold text-text-inverse">{t('points')}</Text>
-                <View className="mt-3 flex-row items-center justify-between">
-                  <Text className="text-xs text-text-inverse/70">{t('progressToPlatinum')}</Text>
-                  <Text className="text-xs font-bold text-text-inverse">85%</Text>
-                </View>
-                <View className="mt-2">
-                  <AnimatedProgressBar progress={0.85} height={5} trackColor="#333" />
-                </View>
-                <View className="mt-4 items-center rounded-lg border border-white/30 py-3">
-                  <Text className="text-sm font-bold text-text-inverse">{t('redeemRewards')}</Text>
-                </View>
-              </Pressable>
+              {/* 5. Emergency Order Card */}
+              <View style={styles.section}>
+                <EmergencyCard onOrderNow={goEmergency} />
+              </View>
+
+              {/* 6. Promotional Video Banner */}
+              <View style={styles.section}>
+                <VideoBanner />
+              </View>
+
+              {/* 7. Customer Testimonials */}
+              <View style={styles.section}>
+                <TestimonialCarousel
+                  onHorizontalInteractionChange={handleTestimonialScrollInteraction}
+                />
+              </View>
+
+              {/* 8. Bajriwala Membership ₹299 Card */}
+              <View style={styles.section}>
+                <MembershipCard onJoin={onJoinMembership} />
+              </View>
+
+              {/* 9. Bulk Procurement */}
+              <View style={styles.section}>
+                <BulkProcurementCard onKnowMore={onBulkProcurement} />
+              </View>
+
+              {/* 10. Recommended Products */}
+              <HomeRecommendedSection
+                onHorizontalInteractionChange={handleTestimonialScrollInteraction}
+              />
+
+              <View style={styles.bottomSpacer} />
             </ScrollView>
-
           </SafeAreaView>
         </Animated.View>
 
@@ -450,217 +299,38 @@ const styles = StyleSheet.create({
     flex: 1,
     zIndex: 1,
   },
-  loyaltyCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  loyaltyTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  tierBadge: {
-    borderWidth: 1.5,
-    borderColor: '#FEB623',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  tierText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FEB623',
-  },
-  pointsText: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '600',
-  },
-  loyaltyMidRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  loyaltyTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  loyaltyNext: {
-    fontSize: 13,
-    color: '#FEB623',
-    fontWeight: '600',
-  },
-  earnText: {
-    fontSize: 12,
-    color: '#FEB623',
-    marginTop: 6,
-  },
-  categoriesRow: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 12,
+  scrollContent: {
     paddingBottom: 8,
   },
-  categoryCard: {
-    alignItems: 'center',
-    width: 80,
+  searchWrap: {
+    marginBottom: 0,
   },
-  categoryImageWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F0F0F0',
+  section: {
+    marginTop: SECTION_GAP,
   },
-  categoryImage: {
-    width: '100%',
-    height: '100%',
-  },
-  categoryLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  emergencyWrap: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  emergencyBg: {
-    padding: 20,
-    minHeight: 180,
-    justifyContent: 'flex-end',
-  },
-  emergencyOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.60)',
-    borderRadius: 16,
-  },
-  emergencyContent: {
-    position: 'relative',
-  },
-  emergencyTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  emergencySubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 16,
-  },
-  emergencyButton: {
-    backgroundColor: '#FEB623',
-    borderRadius: 30,
-    paddingVertical: 14,
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 4,
-    shadowColor: '#FEB623',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  emergencyEmoji: {
-    fontSize: 16,
-  },
-  emergencyButtonText: {
-    color: '#1A1A1A',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  lastOrdersSection: {
-    marginHorizontal: 16,
-    marginTop: 20,
-  },
-  lastOrdersHeader: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: H_PAD,
     marginBottom: 12,
   },
-  lastOrdersTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#1A1A1A',
   },
-  lastOrdersSubtitle: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2,
-  },
-  lastOrdersViewAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  lastOrdersViewAllText: {
-    fontSize: 13,
-    color: '#FEB623',
-    fontWeight: '700',
-  },
-  lastOrdersEmpty: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: '#FFF4D1',
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#FEB623',
-    borderStyle: 'dashed',
-  },
-  lastOrdersEmptyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FEB623',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lastOrdersEmptyText: {
-    flex: 1,
-  },
-  lastOrdersEmptyTitle: {
+  sectionLink: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '600',
+    color: '#FEB623',
   },
-  lastOrdersEmptySubtitle: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+  categoriesRow: {
+    paddingHorizontal: H_PAD,
+    gap: 12,
+    paddingBottom: 4,
   },
-  lastOrdersShopButton: {
-    backgroundColor: '#FEB623',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  lastOrdersShopText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1A1A1A',
+  bottomSpacer: {
+    height: 32,
   },
 });

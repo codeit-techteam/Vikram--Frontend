@@ -102,6 +102,16 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
         />
       </View>
 
+      <View className="mt-3 flex-row items-center justify-between rounded-card border border-border bg-surface px-4 py-3">
+        <View className="flex-row items-center gap-2">
+          <Ionicons name="bicycle-outline" size={20} color="#FEB623" />
+          <Text className="text-sm font-bold text-text">{t('bikeDelivery')}</Text>
+        </View>
+        <View className="rounded-md bg-success/15 px-2.5 py-1">
+          <Text className="text-[11px] font-bold text-success">{t('bikeDeliveryFree')}</Text>
+        </View>
+      </View>
+
       <View className="mt-4 rounded-card border border-border bg-trust p-4">
         <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
           {t('logisticsBreakdown')}
