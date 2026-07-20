@@ -1,8 +1,12 @@
-# Reduce EAS upload size — exclude unused large assets and local artifacts
-dist/
-.git/
-android/
-ios/
+# EAS upload exclusions (see https://expo.fyi/eas-build-archive)
+.git
+**/.git/**
+android
+ios
+dist
+node_modules
+
+# Unused large video assets (not referenced in app)
 assets/videos/cement2.mp4
 assets/videos/cement.mp4
 assets/videos/bricks2.mp4

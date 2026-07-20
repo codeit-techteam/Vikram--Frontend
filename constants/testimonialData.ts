@@ -52,7 +52,7 @@ export const TESTIMONIAL_VIDEOS: TestimonialVideo[] = [
   {
     id: 'tv4',
     video: require('../assets/videos/landscape.mp4'),
-    thumbnail: images.testimonialSandDelivery,
+    thumbnail: images.categorySand,
     customerName: 'Arjun Rathore',
     location: 'Jodhpur, Rajasthan',
     rating: 5,
@@ -78,7 +78,6 @@ export const TESTIMONIAL_REVIEWS: TestimonialReview[] = [
     rating: 5,
     review:
       'Ordered 20 tonnes of river sand for a villa project. Clean, well-graded sand delivered within 3 hours — saved us an entire day of sourcing.',
-    photo: images.testimonialSandDelivery,
   },
   {
     id: 'tr2',
