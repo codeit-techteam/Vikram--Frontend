@@ -41,7 +41,7 @@ export function DeliveryDestinationCard({ site }: DeliveryDestinationCardProps) 
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#F0F0F0',

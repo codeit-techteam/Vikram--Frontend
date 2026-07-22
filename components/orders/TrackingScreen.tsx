@@ -18,6 +18,7 @@ import { useOrderStore } from '@store/orderStore';
 import { safeGoBack } from '@utils/navigation';
 import { formatDateKey } from '@utils/orderDateHelpers';
 import { formatINR } from '@utils/formatCurrency';
+import { getPaymentMethodLabel } from '@utils/paymentMethodLabels';
 import { theme, borderRadius } from '@constants/theme';
 
 const DRIVER_AVATAR =
@@ -216,7 +217,7 @@ export const TrackingScreen = memo(function TrackingScreen() {
           />
           <InfoRow
             label="Payment Method"
-            value={order.paymentMethodLabel ?? order.paymentMethod.replace(/_/g, ' ')}
+            value={getPaymentMethodLabel(order.paymentMethod, order.paymentMethodLabel)}
           />
           <InfoRow label="Total Amount" value={formatINR(order.grandTotal, false)} highlight />
           {warehouse ? <InfoRow label="Warehouse" value={warehouse} /> : null}

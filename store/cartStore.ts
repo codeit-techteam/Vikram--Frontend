@@ -245,6 +245,6 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   grandTotal: () => {
     const s = get();
-    return s.itemsTotal() + s.gst() + s.deliveryCharge() - s.loyaltyDiscount();
+    return s.itemsTotal() + s.deliveryCharge() - s.loyaltyDiscount();
   },
 }));

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { PaymentStatus } from '@/types/order';
 import { borderRadius, theme } from '@constants/theme';
+import { getPaymentMethodLabel } from '@utils/paymentMethodLabels';
 
 interface PaymentSectionProps {
   paymentMethod: string;
@@ -52,7 +53,7 @@ export const PaymentSection = memo(function PaymentSection({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="card-outline" size={18} color={theme.primary} />
             <Text style={{ fontSize: 14, color: theme.textPrimary, fontWeight: '600' }}>
-              {paymentMethodLabel ?? paymentMethod.replace(/_/g, ' ')}
+              {getPaymentMethodLabel(paymentMethod, paymentMethodLabel)}
             </Text>
           </View>
           <View

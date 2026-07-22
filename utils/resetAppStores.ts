@@ -1,5 +1,6 @@
 import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useGstStore } from '@store/gstStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { useOrderStore } from '@store/orderStore';
 import { useUserStore } from '@store/userStore';
@@ -22,4 +23,5 @@ export function resetAppStores() {
   useSiteStore.setState({ sites: [] });
   useDeliveryStore.getState().reset();
   useUserStore.getState().reset();
+  useGstStore.getState().reset();
 }

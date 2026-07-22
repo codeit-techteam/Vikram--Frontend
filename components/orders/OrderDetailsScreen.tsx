@@ -8,6 +8,7 @@ import * as Sharing from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
+import { DownloadInvoiceCard } from '@components/gst/DownloadInvoiceCard';
 import { DeliveryAddress } from '@components/orders/DeliveryAddress';
 import { OrderDetailSkeleton } from '@components/orders/OrderSkeleton';
 import { OrderProducts } from '@components/orders/OrderProducts';
@@ -22,6 +23,7 @@ import { useOrder } from '@hooks/useOrder';
 import { useReorder } from '@hooks/useReorder';
 import { adaptLegacyOrder } from '@utils/orderAdapters';
 import { useOrderStore } from '@store/orderStore';
+import { useGstStore } from '@store/gstStore';
 import { safeGoBack } from '@utils/navigation';
 import { formatDateKey } from '@utils/orderDateHelpers';
 import { theme, borderRadius } from '@constants/theme';
@@ -29,6 +31,8 @@ import { theme, borderRadius } from '@constants/theme';
 export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const legacyOrder = useOrderStore((s) => s.getOrder(orderId ?? ''));
+  const gstDetails = useGstStore((s) => s.details);
+  const hasGst = useGstStore((s) => s.verified);
   const { order: apiOrder, isLoading, cancelOrder, isCancelling } = useOrder(orderId);
   const { reorder, isReordering } = useReorder();
   const [downloading, setDownloading] = useState(false);
@@ -157,6 +161,17 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
         />
 
         <DeliveryAddress address={order.shippingAddress} />
+
+        {hasGst && gstDetails ? (
+          <DownloadInvoiceCard
+            details={gstDetails}
+            title="Business Invoice"
+            invoiceStatus="Available after delivery"
+            onDownload={handleDownloadInvoice}
+            isDownloading={downloading}
+            downloadLabel="Download GST Invoice"
+          />
+        ) : null}
 
         <PaymentSection
           paymentMethod={order.paymentMethod}

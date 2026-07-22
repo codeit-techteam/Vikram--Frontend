@@ -179,6 +179,11 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           onPress: () => navigateAndClose('/account/invoices'),
         },
         {
+          icon: 'receipt-outline',
+          label: t('businessDetailsMenu'),
+          onPress: () => navigateAndClose('/account/business-details' as Href),
+        },
+        {
           icon: 'trophy-outline',
           label: t('loyaltyWallet'),
           onPress: () => navigateAndClose('/account/loyalty'),

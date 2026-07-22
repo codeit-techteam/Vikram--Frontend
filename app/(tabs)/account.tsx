@@ -43,7 +43,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const QUICK_LINKS = [
   { key: 'history', icon: 'time-outline' as const, route: '/orders/history' },
   { key: 'invoices', icon: 'document-text-outline' as const, route: '/account/invoices' },
-  { key: 'wallet', icon: 'wallet-outline' as const, route: '/account/wallet' },
   { key: 'loyalty', icon: 'diamond-outline' as const, route: '/account/loyalty' },
   { key: 'privacy', icon: 'shield-checkmark-outline' as const, route: '/account/privacy' },
 ] as const;
@@ -62,8 +61,6 @@ export default function AccountScreen() {
   } as const;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [businessOpen, setBusinessOpen] = useState(true);
-  const [gstOpen, setGstOpen] = useState(false);
   const [sitesOpen, setSitesOpen] = useState(true);
   const [editSite, setEditSite] = useState<ProfileSite | null>(null);
 
@@ -133,14 +130,6 @@ export default function AccountScreen() {
     [language, setLanguage],
   );
 
-  const handleGstToggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (!gstOpen) {
-      router.push('/account/gst-compliance');
-    }
-    setGstOpen((v) => !v);
-  };
-
   return (
     <DrawerShell
       isOpen={drawerOpen}
@@ -151,7 +140,10 @@ export default function AccountScreen() {
         <AppHeader onMenuPress={() => setDrawerOpen(true)} />
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-          {/* Profile Card */}
+          {/* Personal Information */}
+          <Text className="mb-2 text-[10px] font-bold tracking-widest text-text-secondary">
+            {t('personalInformation').toUpperCase()}
+          </Text>
           <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
             <View className="flex-row items-start gap-4">
               <ScaledPressable onPress={handleAvatarPress}>
@@ -194,37 +186,18 @@ export default function AccountScreen() {
           </View>
 
           {/* Business Details */}
-          <CollapsibleSection
-            icon="briefcase-outline"
-            title={t('businessDetails')}
-            expanded={businessOpen}
-            onToggle={() => toggleSection(setBusinessOpen)}>
-            <DetailRow label={t('legalEntity')} value={user.legalEntityName} />
-            <DetailRow label={t('establishmentDate')} value={user.establishmentDate} />
-            <DetailRow label={t('registeredAddress')} value={user.registeredAddress} />
-          </CollapsibleSection>
-
-          {/* GST Compliance */}
-          <CollapsibleSection
-            icon="shield-checkmark-outline"
-            title={t('gstCompliance')}
-            expanded={gstOpen}
-            onToggle={handleGstToggle}
-            onHeaderPress={handleGstToggle}>
-            {gstOpen && (
-              <View className="pt-3">
-                <DetailRow label="GSTIN" value={user.gstNumber} />
-                <View className="mt-2 flex-row items-center gap-2">
-                  <View className="rounded bg-success/15 px-2 py-0.5">
-                    <Text className="text-xs font-bold text-success">VERIFIED</Text>
-                  </View>
-                  <Text className="text-sm text-text-secondary">
-                    {t('complianceScore')}: {user.complianceScore}%
-                  </Text>
-                </View>
-              </View>
-            )}
-          </CollapsibleSection>
+          <ScaledPressable
+            onPress={() => router.push('/account/business-details' as Href)}
+            className="mb-4 flex-row items-center rounded-card border border-border bg-surface px-4 py-4 shadow-sm">
+            <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+              <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
+              <Text className="text-xs text-text-secondary">{t('manageGstDetails')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#CCCCCC" />
+          </ScaledPressable>
 
           {/* Saved Delivery Sites */}
           <CollapsibleSection
@@ -299,7 +272,7 @@ export default function AccountScreen() {
                 key={link.key}
                 onPress={() => {
                   if (
-                    (link.key === 'wallet' || link.key === 'invoices' || link.key === 'loyalty') &&
+                    (link.key === 'invoices' || link.key === 'loyalty') &&
                     !requireAuth('Please log in to access this section.')
                   ) {
                     return;
@@ -313,11 +286,9 @@ export default function AccountScreen() {
                     ? t('orderHistoryMenu')
                     : link.key === 'invoices'
                       ? t('invoices')
-                      : link.key === 'wallet'
-                        ? t('wallet')
-                        : link.key === 'loyalty'
-                          ? t('loyaltyWallet')
-                          : t('privacySecurity')}
+                      : link.key === 'loyalty'
+                        ? t('loyaltyWallet')
+                        : t('privacySecurity')}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
               </ScaledPressable>
@@ -365,17 +336,6 @@ export default function AccountScreen() {
       />
     </SafeAreaView>
     </DrawerShell>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="mt-3">
-      <Text className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
-        {label}
-      </Text>
-      <Text className="mt-1 text-sm text-text">{value}</Text>
-    </View>
   );
 }
 

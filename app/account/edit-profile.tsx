@@ -25,7 +25,6 @@ import { pickAvatarImage } from '@utils/pickAvatar';
 import { showToast } from '@utils/toast';
 import {
   validateEmail,
-  validateGst,
   validateName,
   validatePhone,
 } from '@utils/validation';
@@ -34,7 +33,7 @@ const BUSINESS_TYPES = ['Construction Co.', 'Contractor', 'Architect', 'Develope
 const PROCUREMENT_OPTIONS = ['Under ₹10L', '₹10L-₹50L', '₹50L - ₹1Cr', '₹1Cr+'];
 const CITIES = ['Mumbai', 'Pune', 'Delhi', 'Bangalore', 'Chennai', 'Hyderabad'];
 
-type FieldKey = 'name' | 'phone' | 'email' | 'gstNumber';
+type FieldKey = 'name' | 'phone' | 'email';
 
 export default function EditProfileScreen() {
   const { t } = useTranslation();
@@ -48,7 +47,6 @@ export default function EditProfileScreen() {
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone);
   const [email, setEmail] = useState(user.email);
-  const [gstNumber, setGstNumber] = useState(user.gstNumber);
   const [businessType, setBusinessType] = useState(user.businessType);
   const [procurement, setProcurement] = useState(user.procurement);
   const [city, setCity] = useState(user.city);
@@ -76,14 +74,12 @@ export default function EditProfileScreen() {
     const nameErr = validateName(name);
     const phoneErr = validatePhone(phone);
     const emailErr = validateEmail(email);
-    const gstErr = validateGst(gstNumber);
     if (nameErr) next.name = nameErr;
     if (phoneErr) next.phone = phoneErr;
     if (emailErr) next.email = emailErr;
-    if (gstErr) next.gstNumber = gstErr;
     setErrors(next);
     return Object.keys(next).length === 0;
-  }, [name, phone, email, gstNumber]);
+  }, [name, phone, email]);
 
   const handleSave = async () => {
     if (!validate()) return;
@@ -93,7 +89,6 @@ export default function EditProfileScreen() {
       name: name.trim(),
       phone: phone.trim(),
       email: email.trim(),
-      gstNumber: gstNumber.trim().toUpperCase(),
       businessType,
       procurement,
       city: city.trim(),
@@ -119,7 +114,6 @@ export default function EditProfileScreen() {
       name !== user.name ||
       phone !== user.phone ||
       email !== user.email ||
-      gstNumber !== user.gstNumber ||
       businessType !== user.businessType ||
       procurement !== user.procurement ||
       city !== user.city;
@@ -200,14 +194,6 @@ export default function EditProfileScreen() {
             onChangeText={setEmail}
             error={errors.email}
             keyboardType="email-address"
-          />
-          <FormField
-            icon="document-text-outline"
-            label={t('gstNumberLabel')}
-            value={gstNumber}
-            onChangeText={setGstNumber}
-            error={errors.gstNumber}
-            autoCapitalize="characters"
           />
         </View>
 

@@ -39,11 +39,7 @@ export function getOrderMaterialImageSource(
   return null;
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  wallet: 'Wallet',
-  upi: 'UPI',
-  cod: 'Cash on Delivery',
-};
+import { getPaymentMethodLabel } from '@utils/paymentMethodLabels';
 
 export function buildOrderFromCheckout(params: {
   id: string;
@@ -110,9 +106,7 @@ export function buildOrderFromCheckout(params: {
     total: params.total,
     createdAt: new Date(),
     paymentMethod: params.paymentMethod,
-    paymentMethodLabel:
-      PAYMENT_METHOD_LABELS[params.paymentMethod] ??
-      params.paymentMethod.replace(/_/g, ' '),
+    paymentMethodLabel: getPaymentMethodLabel(params.paymentMethod),
     deliveryETA: params.deliveryETA,
     arrivingBy: params.deliveryETA,
     eta: params.deliveryETA,

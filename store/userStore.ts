@@ -27,7 +27,7 @@ const DEFAULT_USER: User = {
   company: 'Premier Construction Ltd.',
   phone: '+91 98765 43210',
   email: 'karan@premierbuild.in',
-  gstNumber: '27AAACR1234F1Z5',
+  gstNumber: '',
   avatar: null,
   memberTier: 'platinum',
   businessType: 'Construction Co.',

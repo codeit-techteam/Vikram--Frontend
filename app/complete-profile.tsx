@@ -38,18 +38,11 @@ export default function CompleteProfileScreen() {
   const language = useLanguageStore((st) => st.language);
   const setLanguage = useLanguageStore((st) => st.setLanguage);
   const { t } = useTranslation();
-  const selectedRole = useAuthStore((st) => st.selectedRole);
   const companyName = useAuthStore((st) => st.companyName);
-  const gstNumber = useAuthStore((st) => st.gstNumber);
   const setCompanyName = useAuthStore((st) => st.setCompanyName);
-  const setGstNumber = useAuthStore((st) => st.setGstNumber);
-
-  const isIndividual = selectedRole === 'individual';
 
   const [loading, setLoading] = useState(false);
-  const [companyFocused, setCompanyFocused] = useState(false);
-  const [gstFocused, setGstFocused] = useState(false);
-  const [gstSkipped, setGstSkipped] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
 
   const handleContinue = () => {
     if (loading) return;
@@ -70,19 +63,12 @@ export default function CompleteProfileScreen() {
     Haptics.selectionAsync();
   };
 
-  const handleSkipGst = () => {
-    setGstNumber('');
-    setGstSkipped(true);
-    Haptics.selectionAsync();
-  };
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: GOLD }} edges={['top']}>
-      {/* Progress bar */}
       <View style={{ height: 3, backgroundColor: 'rgba(0,0,0,0.12)' }}>
         <View
           style={{
-            width: '75%',
+            width: '80%',
             height: '100%',
             backgroundColor: DARK,
             borderRadius: 2,
@@ -111,7 +97,6 @@ export default function CompleteProfileScreen() {
         showsVerticalScrollIndicator={false}
         bounces={false}
         keyboardShouldPersistTaps="handled">
-        {/* Cream card */}
         <View
           style={{
             backgroundColor: CREAM,
@@ -144,148 +129,27 @@ export default function CompleteProfileScreen() {
             {t('completeProfileSubtitle')}
           </Text>
 
-          {/* Company Name / Full Name */}
-          {!isIndividual ? (
-            <View style={{ marginBottom: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <Ionicons name="business-outline" size={15} color="#888" />
-                <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>
-                  {t('companyName')}
-                </Text>
-              </View>
-              <TextInput
-                style={{
-                  ...inputStyle,
-                  borderColor: companyFocused ? GOLD : WARM_BORDER,
-                }}
-                placeholder={t('companyNamePlaceholder')}
-                placeholderTextColor="#BBAA88"
-                value={companyName}
-                onChangeText={setCompanyName}
-                onFocus={() => setCompanyFocused(true)}
-                onBlur={() => setCompanyFocused(false)}
-              />
-            </View>
-          ) : (
-            <View style={{ marginBottom: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <Ionicons name="person-outline" size={15} color="#888" />
-                <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>
-                  {t('fullName')}
-                </Text>
-              </View>
-              <TextInput
-                style={{
-                  ...inputStyle,
-                  borderColor: companyFocused ? GOLD : WARM_BORDER,
-                }}
-                placeholder="Enter your full name"
-                placeholderTextColor="#BBAA88"
-                value={companyName}
-                onChangeText={setCompanyName}
-                onFocus={() => setCompanyFocused(true)}
-                onBlur={() => setCompanyFocused(false)}
-              />
-            </View>
-          )}
-
-          {/* GST Number — optional, can skip this section */}
           <View style={{ marginBottom: 28 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 8,
-              }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                <Ionicons name="shield-outline" size={15} color="#888" />
-                <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>
-                  {t('gstNumber')}
-                  <Text style={{ color: '#AAA', fontWeight: '400' }}> ({t('optional')})</Text>
-                </Text>
-              </View>
-              {!gstSkipped ? (
-                <TouchableOpacity
-                  onPress={handleSkipGst}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('skipForNow')}>
-                  <Text style={{ fontSize: 13, color: GOLD, fontWeight: '700' }}>
-                    {t('skipGst')}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Ionicons name="person-outline" size={15} color="#888" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>{t('fullName')}</Text>
             </View>
-
-            {gstSkipped ? (
-              <View
-                style={{
-                  backgroundColor: 'rgba(254,182,35,0.12)',
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: 'rgba(254,182,35,0.35)',
-                  borderStyle: 'dashed',
-                  padding: 14,
-                }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <Ionicons name="checkmark-circle" size={18} color={GOLD} />
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#666' }}>
-                    {t('gstSkippedLabel')}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setGstSkipped(false);
-                    void Haptics.selectionAsync();
-                  }}
-                  accessibilityRole="button">
-                  <Text style={{ fontSize: 13, color: GOLD, fontWeight: '700' }}>
-                    {t('addGstNumber')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                    gap: 6,
-                    backgroundColor: 'rgba(254,182,35,0.1)',
-                    borderRadius: 10,
-                    padding: 10,
-                    marginBottom: 10,
-                  }}>
-                  <Ionicons name="information-circle-outline" size={16} color={GOLD} />
-                  <Text style={{ flex: 1, fontSize: 12, color: '#666', lineHeight: 17 }}>
-                    {t('gstOptionalHint')}
-                  </Text>
-                </View>
-
-                <TextInput
-                  style={{
-                    ...inputStyle,
-                    borderColor: gstFocused ? GOLD : WARM_BORDER,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                  }}
-                  placeholder={t('gstPlaceholder')}
-                  placeholderTextColor="#BBAA88"
-                  value={gstNumber}
-                  onChangeText={setGstNumber}
-                  autoCapitalize="characters"
-                  onFocus={() => setGstFocused(true)}
-                  onBlur={() => setGstFocused(false)}
-                />
-              </>
-            )}
+            <TextInput
+              style={{
+                ...inputStyle,
+                borderColor: nameFocused ? GOLD : WARM_BORDER,
+              }}
+              placeholder="Enter your full name"
+              placeholderTextColor="#BBAA88"
+              value={companyName}
+              onChangeText={setCompanyName}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setNameFocused(false)}
+            />
           </View>
 
-          {/* Divider */}
           <View style={{ height: 1, backgroundColor: WARM_BORDER, marginBottom: 24 }} />
 
-          {/* Language section */}
           <Text style={{ fontSize: 18, fontWeight: '800', color: DARK, marginBottom: 4 }}>
             {t('chooseLanguage')}
           </Text>
@@ -314,7 +178,6 @@ export default function CompleteProfileScreen() {
             </Text>
           </View>
 
-          {/* Language cards */}
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
             <TouchableOpacity
               onPress={() => handleLanguageSelect('en')}
@@ -383,7 +246,6 @@ export default function CompleteProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* ISO badge */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
             <Ionicons name="shield-checkmark-outline" size={13} color="#AAA" />
             <Text
@@ -399,7 +261,6 @@ export default function CompleteProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Sticky continue button */}
       <View
         style={{
           position: 'absolute',

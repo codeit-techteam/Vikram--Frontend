@@ -14,7 +14,9 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { VerifiedBadge } from '@components/gst/VerifiedBadge';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { useGstStore } from '@store/gstStore';
 import { useOrderStore } from '@store/orderStore';
 
 export default function OrderSuccessScreen() {
@@ -23,6 +25,7 @@ export default function OrderSuccessScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const order = useOrderStore((s) => (orderId ? s.getOrder(orderId) : undefined));
   const displayId = orderId ?? order?.id ?? 'BJW-982441';
+  const hasGst = useGstStore((s) => s.verified);
 
   const checkScale = useSharedValue(0);
   const [visibleSteps, setVisibleSteps] = useState(0);
@@ -84,6 +87,12 @@ export default function OrderSuccessScreen() {
           </Animated.View>
           <Text className="mt-6 text-2xl font-bold text-text">{t('orderConfirmed')}</Text>
           <Text className="mt-2 text-sm font-semibold text-primary">ID: #{displayId}</Text>
+
+          {hasGst ? (
+            <View className="mt-4">
+              <VerifiedBadge variant="enabled" label={t('gstInvoiceEnabled')} />
+            </View>
+          ) : null}
 
           <View className="mt-6 w-full flex-row gap-3">
             <View className="flex-1 rounded-card bg-trust p-3">

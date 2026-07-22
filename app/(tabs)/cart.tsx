@@ -85,13 +85,11 @@ function BajriProPointsBanner({
 
 function OrderSummaryCard({
   itemsTotal,
-  gst,
   deliveryCharge,
   pointsApplied,
   loyaltyDiscount,
 }: {
   itemsTotal: number;
-  gst: number;
   deliveryCharge: number;
   pointsApplied: boolean;
   loyaltyDiscount: number;
@@ -102,7 +100,6 @@ function OrderSummaryCard({
     <View style={styles.summaryCard}>
       <Text style={styles.summaryLabel}>{t('orderSummary')}</Text>
       <SummaryRow label={t('itemsTotal')} value={`₹${itemsTotal.toLocaleString('en-IN')}`} />
-      <SummaryRow label={t('gst18')} value={`₹${gst.toLocaleString('en-IN')}`} />
       <SummaryRow
         label={t('deliveryCharges')}
         value={`₹${deliveryCharge.toLocaleString('en-IN')}`}
@@ -212,7 +209,6 @@ export default function CartScreen() {
   const saveForLater = useCartStore((s) => s.saveForLater);
   const togglePoints = useCartStore((s) => s.togglePoints);
   const itemsTotal = useCartStore((s) => s.itemsTotal());
-  const gst = useCartStore((s) => s.gst());
   const deliveryCharge = useCartStore((s) => s.deliveryCharge());
   const loyaltyDiscount = useCartStore((s) => s.loyaltyDiscount());
   const grandTotal = useCartStore((s) => s.grandTotal());
@@ -258,7 +254,6 @@ export default function CartScreen() {
 
               <OrderSummaryCard
                 itemsTotal={itemsTotal}
-                gst={gst}
                 deliveryCharge={deliveryCharge}
                 pointsApplied={pointsApplied}
                 loyaltyDiscount={loyaltyDiscount}

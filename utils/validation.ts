@@ -20,8 +20,12 @@ export function validateEmail(email: string): string | null {
   return null;
 }
 
+export function isValidGstFormat(gst: string): boolean {
+  return GSTIN_REGEX.test(gst.trim().toUpperCase());
+}
+
 export function validateGst(gst: string): string | null {
   if (!gst.trim()) return 'GST number is required';
-  if (!GSTIN_REGEX.test(gst.trim().toUpperCase())) return 'Enter a valid 15-character GSTIN';
+  if (!isValidGstFormat(gst)) return 'Invalid GST Number';
   return null;
 }

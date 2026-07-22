@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.dhoodhwala.frontend",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FEB623",
         "foregroundImage": "./assets/android-icon-foreground.png",
