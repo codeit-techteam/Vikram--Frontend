@@ -42,6 +42,7 @@ import {
   type SearchProduct,
 } from '@constants/searchData';
 import { getProductImageUrl } from '@constants/catalogData';
+import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 import { ProductCard } from '@components/ProductCard';
 import { useCartStore } from '@store/cartStore';
 import { useSearchStore } from '@store/searchStore';
@@ -171,9 +172,14 @@ function SearchResultItem({
       <Pressable onPress={onPress} style={styles.resultCard}>
         <View style={styles.resultImageWrap}>
           <Image
-            source={{ uri: getProductImageUrl(item.image, '160x160') }}
+            source={resolveProductImageSource({
+              imageUrl: item.imageUrl ?? item.image,
+              productSlug: item.slug ?? item.id,
+              categorySlug: item.categorySlug ?? item.category,
+            })}
             style={styles.resultImage}
             contentFit="cover"
+            recyclingKey={item.id}
           />
           {item.badge ? (
             <View
@@ -216,9 +222,15 @@ function BundleCard({ onAddBundle }: { onAddBundle: () => void }) {
       <View style={styles.bundleItems}>
         <View style={styles.bundleProduct}>
           <Image
-            source={{ uri: getProductImageUrl(cementProduct?.image ?? 'cement bags', '200x160') }}
+            source={resolveProductImageSource({
+              imageUrl: cementProduct?.imageUrl ?? cementProduct?.image,
+              productSlug: cementProduct?.slug ?? cementProduct?.id ?? 'ultratech-premium-ppc',
+              categorySlug: cementProduct?.categorySlug ?? 'cement',
+              fallbackImage: { uri: getProductImageUrl('ultratech cement bags', '200x160') },
+            })}
             style={styles.bundleProductImage}
             contentFit="cover"
+            recyclingKey={cementProduct?.id ?? 'bundle-cement'}
           />
           <Text style={styles.bundleProductName}>UltraTech PPC</Text>
         </View>

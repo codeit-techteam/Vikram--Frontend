@@ -3,6 +3,7 @@ import {
   Alert,
   BackHandler,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,27 +34,23 @@ import { BulkProcurementCard } from '@components/home/BulkProcurementCard';
 import { HomeRecommendedSection } from '@components/home/HomeRecommendedSection';
 import { TestimonialCarousel } from '@components/home/TestimonialSection';
 import { VideoBanner } from '@components/home/VideoBanner';
-import { images } from '@constants/images';
-import type { StringKey } from '@constants/strings';
+import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
+import { useHomeCatalog } from '@hooks/useHome';
 import { useTranslation } from '@store/languageStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
 import { useSearch } from '@hooks/useSearch';
+import type { CatalogCategory } from '@/types/catalog';
 
 const SECTION_GAP = 24;
 const H_PAD = 16;
 
-const CATEGORIES: {
-  id: string;
-  routeId: string;
-  labelKey: StringKey;
-  image: number;
-}[] = [
-  { id: 'cement', routeId: 'cement', labelKey: 'cement', image: images.categoryCement },
-  { id: 'hardware', routeId: 'hardware', labelKey: 'hardware', image: images.categoryAggregates },
-  { id: 'stone', routeId: 'stone-chips', labelKey: 'stoneChip', image: images.categoryStone },
-  { id: 'sand', routeId: 'sand', labelKey: 'sand', image: images.categorySand },
-  { id: 'bricks', routeId: 'bricks', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
-];
+function pickHomeCategories(
+  top: CatalogCategory[],
+  featured: CatalogCategory[],
+): CatalogCategory[] {
+  const source = top.length > 0 ? top : featured;
+  return source.slice(0, 8);
+}
 
 export default function HomeScreen() {
   const { t, language } = useTranslation();
@@ -61,6 +58,16 @@ export default function HomeScreen() {
   const [drawerSwipeEnabled, setDrawerSwipeEnabled] = useState(true);
   const screenOpacity = useSharedValue(1);
   const prevLang = useRef(language);
+
+  const {
+    topCategories,
+    featuredCategories,
+    isLoading: homeLoading,
+    isRefreshing,
+    refresh,
+  } = useHomeCatalog();
+
+  const homeCategories = pickHomeCategories(topCategories, featuredCategories);
 
   const fadeStyle = useAnimatedStyle(() => ({
     opacity: screenOpacity.value,
@@ -121,14 +128,16 @@ export default function HomeScreen() {
   };
 
   const onCategoryPress = useCallback(
-    async (category: (typeof CATEGORIES)[number]) => {
+    async (category: CatalogCategory) => {
       await Haptics.selectionAsync();
+      const name =
+        language === 'hi' && category.nameHi ? category.nameHi : category.name;
       router.push({
         pathname: '/products/[categoryId]',
-        params: { categoryId: category.routeId, categoryName: t(category.labelKey) },
+        params: { categoryId: category.slug, categoryName: name },
       } as Href);
     },
-    [t],
+    [language],
   );
 
   const onViewAllCategories = useCallback(async () => {
@@ -151,9 +160,24 @@ export default function HomeScreen() {
   }, [t]);
 
   const heroSlides = [
-    { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
-    { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
-    { badge: t('twoHourDelivery'), title: t('heroBannerTitle'), shopNow: t('shopNow'), bulkInquiry: t('bulkInquiry') },
+    {
+      badge: t('twoHourDelivery'),
+      title: t('heroBannerTitle'),
+      shopNow: t('shopNow'),
+      bulkInquiry: t('bulkInquiry'),
+    },
+    {
+      badge: t('twoHourDelivery'),
+      title: t('heroBannerTitle'),
+      shopNow: t('shopNow'),
+      bulkInquiry: t('bulkInquiry'),
+    },
+    {
+      badge: t('twoHourDelivery'),
+      title: t('heroBannerTitle'),
+      shopNow: t('shopNow'),
+      bulkInquiry: t('bulkInquiry'),
+    },
   ];
 
   const onBulkProcurement = useCallback(async () => {
@@ -176,8 +200,13 @@ export default function HomeScreen() {
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
               className="flex-1"
-              contentContainerStyle={styles.scrollContent}>
-              {/* 1. Header: Logo · Notification · Cart · Search */}
+              contentContainerStyle={styles.scrollContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={() => void refresh()}
+                />
+              }>
               <AppHeader
                 onMenuPress={toggleDrawer}
                 isDrawerOpen={drawerOpen}
@@ -199,7 +228,6 @@ export default function HomeScreen() {
                 />
               </View>
 
-              {/* 2. Hero Banner Carousel */}
               <View style={styles.section}>
                 <HeroCarousel
                   slides={heroSlides}
@@ -208,12 +236,10 @@ export default function HomeScreen() {
                 />
               </View>
 
-              {/* 3. Loyalty Progress Card */}
               <View style={styles.section}>
                 <LoyaltyCard onPress={goLoyalty} />
               </View>
 
-              {/* 4. Material Categories */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>{t('materialCategories')}</Text>
@@ -221,49 +247,49 @@ export default function HomeScreen() {
                     <Text style={styles.sectionLink}>{t('viewCat')}</Text>
                   </Pressable>
                 </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.categoriesRow}>
-                  {CATEGORIES.map((cat) => (
-                    <MaterialCategoryCard
-                      key={cat.id}
-                      label={t(cat.labelKey)}
-                      image={cat.image}
-                      onPress={() => onCategoryPress(cat)}
-                    />
-                  ))}
-                </ScrollView>
+                {homeLoading && homeCategories.length === 0 ? (
+                  <HomeCategoriesSkeleton />
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.categoriesRow}>
+                    {homeCategories.map((cat) => (
+                      <MaterialCategoryCard
+                        key={cat.id}
+                        label={
+                          language === 'hi' && cat.nameHi ? cat.nameHi : cat.name
+                        }
+                        image={cat.image as number | { uri: string }}
+                        onPress={() => void onCategoryPress(cat)}
+                      />
+                    ))}
+                  </ScrollView>
+                )}
               </View>
 
-              {/* 5. Emergency Order Card */}
               <View style={styles.section}>
                 <EmergencyCard onOrderNow={goEmergency} />
               </View>
 
-              {/* 6. Promotional Video Banner */}
               <View style={styles.section}>
                 <VideoBanner />
               </View>
 
-              {/* 7. Customer Testimonials */}
               <View style={styles.section}>
                 <TestimonialCarousel
                   onHorizontalInteractionChange={handleTestimonialScrollInteraction}
                 />
               </View>
 
-              {/* 8. Bajriwala Membership ₹299 Card */}
               <View style={styles.section}>
                 <MembershipCard onJoin={onJoinMembership} />
               </View>
 
-              {/* 9. Bulk Procurement */}
               <View style={styles.section}>
                 <BulkProcurementCard onKnowMore={onBulkProcurement} />
               </View>
 
-              {/* 10. Recommended Products */}
               <HomeRecommendedSection
                 onHorizontalInteractionChange={handleTestimonialScrollInteraction}
               />

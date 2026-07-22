@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
@@ -38,7 +38,7 @@ interface ProductCardProps {
   highlightQuery?: string;
 }
 
-export function ProductCard({ product, categoryId, categoryName, highlightQuery }: ProductCardProps) {
+function ProductCardComponent({ product, categoryId, categoryName, highlightQuery }: ProductCardProps) {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
   const hasVariants = productHasStructuredVariants(product);
@@ -78,8 +78,8 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
     router.push({
       pathname: '/products/detail/[productId]',
       params: {
-        productId: product.id,
-        categoryId: categoryId ?? '',
+        productId: product.slug || product.id,
+        categoryId: categoryId ?? product.categorySlug ?? '',
         categoryName: categoryName ?? product.category,
         productName: detailName,
       },
@@ -101,6 +101,7 @@ export function ProductCard({ product, categoryId, categoryName, highlightQuery 
           source={getProductImageSource(product)}
           style={styles.image}
           contentFit="cover"
+          recyclingKey={product.slug || product.id}
         />
         {offer ? (
           <View style={styles.offerBadge}>
@@ -237,3 +238,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 });
+
+export const ProductCard = memo(ProductCardComponent);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,30 +28,29 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { SiteSelector } from '@components/SiteSelector';
 import { ProductVariantsRow } from '@components/ProductVariantsRow';
 import { TechSpecsGrid } from '@components/TechSpecsGrid';
-import {
-  getCarouselImages,
-  getCategoryIdForProduct,
-  getProductById,
-} from '@constants/catalogData';
+import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
+import { ProductDetailSkeleton } from '@components/catalog/CatalogSkeletons';
+import { getCarouselImages } from '@constants/catalogData';
 import {
   getProductSkuUnit,
   getVariantById,
   getVariantDisplayUnit,
   productHasStructuredVariants,
 } from '@constants/catalogVariantHelpers';
-import { getSearchProductById, searchProductToProduct } from '@constants/searchData';
 import { useSearchStore } from '@store/searchStore';
-import { FREQUENTLY_BOUGHT, SPECS_BY_TYPE } from '@constants/productSpecs';
+import { useProductDetail, useRelatedProducts } from '@hooks/useProducts';
 import { useAddToCart } from '@hooks/useAddToCart';
 import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
+import { specsMapToTechItems, productToSearchProduct } from '@utils/catalogAdapters';
 import {
   getDeliveryEta,
   getProductPricing,
   getStockLeft,
 } from '@utils/productPricing';
+import type { FrequentlyBoughtItem } from '@/types/catalog';
 
 export default function ProductDetailScreen() {
   const language = useLanguageStore((s) => s.language);
@@ -63,11 +62,15 @@ export default function ProductDetailScreen() {
     categoryId?: string;
   }>();
 
-  const catalogProduct = getProductById(productId ?? '');
-  const searchProduct = getSearchProductById(productId ?? '');
-  const product =
-    catalogProduct ?? (searchProduct ? searchProductToProduct(searchProduct) : undefined);
-  const resolvedCategoryId = categoryId ?? getCategoryIdForProduct(productId ?? '') ?? 'cement';
+  const {
+    product,
+    isLoading,
+    isRefreshing,
+    error,
+    refresh,
+  } = useProductDetail(productId);
+
+  const { related } = useRelatedProducts(product);
   const addRecentlyViewed = useSearchStore((s) => s.addRecentlyViewed);
   const { addToCart, buttonState } = useAddToCart();
 
@@ -105,7 +108,6 @@ export default function ProductDetailScreen() {
     cartLineId ? (s.items.find((i) => i.id === cartLineId)?.quantity ?? 0) : 0,
   );
 
-  // Seed local qty when product / variant changes — does not write to cart.
   useEffect(() => {
     if (!product) return;
     const lineId =
@@ -131,7 +133,8 @@ export default function ProductDetailScreen() {
 
   const unitPrice = pricing?.sellingPrice ?? 0;
   const subtotal = localQty * unitPrice;
-  const gst = subtotal * 0.18;
+  const gstRate = (product?.gst ?? 18) / 100;
+  const gst = subtotal * gstRate;
   const logistics = deliveryType === 'priority' ? 250 : 0;
   const estimatedTotal = subtotal + gst + logistics;
 
@@ -148,7 +151,24 @@ export default function ProductDetailScreen() {
     [product],
   );
 
-  const specs = product ? SPECS_BY_TYPE[product.categoryType] : [];
+  const specs = useMemo(
+    () => (product ? specsMapToTechItems(product.specsMap) : []),
+    [product],
+  );
+
+  const relatedItems = useMemo<FrequentlyBoughtItem[]>(
+    () =>
+      related.slice(0, 6).map((p) => ({
+        id: p.slug || p.id,
+        name: p.detailName ?? p.name,
+        desc: p.brand ?? p.category,
+        price: formatINR(p.retailPriceValue),
+        priceValue: p.retailPriceValue,
+        imageSearch: p.imageUrl ?? p.categorySlug ?? p.imageSearch,
+        unit: p.unit,
+      })),
+    [related],
+  );
 
   useEffect(() => {
     subtotalScale.value = withSequence(
@@ -188,8 +208,29 @@ export default function ProductDetailScreen() {
   }, [product?.id]);
 
   useEffect(() => {
-    if (searchProduct) addRecentlyViewed(searchProduct);
-  }, [searchProduct?.id, addRecentlyViewed]);
+    if (product) addRecentlyViewed(productToSearchProduct(product));
+  }, [product?.id, addRecentlyViewed, product]);
+
+  const resolvedCategoryId =
+    categoryId || product?.categorySlug || product?.categoryType || '';
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+        <BackHeader title={productName ?? t('loading')} rightElement={<CartIcon />} />
+        <ProductDetailSkeleton />
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !product) {
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+        <BackHeader title={t('productNotFound')} rightElement={<CartIcon />} />
+        <CatalogErrorState onRetry={() => void refresh()} />
+      </SafeAreaView>
+    );
+  }
 
   if (!product || !pricing) {
     return (
@@ -225,7 +266,12 @@ export default function ProductDetailScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <BackHeader title={displayName} rightElement={<CartIcon />} />
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
+        }>
         <ProductImageCarousel images={carouselImages} />
 
         <View className="px-4 pt-4">
@@ -293,23 +339,29 @@ export default function ProductDetailScreen() {
               <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
                 {t('financials')}
               </Text>
-              <Text className="mt-1 text-sm font-semibold text-text">{t('gstInvoiceReady')}</Text>
+              <Text className="mt-1 text-sm font-semibold text-text">
+                {product.gst != null ? `GST ${product.gst}%` : t('gstInvoiceReady')}
+              </Text>
             </View>
             <View className="flex-1 rounded-card bg-trust p-3">
               <Ionicons name="bus-outline" size={18} color="#FEB623" />
               <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
                 {t('shipping')}
               </Text>
-              <Text className="mt-1 text-sm font-semibold text-text">{t('flatbedLogistics')}</Text>
+              <Text className="mt-1 text-sm font-semibold text-text">
+                {deliveryEta || t('flatbedLogistics')}
+              </Text>
             </View>
           </View>
         </View>
 
-        <TechSpecsGrid
-          specs={specs}
-          expanded={specsExpanded}
-          onToggle={() => setSpecsExpanded((v) => !v)}
-        />
+        {specs.length > 0 ? (
+          <TechSpecsGrid
+            specs={specs}
+            expanded={specsExpanded}
+            onToggle={() => setSpecsExpanded((v) => !v)}
+          />
+        ) : null}
 
         <View className="mt-5 px-4 pb-2">
           {selectionReady ? (
@@ -358,11 +410,7 @@ export default function ProductDetailScreen() {
               loading={buttonState === 'loading'}
               disabled={!canAddToCart}
               fullWidth
-              labelOverride={
-                !canAddToCart
-                  ? 'Select Variant First'
-                  : undefined
-              }
+              labelOverride={!canAddToCart ? 'Select Variant First' : undefined}
             />
           </Animated.View>
         </View>
@@ -389,7 +437,7 @@ export default function ProductDetailScreen() {
           siteName={selectedSite?.name ?? 'your site'}
         />
 
-        <FrequentlyBoughtTogether items={FREQUENTLY_BOUGHT} />
+        {relatedItems.length > 0 ? <FrequentlyBoughtTogether items={relatedItems} /> : null}
 
         <View className="h-8" />
       </ScrollView>

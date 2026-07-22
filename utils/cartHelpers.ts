@@ -1,6 +1,13 @@
 import type { ImageSourcePropType } from 'react-native';
 
-import { getAllProducts, getProductById, getProductImageSource, getProductImageUrl } from '@constants/catalogData';
+import { resolveProductImageSource } from '@utils/catalogPlaceholders';
+import { useCatalogStore } from '@store/catalogStore';
+import {
+  getAllProducts,
+  getProductById,
+  getProductImageSource,
+  getProductImageUrl,
+} from '@constants/catalogData';
 import {
   getProductSkuUnit,
   getVariantById,
@@ -20,6 +27,12 @@ export interface CartItemOptions {
 export function resolveCartProductId(item: CartItem): string {
   if (item.productId) return item.productId;
   if (!item.id.includes('_')) return item.id;
+
+  const cached = Object.values(useCatalogStore.getState().productCache);
+  const fromCache = cached
+    .filter((p) => item.id === p.id || item.id.startsWith(`${p.id}_`))
+    .sort((a, b) => b.id.length - a.id.length)[0];
+  if (fromCache) return fromCache.id;
 
   const all = getAllProducts();
   const match = all
@@ -57,7 +70,7 @@ export function productToCartItem(
     category: product.category,
     description: product.description,
     imageSearch: product.imageSearch,
-    image: product.imageSearch,
+    image: product.imageUrl ?? product.imageSearch,
     unitPrice,
     bulkPrice,
     bulkThreshold: product.bulkThreshold,
@@ -88,16 +101,26 @@ export function frequentItemToCartItem(item: FrequentlyBoughtItem): CartItem {
 /** Returns the same image source used in catalog/detail — never a random category fallback. */
 export function getCartItemImageSource(item: CartItem): ImageSourcePropType | null {
   const productId = resolveCartProductId(item);
+  const cached = useCatalogStore.getState().getCachedProduct(productId);
+  if (cached) return getProductImageSource(cached);
+
   const product = getProductById(productId);
   if (product) return getProductImageSource(product);
 
-  const imageSearch = item.imageSearch ?? item.image;
+  const imageSearch = item.image ?? item.imageSearch;
   if (!imageSearch) return null;
-  if (imageSearch.startsWith('http://') || imageSearch.startsWith('https://')) {
-    return { uri: imageSearch };
-  }
 
-  return { uri: getProductImageUrl(imageSearch) };
+  return resolveProductImageSource({
+    imageUrl: imageSearch,
+    productSlug: productId,
+    categorySlug: item.category,
+    fallbackImage:
+      imageSearch.startsWith('http://') || imageSearch.startsWith('https://')
+        ? { uri: imageSearch }
+        : imageSearch.startsWith('/assets/')
+          ? undefined
+          : { uri: getProductImageUrl(imageSearch) },
+  });
 }
 
 export function getCartItemLineTotal(item: CartItem): number {

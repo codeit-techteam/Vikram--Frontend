@@ -6,7 +6,7 @@ import type { ApiError } from '@/types';
 const AUTH_TOKEN_KEY = 'auth_token';
 
 export const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'https://api.dhoodhwala.com',
+  baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

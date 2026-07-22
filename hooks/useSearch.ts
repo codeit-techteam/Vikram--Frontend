@@ -4,12 +4,14 @@ import { Keyboard } from 'react-native';
 import { useSearchStore } from '@store/searchStore';
 import type { SearchProduct } from '@constants/searchData';
 import {
-  fetchSuggestions,
-  searchProducts,
   sortSearchResults,
   type SearchSortOption,
   type Suggestion,
 } from '@utils/searchUtils';
+import {
+  fetchSearchSuggestions,
+  searchCatalog,
+} from '@services/searchService';
 
 export type { Suggestion, SearchSortOption };
 
@@ -40,6 +42,13 @@ export interface UseSearchReturn {
 }
 
 const VOICE_FALLBACK_TERMS = ['UltraTech cement', 'TMT bars 12mm', 'River sand', 'Stone aggregate'];
+
+const SORT_API_MAP: Record<SearchSortOption, string> = {
+  relevance: 'relevance',
+  price_asc: 'price_asc',
+  price_desc: 'price_desc',
+  newest: 'newest',
+};
 
 export function useSearch(): UseSearchReturn {
   const [query, setQueryState] = useState('');
@@ -82,36 +91,52 @@ export function useSearch(): UseSearchReturn {
     setIsVoiceActive(false);
   }, []);
 
-  const runSuggestions = useCallback((text: string) => {
+  const runSuggestions = useCallback(async (text: string) => {
     const requestId = ++suggestionAbortRef.current;
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const { suggestions: next } = await fetchSearchSuggestions(text);
       if (requestId !== suggestionAbortRef.current) return;
-      const next = fetchSuggestions(text);
       setSuggestions(next);
-      setIsLoading(false);
-    }, 0);
+    } catch {
+      if (requestId !== suggestionAbortRef.current) return;
+      setSuggestions([]);
+    } finally {
+      if (requestId === suggestionAbortRef.current) {
+        setIsLoading(false);
+      }
+    }
   }, []);
 
   const submitSearch = useCallback(
-    (term?: string) => {
+    async (term?: string) => {
       const searchTerm = (term ?? query).trim();
       if (!searchTerm) return;
 
       suggestionAbortRef.current += 1;
       setQueryState(searchTerm);
       setDebouncedQuery(searchTerm);
-      setIsLoading(false);
       setHasSubmitted(true);
       setSuggestions([]);
+      setIsLoading(true);
 
-      const found = searchProducts(searchTerm);
-      setResults(found);
-      addRecentSearch(searchTerm);
-      Keyboard.dismiss();
+      try {
+        const page = await searchCatalog({
+          q: searchTerm,
+          sort: SORT_API_MAP[sortOption],
+          limit: 40,
+        });
+        setResults(page.products);
+        addRecentSearch(searchTerm);
+      } catch {
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+        Keyboard.dismiss();
+      }
     },
-    [query, addRecentSearch],
+    [query, addRecentSearch, sortOption],
   );
 
   const setQuery = useCallback(
@@ -134,7 +159,7 @@ export function useSearch(): UseSearchReturn {
 
       debounceRef.current = setTimeout(() => {
         setDebouncedQuery(text);
-        runSuggestions(text);
+        void runSuggestions(text);
       }, 300);
     },
     [runSuggestions],
@@ -183,7 +208,7 @@ export function useSearch(): UseSearchReturn {
 
     const handleResult = (text: string) => {
       cancelVoiceSearchInternal();
-      submitSearch(text);
+      void submitSearch(text);
     };
 
     voiceHandlersRef.current = {
@@ -216,7 +241,7 @@ export function useSearch(): UseSearchReturn {
   return {
     query,
     isActive,
-    isLoading: isLoading && debouncedQuery.length > 0 && !hasSubmitted,
+    isLoading: isLoading && (debouncedQuery.length > 0 || hasSubmitted),
     isLoadingRecent,
     hasSubmitted,
     suggestions,
@@ -227,7 +252,9 @@ export function useSearch(): UseSearchReturn {
     isVoiceActive,
     voiceError,
     setQuery,
-    submitSearch,
+    submitSearch: (term?: string) => {
+      void submitSearch(term);
+    },
     clearQuery,
     activateSearch,
     deactivateSearch,

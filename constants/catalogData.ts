@@ -1,11 +1,13 @@
-import type { ImageSourcePropType } from 'react-native';
-
-import { images, productImageUrls } from '@constants/images';
 import {
   mergeCategoryProducts,
-  PRODUCT_IMAGE_OVERRIDES,
 } from '@constants/catalogExtensions';
 import type { CatalogCategory, Product, ProductCategoryType } from '@/types/catalog';
+import {
+  resolveProductCarouselSources,
+  resolveProductImageSource,
+} from '@utils/catalogPlaceholders';
+import { images, productImageUrls } from '@constants/images';
+import type { ImageSourcePropType } from 'react-native';
 
 const PRODUCT_IMAGE_BASE: Record<string, string> = {
   'ultratech cement bags warehouse': productImageUrls.cementBags,
@@ -82,23 +84,139 @@ function toImageUri(searchTerm: string, size = '800x440'): ImageSourcePropType {
 }
 
 export const CATALOG_CATEGORIES: CatalogCategory[] = [
-  { id: 'cement', labelKey: 'cement', image: images.categoryCement },
-  { id: 'hardware', labelKey: 'hardware', image: images.categoryAggregates },
-  { id: 'sand', labelKey: 'sand', image: images.categorySand },
-  { id: 'bricks', labelKey: 'bricksAndMasonry', image: images.categoryBricks },
+  {
+    id: 'cement',
+    slug: 'cement',
+    name: 'Cement',
+    labelKey: 'cement',
+    image: images.categoryCement,
+    displayOrder: 1,
+    isFeatured: true,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'hardware',
+    slug: 'hardware',
+    name: 'Hardware',
+    labelKey: 'hardware',
+    image: images.categoryAggregates,
+    displayOrder: 2,
+    isFeatured: true,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'sand',
+    slug: 'sand',
+    name: 'Sand',
+    labelKey: 'sand',
+    image: images.categorySand,
+    displayOrder: 3,
+    isFeatured: true,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'bricks',
+    slug: 'bricks',
+    name: 'Bricks',
+    labelKey: 'bricksAndMasonry',
+    image: images.categoryBricks,
+    displayOrder: 4,
+    isFeatured: true,
+    isActive: true,
+    productCount: 0,
+  },
   {
     id: 'grey-fill-sand',
+    slug: 'grey-fill-sand',
+    name: 'Grey Fill Sand',
     labelKey: 'greyFillSand',
     image: images.categoryGreyFillSand,
     imageSearch: 'grey fill sand construction',
+    displayOrder: 5,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
   },
-  { id: 'stone-chips', labelKey: 'stoneChip', image: images.categoryStone },
-  { id: 'aggregates', labelKey: 'aggregates', image: images.categoryAggregates },
-  { id: 'adhesives', labelKey: 'adhesives', image: images.categoryAdhesives },
-  { id: 'wall-repair', labelKey: 'wallRepair', image: images.categoryWallRepair },
-  { id: 'waterproofing', labelKey: 'waterproofing', image: images.categoryWaterproofing },
-  { id: 'quick-repair', labelKey: 'quickRepair', image: images.categoryQuickRepair },
-  { id: 'putty', labelKey: 'putty', image: images.categoryPutty },
+  {
+    id: 'stone-chips',
+    slug: 'stone-chips',
+    name: 'Stone Chips',
+    labelKey: 'stoneChip',
+    image: images.categoryStone,
+    displayOrder: 6,
+    isFeatured: true,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'aggregates',
+    slug: 'aggregates',
+    name: 'Aggregates',
+    labelKey: 'aggregates',
+    image: images.categoryAggregates,
+    displayOrder: 7,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'adhesives',
+    slug: 'adhesives',
+    name: 'Adhesives',
+    labelKey: 'adhesives',
+    image: images.categoryAdhesives,
+    displayOrder: 8,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'wall-repair',
+    slug: 'wall-repair',
+    name: 'Wall Repair',
+    labelKey: 'wallRepair',
+    image: images.categoryWallRepair,
+    displayOrder: 9,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'waterproofing',
+    slug: 'waterproofing',
+    name: 'Waterproofing',
+    labelKey: 'waterproofing',
+    image: images.categoryWaterproofing,
+    displayOrder: 10,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'quick-repair',
+    slug: 'quick-repair',
+    name: 'Quick Repair',
+    labelKey: 'quickRepair',
+    image: images.categoryQuickRepair,
+    displayOrder: 11,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
+  },
+  {
+    id: 'putty',
+    slug: 'putty',
+    name: 'Putty',
+    labelKey: 'putty',
+    image: images.categoryPutty,
+    displayOrder: 12,
+    isFeatured: false,
+    isActive: true,
+    productCount: 0,
+  },
 ];
 
 const cementProducts: Product[] = [
@@ -334,6 +452,42 @@ const CATEGORY_TYPE_MAP: Record<string, ProductCategoryType> = {
   putty: 'putty',
 };
 
+export function getProductImageSource(product: Product): ImageSourcePropType {
+  return resolveProductImageSource({
+    imageUrl: product.imageUrl,
+    productSlug: product.slug,
+    categorySlug: product.categorySlug ?? product.categoryType,
+    fallbackImage: product.image,
+  });
+}
+
+export function getCarouselImages(product: Product): ImageSourcePropType[] {
+  return resolveProductCarouselSources({
+    urls: product.carouselUrls,
+    imageUrl: product.imageUrl,
+    productSlug: product.slug,
+    categorySlug: product.categorySlug ?? product.categoryType,
+  });
+}
+
+/** @deprecated Prefer React Query catalog hooks — kept for cart/reorder fallbacks. */
+export function getAllProducts(): Product[] {
+  return Object.values(PRODUCTS_BY_CATEGORY).flat();
+}
+
+/** @deprecated Prefer useProductDetail / product cache. */
+export function getProductById(productId: string): Product | undefined {
+  return getAllProducts().find((p) => p.id === productId || p.slug === productId);
+}
+
+/** @deprecated Prefer product.categorySlug from API. */
+export function getCategoryIdForProduct(productId: string): string | undefined {
+  for (const [catId, products] of Object.entries(PRODUCTS_BY_CATEGORY)) {
+    if (products.some((p) => p.id === productId || p.slug === productId)) return catId;
+  }
+  return undefined;
+}
+
 export function getProductCountForCategory(categoryId: string): number {
   return PRODUCTS_BY_CATEGORY[categoryId]?.length ?? 0;
 }
@@ -341,43 +495,4 @@ export function getProductCountForCategory(categoryId: string): number {
 export function getProductImageUrl(searchTerm: string, size = '400x200') {
   const base = PRODUCT_IMAGE_BASE[searchTerm] ?? productImageUrls.constructionSite;
   return toSizedImageUrl(base, size);
-}
-
-export function getAllProducts(): Product[] {
-  return Object.values(PRODUCTS_BY_CATEGORY).flat();
-}
-
-export function getProductById(productId: string): Product | undefined {
-  return getAllProducts().find((p) => p.id === productId);
-}
-
-export function getCategoryIdForProduct(productId: string): string | undefined {
-  for (const [catId, products] of Object.entries(PRODUCTS_BY_CATEGORY)) {
-    if (products.some((p) => p.id === productId)) return catId;
-  }
-  return undefined;
-}
-
-export function getProductImageSource(product: Product): ImageSourcePropType {
-  if (PRODUCT_IMAGE_OVERRIDES[product.id]) return PRODUCT_IMAGE_OVERRIDES[product.id];
-  if (product.image) return product.image;
-  if (product.imageSearch === 'jsw steel rods construction') {
-    return images.productJswNeosteel;
-  }
-  return { uri: getProductImageUrl(product.imageSearch) };
-}
-
-export function getCarouselImages(product: Product): ImageSourcePropType[] {
-  if (product.image && typeof product.image === 'number') {
-    return [product.image, product.image, product.image];
-  }
-  const carousel = PRODUCT_CAROUSEL_IMAGES[product.imageSearch];
-  if (carousel) {
-    return carousel.map((url) => ({ uri: toSizedImageUrl(url, '800x440') }));
-  }
-  if (product.image) {
-    return [product.image, product.image, product.image];
-  }
-  const fallback = getProductImageUrl(product.imageSearch, '800x440');
-  return [{ uri: fallback }, { uri: fallback }, { uri: fallback }];
 }

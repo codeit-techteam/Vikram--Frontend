@@ -1,5 +1,12 @@
-import { useRef } from 'react';
-import { FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useMemo, useRef } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -21,8 +28,10 @@ import {
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { MaterialExpertCTA, MaterialExpertSheet } from '@components/MaterialExpertSheet';
 import { ProductCard } from '@components/ProductCard';
+import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
+import { ProductsListSkeleton } from '@components/catalog/CatalogSkeletons';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { CATALOG_CATEGORIES, PRODUCTS_BY_CATEGORY } from '@constants/catalogData';
+import { useProducts } from '@hooks/useProducts';
 import { useFilterState } from '@hooks/useFilterState';
 import { useTranslation } from '@store/languageStore';
 import type { FilterKey } from '@/types/filter.types';
@@ -38,9 +47,19 @@ export default function ProductListingScreen() {
   const quickSheetRef = useRef<QuickFilterSheetRef>(null);
   const expertSheetRef = useRef<BottomSheet>(null);
 
-  const category = CATALOG_CATEGORIES.find((c) => c.id === (categoryId ?? 'cement'));
-  const products = PRODUCTS_BY_CATEGORY[categoryId ?? 'cement'] ?? [];
-  const title = category ? t(category.labelKey) : (categoryName ?? t('catalogLabel'));
+  const slug = categoryId ?? '';
+  const title = categoryName ?? t('catalogLabel');
+
+  const {
+    products,
+    isLoading,
+    isRefreshing,
+    isFetchingNextPage,
+    hasNextPage,
+    error,
+    refresh,
+    loadMore,
+  } = useProducts({ category: slug || undefined }, { enabled: Boolean(slug) });
 
   const {
     config,
@@ -56,7 +75,7 @@ export default function ProductListingScreen() {
     syncDraft,
     setDraft,
     updateFilters,
-  } = useFilterState({ products, categoryId: categoryId ?? 'cement' });
+  } = useFilterState({ products, categoryId: slug || 'cement' });
 
   const openQuickFilterSheet = (key: FilterKey) => {
     syncDraft();
@@ -86,6 +105,62 @@ export default function ProductListingScreen() {
     clearFilter(key);
   };
 
+  const listHeader = useMemo(
+    () => (
+      <>
+        <View className="mx-5 mt-4 flex-row items-center rounded-input border border-border bg-surface px-4 py-3">
+          <Ionicons name="search" size={20} color="#FEB623" />
+          <ScaledPressable
+            onPress={() => router.push('/search')}
+            className="ml-3 flex-1">
+            <Text className="text-sm text-text-secondary">{t('searchCatalog')}</Text>
+          </ScaledPressable>
+          <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
+            <Ionicons name="mic-outline" size={20} color="#FEB623" />
+          </ScaledPressable>
+        </View>
+
+        <FilterBar
+          activeFilters={activeFilters}
+          config={config}
+          onChipPress={openQuickFilterSheet}
+          onOpenAll={openFullFilterSheet}
+          onClearChip={clearFilter}
+        />
+
+        {activeCount > 0 ? (
+          <ActiveFilterSummaryBar
+            activeFilters={activeFilters}
+            config={config}
+            resultCount={filteredProducts.length}
+            onClearAll={clearAll}
+            onRemoveTag={handleRemoveTag}
+          />
+        ) : null}
+      </>
+    ),
+    [
+      activeFilters,
+      activeCount,
+      clearAll,
+      clearFilter,
+      config,
+      filteredProducts.length,
+      t,
+    ],
+  );
+
+  const renderFooter = useCallback(() => {
+    if (isFetchingNextPage) {
+      return (
+        <View className="py-4">
+          <ActivityIndicator color="#FEB623" />
+        </View>
+      );
+    }
+    return <MaterialExpertCTA onPress={() => expertSheetRef.current?.expand()} />;
+  }, [isFetchingNextPage]);
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <BackHeader
@@ -103,63 +178,44 @@ export default function ProductListingScreen() {
         }
       />
 
-      <View className="mx-5 mt-4 flex-row items-center rounded-input border border-border bg-surface px-4 py-3">
-        <Ionicons name="search" size={20} color="#FEB623" />
-        <Text className="ml-3 flex-1 text-sm text-text-secondary">{t('searchCatalog')}</Text>
-        <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
-          <Ionicons name="mic-outline" size={20} color="#FEB623" />
-        </ScaledPressable>
-      </View>
-
-      <FilterBar
-        activeFilters={activeFilters}
-        config={config}
-        onChipPress={openQuickFilterSheet}
-        onOpenAll={openFullFilterSheet}
-        onClearChip={clearFilter}
-      />
-
-      {activeCount > 0 && (
-        <ActiveFilterSummaryBar
-          activeFilters={activeFilters}
-          config={config}
-          resultCount={filteredProducts.length}
-          onClearAll={clearAll}
-          onRemoveTag={handleRemoveTag}
+      {isLoading ? (
+        <>
+          {listHeader}
+          <ProductsListSkeleton />
+        </>
+      ) : error && products.length === 0 ? (
+        <CatalogErrorState onRetry={() => void refresh()} />
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={listHeader}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          renderItem={({ item, index }) => (
+            <Animated.View
+              entering={FadeInDown.delay(Math.min(index, 8) * 40).duration(300)}
+              style={{ paddingHorizontal: 16 }}>
+              <ProductCard product={item} categoryId={slug} categoryName={title} />
+            </Animated.View>
+          )}
+          ListEmptyComponent={
+            <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+              <Text className="text-center text-text-secondary">{t('noProductsFound')}</Text>
+            </View>
+          }
+          ListFooterComponent={renderFooter}
+          removeClippedSubviews
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          initialNumToRender={6}
         />
       )}
-
-      <FlatList
-        data={filteredProducts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 60).duration(350)}>
-            <ProductCard product={item} categoryId={categoryId} categoryName={title} />
-          </Animated.View>
-        )}
-        ListEmptyComponent={
-          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-            <Text className="text-center text-text-secondary">{t('noProductsFound')}</Text>
-            {categoryId === 'hardware' ? (
-              <Text
-                style={{
-                  marginTop: 8,
-                  fontSize: 13,
-                  color: '#999',
-                  textAlign: 'center',
-                  paddingHorizontal: 24,
-                }}>
-                {t('comingSoon')}
-              </Text>
-            ) : null}
-          </View>
-        }
-        ListFooterComponent={
-          <MaterialExpertCTA onPress={() => expertSheetRef.current?.expand()} />
-        }
-      />
 
       <FilterBottomSheet
         ref={fullSheetRef}

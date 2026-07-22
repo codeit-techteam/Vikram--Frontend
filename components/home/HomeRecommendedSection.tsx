@@ -1,19 +1,55 @@
 import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, type Href } from 'expo-router';
 
 import { RecommendedProductCard } from '@components/home/RecommendedProductCard';
-import { getRecommendedProducts, type RecommendedProduct } from '@constants/recommendedData';
+import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
+import {
+  IMAGE_BADGE_COLORS,
+  IMAGE_BADGE_LABELS,
+  type RecommendedProduct,
+  type RecommendationReason,
+  type ImageBadgeType,
+} from '@constants/recommendedData';
+import { useHomeCatalog } from '@hooks/useHome';
 import { useCarouselDrawerLock } from '@hooks/useCarouselDrawerLock';
 import { useTranslation } from '@store/languageStore';
+import type { Product } from '@/types/catalog';
 
 const H_PAD = 16;
 const CARD_GAP = 14;
 const CARD_WIDTH_RATIO = 0.76;
 const MAX_CARD_WIDTH = 320;
+
+const FALLBACK_REASONS: RecommendationReason[] = [
+  'previously_ordered',
+  'popular_near_you',
+  'frequently_bought',
+];
+
+function toRecommended(product: Product, index: number): RecommendedProduct {
+  const badges: ImageBadgeType[] = [];
+  if (product.isBestSelling) badges.push('best_seller');
+  if (product.isFeatured) badges.push('new_arrival');
+  if ((product.stockLeft ?? 99) < 20) badges.push('limited_stock');
+  if (product.bulkThreshold > 0 && product.bulkPriceValue > 0) badges.push('bulk_price');
+  if (badges.length === 0) badges.push('eta');
+
+  return {
+    ...product,
+    meta: {
+      productId: product.id,
+      brand: product.brand ?? product.category,
+      rating: product.rating ?? 4.5,
+      reviewCount: 0,
+      reason: FALLBACK_REASONS[index % FALLBACK_REASONS.length],
+      imageBadges: badges.slice(0, 2),
+    },
+  };
+}
 
 interface HomeRecommendedSectionProps {
   onHorizontalInteractionChange?: (isInteracting: boolean) => void;
@@ -25,11 +61,27 @@ export function HomeRecommendedSection({
   const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const scrollLock = useCarouselDrawerLock(onHorizontalInteractionChange);
+  const {
+    recommendedProducts,
+    featuredProducts,
+    bestSellingProducts,
+    isLoading,
+    error,
+    refresh,
+  } = useHomeCatalog();
 
   const cardWidth = Math.min(screenWidth * CARD_WIDTH_RATIO, MAX_CARD_WIDTH);
   const snapInterval = cardWidth + CARD_GAP;
 
-  const products = useMemo(() => getRecommendedProducts(6), []);
+  const products = useMemo(() => {
+    const source =
+      recommendedProducts.length > 0
+        ? recommendedProducts
+        : featuredProducts.length > 0
+          ? featuredProducts
+          : bestSellingProducts;
+    return source.slice(0, 8).map(toRecommended);
+  }, [recommendedProducts, featuredProducts, bestSellingProducts]);
 
   const onViewAll = useCallback(async () => {
     await Haptics.selectionAsync();
@@ -46,6 +98,30 @@ export function HomeRecommendedSection({
   const keyExtractor = useCallback((item: RecommendedProduct) => item.id, []);
 
   const ItemSeparator = useCallback(() => <View style={{ width: CARD_GAP }} />, []);
+
+  if (isLoading && products.length === 0) {
+    return (
+      <View style={styles.section}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.title}>{t('recommendedForYou')}</Text>
+            <Text style={styles.subtitle}>{t('recommendedSubtitle')}</Text>
+          </View>
+        </View>
+        <ActivityIndicator color="#FEB623" style={{ marginVertical: 24 }} />
+      </View>
+    );
+  }
+
+  if (error && products.length === 0) {
+    return (
+      <View style={styles.section}>
+        <CatalogErrorState onRetry={() => void refresh()} />
+      </View>
+    );
+  }
+
+  if (products.length === 0) return null;
 
   return (
     <View style={styles.section}>
@@ -71,15 +147,14 @@ export function HomeRecommendedSection({
         snapToInterval={snapInterval}
         snapToAlignment="start"
         disableIntervalMomentum
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingRight: H_PAD },
-        ]}
+        contentContainerStyle={[styles.listContent, { paddingRight: H_PAD }]}
         {...scrollLock}
       />
     </View>
   );
 }
+
+export { IMAGE_BADGE_COLORS, IMAGE_BADGE_LABELS };
 
 const styles = StyleSheet.create({
   section: {

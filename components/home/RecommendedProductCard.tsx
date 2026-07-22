@@ -92,8 +92,8 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
     router.push({
       pathname: '/products/detail/[productId]',
       params: {
-        productId: product.id,
-        categoryId: product.categoryType,
+        productId: product.slug || product.id,
+        categoryId: product.categorySlug ?? product.categoryType,
         categoryName: product.category,
         productName: displayName,
       },
@@ -116,6 +116,7 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
             source={getProductImageSource(product)}
             style={styles.image}
             contentFit="contain"
+            recyclingKey={product.slug || product.id}
           />
         </ScaledPressable>
         <View style={styles.badgeRow} pointerEvents="none">

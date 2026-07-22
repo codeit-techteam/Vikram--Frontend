@@ -54,6 +54,7 @@ export function getProductPricing(
 }
 
 export function getStockLeft(product: Product): number | null {
+  if (product.stockLeft != null) return product.stockLeft;
   if (product.status === 'LIMITED STOCK') return 8;
   if (product.status === 'READY FOR DISPATCH') return 24;
   if (product.status === 'IN STOCK') return 48;
@@ -61,6 +62,7 @@ export function getStockLeft(product: Product): number | null {
 }
 
 export function getDeliveryEta(product: Product): string {
+  if (product.deliveryETA) return product.deliveryETA;
   if (product.badge?.includes('90')) return '30–90 mins';
   if (product.badge?.toLowerCase().includes('bulk')) return 'Same day';
   if (product.badge?.toLowerCase().includes('same')) return 'Same day';

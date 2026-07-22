@@ -8,7 +8,7 @@ import Animated, {
 
 interface MaterialCategoryCardProps {
   label: string;
-  image: number;
+  image: number | { uri: string };
   onPress: () => void;
 }
 

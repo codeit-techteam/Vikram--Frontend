@@ -6,7 +6,7 @@ export type SearchCategory = 'cement' | 'steel' | 'stone' | 'sand' | 'bricks';
 
 export interface SearchProduct {
   id: string;
-  category: SearchCategory;
+  category: SearchCategory | string;
   badge: 'TRENDING' | 'POPULAR' | null;
   badgeColor?: string;
   name: string;
@@ -14,6 +14,12 @@ export interface SearchProduct {
   price: number;
   unit: string;
   image: string;
+  /** Prefer slug for detail navigation (backend detail is slug-based). */
+  slug?: string;
+  productId?: string;
+  categorySlug?: string;
+  categoryName?: string;
+  imageUrl?: string | null;
 }
 
 export const SEARCH_CATEGORIES = [
@@ -199,11 +205,15 @@ export function searchProductToCartItem(product: SearchProduct): CartItem {
 export function searchProductToProduct(sp: SearchProduct): Product {
   const priceStr = `₹${sp.price.toLocaleString('en-IN')}`;
   return {
-    id: sp.id,
+    id: sp.productId ?? sp.id,
+    slug: sp.slug ?? sp.id,
     badge: sp.badge ?? 'IN STOCK',
     badgeColor: sp.badgeColor ?? '#FEB623',
+    imageUrl: sp.imageUrl ?? null,
     imageSearch: sp.image,
-    category: sp.category.toUpperCase(),
+    category: sp.categoryName ?? String(sp.category).toUpperCase(),
+    categorySlug: sp.categorySlug ?? String(sp.category),
+    brand: sp.brand,
     name: sp.name,
     detailName: sp.name,
     grade: '-',

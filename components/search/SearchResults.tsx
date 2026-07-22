@@ -61,7 +61,8 @@ export function SearchResults({
         <View style={styles.cardWrap}>
           <ProductCard
             product={product}
-            categoryName={item.category}
+            categoryId={item.categorySlug ?? String(item.category)}
+            categoryName={item.categoryName ?? String(item.category)}
             highlightQuery={query}
           />
         </View>

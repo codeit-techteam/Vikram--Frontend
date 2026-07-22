@@ -65,6 +65,7 @@ export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarous
               source={source}
               style={{ width: SCREEN_WIDTH, height: 280 }}
               contentFit="cover"
+              recyclingKey={`carousel-${i}`}
             />
           </ScaledPressable>
         ))}

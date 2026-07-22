@@ -7,12 +7,13 @@ import * as Haptics from 'expo-haptics';
 import { AddToCartButton, getAddToCartMode } from '@components/product/AddToCartButton';
 import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { getProductById, getProductImageUrl } from '@constants/catalogData';
+import { getProductById } from '@constants/catalogData';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 import { useCartFeedbackStore } from '@store/cartFeedbackStore';
 import { useCartStore } from '@store/cartStore';
 import { useTranslation } from '@store/languageStore';
 import { frequentItemToCartItem } from '@utils/cartHelpers';
+import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 
 const CARD_WIDTH = Dimensions.get('window').width * 0.55;
 
@@ -46,9 +47,13 @@ function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
   return (
     <View style={{ width: CARD_WIDTH }} className="rounded-card border border-border bg-surface p-3">
       <Image
-        source={{ uri: getProductImageUrl(item.imageSearch, '240x240') }}
+        source={resolveProductImageSource({
+          imageUrl: item.imageSearch,
+          productSlug: item.id,
+        })}
         style={{ width: '100%', height: 120, borderRadius: 8 }}
         contentFit="cover"
+        recyclingKey={item.id}
       />
       <Text className="mt-2 text-sm font-bold text-text" numberOfLines={1}>
         {catalogProduct?.name ?? item.name}
