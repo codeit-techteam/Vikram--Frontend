@@ -5,22 +5,26 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { images } from '@constants/images';
+import { CMS_DEFAULT_HERO_IMAGE } from '@utils/cmsMedia';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 32;
 
-interface HeroSlide {
+export interface HeroSlide {
+  id?: string;
   badge: string;
   title: string;
   shopNow: string;
   bulkInquiry: string;
+  imageUrl?: string;
+  linkTarget?: string | null;
+  secondaryLinkTarget?: string | null;
 }
 
 interface HeroCarouselProps {
   slides: HeroSlide[];
-  onShopNow?: () => void;
-  onBulkInquiry?: () => void;
+  onShopNow?: (slide: HeroSlide, index: number) => void;
+  onBulkInquiry?: (slide: HeroSlide, index: number) => void;
 }
 
 export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselProps) {
@@ -28,6 +32,7 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
+    if (slides.length <= 1) return;
     const interval = setInterval(() => {
       setActiveIndex((prev) => {
         const next = (prev + 1) % slides.length;
@@ -38,14 +43,16 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  const handleShopNow = async () => {
+  if (slides.length === 0) return null;
+
+  const handleShopNow = async (slide: HeroSlide, index: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onShopNow?.();
+    onShopNow?.(slide, index);
   };
 
-  const handleBulkInquiry = async () => {
+  const handleBulkInquiry = async (slide: HeroSlide, index: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onBulkInquiry?.();
+    onBulkInquiry?.(slide, index);
   };
 
   return (
@@ -62,9 +69,9 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH}>
         {slides.map((slide, i) => (
-          <View key={i} style={{ width: CARD_WIDTH }} className="overflow-hidden rounded-card">
+          <View key={slide.id ?? i} style={{ width: CARD_WIDTH }} className="overflow-hidden rounded-card">
             <Image
-              source={{ uri: images.loginBanner }}
+              source={{ uri: slide.imageUrl || CMS_DEFAULT_HERO_IMAGE }}
               style={{ width: CARD_WIDTH, height: 180 }}
               contentFit="cover"
             />
@@ -81,7 +88,7 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
               <Text className="text-lg font-bold leading-6 text-text-inverse">{slide.title}</Text>
               <View className="mt-3 flex-row gap-3">
                 <ScaledPressable
-                  onPress={handleShopNow}
+                  onPress={() => void handleShopNow(slide, i)}
                   hitSlop={8}
                   style={{
                     backgroundColor: '#1A73E8',
@@ -92,7 +99,7 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
                   <Text className="text-sm font-bold text-text-inverse">{slide.shopNow}</Text>
                 </ScaledPressable>
                 <ScaledPressable
-                  onPress={handleBulkInquiry}
+                  onPress={() => void handleBulkInquiry(slide, i)}
                   hitSlop={8}
                   style={{
                     borderWidth: 1.5,
@@ -108,14 +115,16 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
           </View>
         ))}
       </ScrollView>
-      <View className="mt-3 flex-row items-center justify-center gap-2">
-        {slides.map((_, i) => (
-          <View
-            key={i}
-            className={`h-2 rounded-full ${i === activeIndex ? 'w-5 bg-primary' : 'w-2 bg-border'}`}
-          />
-        ))}
-      </View>
+      {slides.length > 1 ? (
+        <View className="mt-3 flex-row items-center justify-center gap-2">
+          {slides.map((slide, i) => (
+            <View
+              key={slide.id ?? i}
+              className={`h-2 rounded-full ${i === activeIndex ? 'w-5 bg-primary' : 'w-2 bg-border'}`}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

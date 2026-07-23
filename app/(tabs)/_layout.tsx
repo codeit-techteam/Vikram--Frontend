@@ -9,7 +9,7 @@ import { useOrderStore } from '@store/orderStore';
 const TAB_BAR_CONTENT_HEIGHT = 52;
 
 export default function TabLayout() {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const tabBarBottomInset = Math.max(insets.bottom, 10);
   const activeOrders = useOrderStore(
@@ -18,7 +18,6 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      key={language}
       screenOptions={{
         headerShown: false,
         animation: 'fade',

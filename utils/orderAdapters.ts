@@ -150,7 +150,7 @@ function mapProducts(order: LegacyOrder): OrderProduct[] {
 function mapShippingAddress(order: LegacyOrder): ShippingAddress {
   return {
     name: order.deliverySite.name,
-    phone: '+91 98765 43210',
+    phone: '',
     address: order.deliverySite.address,
     pin: '400093',
   };

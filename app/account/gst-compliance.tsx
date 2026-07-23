@@ -63,7 +63,11 @@ export default function GstComplianceScreen() {
           </View>
           <Text className="mt-3 text-lg font-bold text-text">{t('gstVerified')}</Text>
           <Text className="mt-1 text-xs text-text-secondary">
-            Verified as of {user.gstVerifiedAt}
+            {user.gstVerifiedAt
+              ? `Verified as of ${user.gstVerifiedAt}`
+              : user.gstNumber
+                ? 'GST on file'
+                : 'No GST details on file'}
           </Text>
           <View className="mt-4 flex-row items-center justify-between">
             <Text className="text-sm font-semibold text-primary">{t('complianceScore')}</Text>

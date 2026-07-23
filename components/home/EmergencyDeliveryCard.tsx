@@ -1,36 +1,46 @@
 import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
+import type { CmsPromotion } from '@/types/cms';
 import { images } from '@constants/images';
-import { useTranslation } from '@store/languageStore';
 
 interface EmergencyDeliveryCardProps {
   onOrderNow: () => void;
+  promotion?: CmsPromotion | null;
 }
 
-export function EmergencyDeliveryCard({ onOrderNow }: EmergencyDeliveryCardProps) {
-  const { t } = useTranslation();
-
+export function EmergencyDeliveryCard({
+  onOrderNow,
+  promotion,
+}: EmergencyDeliveryCardProps) {
   const handlePress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     onOrderNow();
   };
 
+  const imageUri = promotion?.imageUrl || images.emergencyBanner;
+  const eta = promotion?.badge ?? '30–90 Minutes';
+  const title = promotion?.title ?? 'Emergency Delivery';
+  const subtitle =
+    promotion?.subtitle ??
+    'Site running short? Get essential materials to your site fast — 24/7 logistics.';
+  const buttonText = promotion?.buttonText ?? 'Order Now';
+
   return (
     <Pressable onPress={handlePress} style={styles.wrap}>
       <ImageBackground
-        source={{ uri: images.emergencyBanner }}
+        source={{ uri: imageUri }}
         style={styles.bg}
         imageStyle={{ borderRadius: 16 }}>
         <View style={styles.overlay} />
         <View style={styles.content}>
           <View style={styles.etaBadge}>
-            <Text style={styles.etaText}>{t('emergencyEta')}</Text>
+            <Text style={styles.etaText}>{eta}</Text>
           </View>
-          <Text style={styles.title}>{t('emergencyDeliveryTitle')}</Text>
-          <Text style={styles.subtitle}>{t('emergencyDeliverySubtitle')}</Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
           <View style={styles.button}>
-            <Text style={styles.buttonText}>{t('orderNow')}</Text>
+            <Text style={styles.buttonText}>{buttonText}</Text>
           </View>
         </View>
       </ImageBackground>

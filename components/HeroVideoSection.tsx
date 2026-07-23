@@ -8,18 +8,23 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { router, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useIsFocused } from '@react-navigation/native';
+import type { VideoSource } from 'expo-video';
 
 import { ExpoVideoPlayer } from '@components/video/ExpoVideoPlayer';
-import { getCategoryIdForProduct, getProductById } from '@constants/catalogData';
+import type { CmsBanner } from '@/types/cms';
+import { resolveCmsVideoSource } from '@utils/cmsMedia';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CEMENT_PRODUCT_ID = 'c1';
-const HERO_VIDEO = require('../assets/videos/delivery-hero.mp4');
+const FALLBACK_VIDEO = require('../assets/videos/delivery-hero.mp4');
 
-export function VideoBanner() {
+interface VideoBannerProps {
+  banner?: CmsBanner | null;
+  onShopNow?: () => void;
+}
+
+export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
   const [isMuted, setIsMuted] = useState(true);
   const isFocused = useIsFocused();
   const [paused, setPaused] = useState(!isFocused);
@@ -35,22 +40,22 @@ export function VideoBanner() {
 
   const handleShopNow = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const product = getProductById(CEMENT_PRODUCT_ID);
-    router.push({
-      pathname: '/products/detail/[productId]',
-      params: {
-        productId: CEMENT_PRODUCT_ID,
-        categoryId: getCategoryIdForProduct(CEMENT_PRODUCT_ID) ?? '',
-        categoryName: product?.category ?? 'Cement',
-        productName: product?.detailName ?? product?.name ?? 'UltraTech Premium PPC Cement',
-      },
-    } as Href);
+    onShopNow?.();
   };
+
+  const videoSource: VideoSource =
+    resolveCmsVideoSource(banner?.videoUrl) ?? FALLBACK_VIDEO;
+
+  const badge = banner?.badge ?? '2-Hour Delivery';
+  const title = banner?.title ?? 'Materials Delivered\nRight to Your Site';
+  const subtitle =
+    banner?.subtitle ?? 'Real-time tracking, verified drivers, zero delays.';
+  const buttonText = banner?.buttonText ?? 'Shop Now';
 
   return (
     <View style={styles.container}>
       <ExpoVideoPlayer
-        source={HERO_VIDEO}
+        source={videoSource}
         loop
         muted={isMuted}
         autoPlay
@@ -73,7 +78,7 @@ export function VideoBanner() {
       <View style={styles.topContent}>
         <View style={styles.badge}>
           <Ionicons name="flash" size={12} color="#1A1A1A" />
-          <Text style={styles.badgeText}>2-Hour Delivery</Text>
+          <Text style={styles.badgeText}>{badge}</Text>
         </View>
       </View>
 
@@ -89,18 +94,14 @@ export function VideoBanner() {
       </TouchableOpacity>
 
       <View style={styles.bottomContent}>
-        <Text style={styles.title}>
-          Materials Delivered{'\n'}Right to Your Site
-        </Text>
-        <Text style={styles.subtitle}>
-          Real-time tracking, verified drivers, zero delays.
-        </Text>
+        <Text style={styles.title}>{title.replace(/\\n/g, '\n')}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
 
         <TouchableOpacity
           style={styles.primaryBtn}
           onPress={handleShopNow}
           activeOpacity={0.85}>
-          <Text style={styles.primaryBtnText}>Shop Now</Text>
+          <Text style={styles.primaryBtnText}>{buttonText}</Text>
         </TouchableOpacity>
       </View>
     </View>

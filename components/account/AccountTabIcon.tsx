@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { View } from 'react-native';
 
 import { InitialsAvatar } from '@components/InitialsAvatar';
@@ -24,24 +23,14 @@ export function AccountTabIcon({ focused }: { focused: boolean; color: string })
     );
   }
 
-  if (user.name) {
-    return (
-      <View
-        style={{
-          borderWidth: focused ? 2 : 0,
-          borderColor: '#FEB623',
-          borderRadius: 14,
-        }}>
-        <InitialsAvatar name={user.name} size={24} />
-      </View>
-    );
-  }
-
   return (
-    <Ionicons
-      name={focused ? 'person' : 'person-outline'}
-      size={22}
-      color={focused ? '#FEB623' : '#666666'}
-    />
+    <View
+      style={{
+        borderWidth: focused ? 2 : 0,
+        borderColor: '#FEB623',
+        borderRadius: 14,
+      }}>
+      <InitialsAvatar name={user.name} size={24} />
+    </View>
   );
 }

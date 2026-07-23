@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type ImageSourcePropType, type ViewToken } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
@@ -11,12 +11,7 @@ import {
 } from '@components/testimonial/constants';
 import { FullscreenImageViewer } from '@components/testimonial/FullscreenImageViewer';
 import { FullscreenVideoPlayer } from '@components/testimonial/FullscreenVideoPlayer';
-import {
-  TESTIMONIAL_REVIEWS,
-  TESTIMONIAL_VIDEOS,
-  type TestimonialReview,
-  type TestimonialVideo,
-} from '@constants/testimonialData';
+import type { TestimonialReview, TestimonialVideo } from '@constants/testimonialData';
 import { useCarouselDrawerLock } from '@hooks/useCarouselDrawerLock';
 import { useTranslation } from '@store/languageStore';
 import { getVideoThumbnailUri } from '@utils/videoThumbnailCache';
@@ -27,16 +22,31 @@ const VIDEO_VIEWABILITY = { itemVisiblePercentThreshold: 55 };
 interface TestimonialCarouselProps {
   /** Called while horizontal lists are being scrolled — use to pause drawer swipe. */
   onHorizontalInteractionChange?: (isInteracting: boolean) => void;
+  videos?: TestimonialVideo[];
+  reviews?: TestimonialReview[];
+  title?: string | null;
+  subtitle?: string | null;
 }
 
 export function TestimonialCarousel({
   onHorizontalInteractionChange,
+  videos = [],
+  reviews = [],
+  title,
+  subtitle,
 }: TestimonialCarouselProps) {
   const { t } = useTranslation();
-  const [visibleVideoId, setVisibleVideoId] = useState(TESTIMONIAL_VIDEOS[0]?.id ?? '');
+  const [visibleVideoId, setVisibleVideoId] = useState(videos[0]?.id ?? '');
   const [activeVideo, setActiveVideo] = useState<TestimonialVideo | null>(null);
   const [activePhoto, setActivePhoto] = useState<ImageSourcePropType | null>(null);
   const interactingCount = useRef(0);
+
+  const sectionTitle = title ?? t('customerTestimonials');
+  const sectionSubtitle = subtitle ?? t('customerTestimonialsSubtitle');
+
+  useEffect(() => {
+    if (videos[0]?.id) setVisibleVideoId(videos[0].id);
+  }, [videos]);
 
   const notifyInteraction = useCallback(
     (active: boolean) => {
@@ -58,11 +68,13 @@ export function TestimonialCarousel({
   const reviewScrollLock = useCarouselDrawerLock(notifyInteraction);
 
   useEffect(() => {
-    const first = TESTIMONIAL_VIDEOS[0];
-    if (first) {
-      void getVideoThumbnailUri(first.video).catch(() => undefined);
+    const first = videos[0];
+    const moduleId =
+      first?.videoModule ?? (typeof first?.video === 'number' ? first.video : null);
+    if (typeof moduleId === 'number') {
+      void getVideoThumbnailUri(moduleId).catch(() => undefined);
     }
-  }, []);
+  }, [videos]);
 
   const onVideoViewableChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken<TestimonialVideo>[] }) => {
@@ -111,80 +123,92 @@ export function TestimonialCarousel({
   const videoSeparator = useCallback(() => <View style={styles.separator} />, []);
   const reviewSeparator = useCallback(() => <View style={styles.separator} />, []);
 
-  const videoListProps = {
-    horizontal: true as const,
-    nestedScrollEnabled: true,
-    showsHorizontalScrollIndicator: false,
-    decelerationRate: 'fast' as const,
-    snapToInterval: TESTIMONIAL_VIDEO_SNAP,
-    snapToAlignment: 'start' as const,
-    disableIntervalMomentum: true,
-    directionalLockEnabled: true,
-    scrollEventThrottle: 16,
-    overScrollMode: 'never' as const,
-    bounces: true,
-    removeClippedSubviews: true,
-  };
+  const videoListProps = useMemo(
+    () => ({
+      horizontal: true as const,
+      nestedScrollEnabled: true,
+      showsHorizontalScrollIndicator: false,
+      decelerationRate: 'fast' as const,
+      snapToInterval: TESTIMONIAL_VIDEO_SNAP,
+      snapToAlignment: 'start' as const,
+      disableIntervalMomentum: true,
+      directionalLockEnabled: true,
+      scrollEventThrottle: 16,
+      overScrollMode: 'never' as const,
+      bounces: true,
+      removeClippedSubviews: true,
+    }),
+    [],
+  );
 
-  const reviewListProps = {
-    horizontal: true as const,
-    nestedScrollEnabled: true,
-    showsHorizontalScrollIndicator: false,
-    decelerationRate: 'fast' as const,
-    snapToInterval: REVIEW_CARD_SNAP,
-    snapToAlignment: 'start' as const,
-    disableIntervalMomentum: true,
-    directionalLockEnabled: true,
-    scrollEventThrottle: 16,
-    overScrollMode: 'never' as const,
-    bounces: true,
-    removeClippedSubviews: true,
-  };
+  const reviewListProps = useMemo(
+    () => ({
+      horizontal: true as const,
+      nestedScrollEnabled: true,
+      showsHorizontalScrollIndicator: false,
+      decelerationRate: 'fast' as const,
+      snapToInterval: REVIEW_CARD_SNAP,
+      snapToAlignment: 'start' as const,
+      disableIntervalMomentum: true,
+      directionalLockEnabled: true,
+      scrollEventThrottle: 16,
+      overScrollMode: 'never' as const,
+      bounces: true,
+      removeClippedSubviews: true,
+    }),
+    [],
+  );
+
+  if (videos.length === 0 && reviews.length === 0) return null;
 
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('customerTestimonials')}</Text>
-        <Text style={styles.subtitle}>{t('customerTestimonialsSubtitle')}</Text>
+        <Text style={styles.title}>{sectionTitle}</Text>
+        <Text style={styles.subtitle}>{sectionSubtitle}</Text>
       </View>
 
-      <FlatList
-        {...videoListProps}
-        data={TESTIMONIAL_VIDEOS}
-        contentContainerStyle={styles.videoRow}
-        keyExtractor={videoKeyExtractor}
-        renderItem={renderVideo}
-        ItemSeparatorComponent={videoSeparator}
-        onViewableItemsChanged={onVideoViewableChanged}
-        viewabilityConfig={VIDEO_VIEWABILITY}
-        initialNumToRender={1}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        getItemLayout={(_, index) => ({
-          length: TESTIMONIAL_VIDEO_SNAP,
-          offset: TESTIMONIAL_VIDEO_SNAP * index,
-          index,
-        })}
-        {...videoScrollLock}
-      />
+      {videos.length > 0 ? (
+        <FlatList
+          {...videoListProps}
+          data={videos}
+          contentContainerStyle={styles.videoRow}
+          keyExtractor={videoKeyExtractor}
+          renderItem={renderVideo}
+          ItemSeparatorComponent={videoSeparator}
+          onViewableItemsChanged={onVideoViewableChanged}
+          viewabilityConfig={VIDEO_VIEWABILITY}
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          getItemLayout={(_, index) => ({
+            length: TESTIMONIAL_VIDEO_SNAP,
+            offset: TESTIMONIAL_VIDEO_SNAP * index,
+            index,
+          })}
+          {...videoScrollLock}
+        />
+      ) : null}
 
-      <FlatList
-        {...reviewListProps}
-        data={TESTIMONIAL_REVIEWS}
-        contentContainerStyle={styles.reviewRow}
-        keyExtractor={reviewKeyExtractor}
-        renderItem={renderReview}
-        ItemSeparatorComponent={reviewSeparator}
-        initialNumToRender={2}
-        maxToRenderPerBatch={3}
-        windowSize={4}
-        getItemLayout={(_, index) => ({
-          length: REVIEW_CARD_SNAP,
-          offset: REVIEW_CARD_SNAP * index,
-          index,
-        })}
-        {...reviewScrollLock}
-      />
+      {reviews.length > 0 ? (
+        <FlatList
+          {...reviewListProps}
+          data={reviews}
+          contentContainerStyle={styles.reviewRow}
+          keyExtractor={reviewKeyExtractor}
+          renderItem={renderReview}
+          ItemSeparatorComponent={reviewSeparator}
+          initialNumToRender={2}
+          maxToRenderPerBatch={3}
+          windowSize={4}
+          getItemLayout={(_, index) => ({
+            length: REVIEW_CARD_SNAP,
+            offset: REVIEW_CARD_SNAP * index,
+            index,
+          })}
+          {...reviewScrollLock}
+        />
+      ) : null}
 
       {activeVideo ? (
         <FullscreenVideoPlayer item={activeVideo} visible onClose={handleClosePlayer} />

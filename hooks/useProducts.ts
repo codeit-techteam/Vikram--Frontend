@@ -58,7 +58,7 @@ export function useProducts(
   return {
     products,
     total,
-    isLoading: query.isLoading,
+    isLoading: query.isLoading && products.length === 0,
     isRefreshing: query.isRefetching && !query.isFetchingNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,

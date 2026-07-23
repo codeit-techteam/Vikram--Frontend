@@ -16,6 +16,7 @@ import { DrawerMenuItem, DrawerSectionLabel } from '@components/DrawerMenuItem';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useTranslation } from '@store/languageStore';
 import { useNotificationStore } from '@store/notificationStore';
+import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
 
 export { DRAWER_WIDTH, useDrawerAnimation, drawerPanelStyle } from '@hooks/useDrawerAnimation';
@@ -111,7 +112,8 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
   }, [isOpen]);
 
   const navigateAndClose = useCallback(
-    (href: Href) => {
+    (href: Href, authRequired = false) => {
+      if (authRequired && !requireAuth()) return;
       onClose();
       setTimeout(() => router.push(href), 150);
     },
@@ -126,8 +128,9 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
         style: 'destructive',
         onPress: () => {
           onClose();
-          resetAppStores();
-          setTimeout(() => router.replace('/login'), 150);
+          setTimeout(() => {
+            void resetAppStores().then(() => router.replace('/(tabs)'));
+          }, 150);
         },
       },
     ]);
@@ -161,32 +164,32 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           icon: 'bag-outline',
           label: t('drawerOrders'),
           badge: orderBadge,
-          onPress: () => navigateAndClose('/(tabs)/orders'),
+          onPress: () => navigateAndClose('/(tabs)/orders', true),
         },
         {
           icon: 'bus-outline',
           label: t('drawerTrackDeliveries'),
-          onPress: () => navigateAndClose('/track-delivery'),
+          onPress: () => navigateAndClose('/track-delivery', true),
         },
         {
           icon: 'location-outline',
           label: t('drawerSavedSites'),
-          onPress: () => navigateAndClose('/delivery-location'),
+          onPress: () => navigateAndClose('/delivery-location', true),
         },
         {
           icon: 'document-text-outline',
           label: t('invoices'),
-          onPress: () => navigateAndClose('/account/invoices'),
+          onPress: () => navigateAndClose('/account/invoices', true),
         },
         {
           icon: 'receipt-outline',
           label: t('businessDetailsMenu'),
-          onPress: () => navigateAndClose('/account/business-details' as Href),
+          onPress: () => navigateAndClose('/account/business-details' as Href, true),
         },
         {
           icon: 'trophy-outline',
           label: t('loyaltyWallet'),
-          onPress: () => navigateAndClose('/account/loyalty'),
+          onPress: () => navigateAndClose('/account/loyalty', true),
         },
         {
           icon: 'notifications-outline',
@@ -214,7 +217,7 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
         {
           icon: 'time-outline',
           label: t('orderHistoryMenu'),
-          onPress: () => navigateAndClose('/orders/history'),
+          onPress: () => navigateAndClose('/orders/history', true),
         },
       ],
     },

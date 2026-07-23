@@ -42,7 +42,7 @@ export const CustomerVideoCard = memo(function CustomerVideoCard({
   onPlay,
 }: CustomerVideoCardProps) {
   const { thumbnailUri, isLoading, error, retry } = useVideoThumbnail(
-    item.video,
+    item.videoModule ?? (typeof item.video === 'number' ? item.video : null),
     isVisible,
   );
 

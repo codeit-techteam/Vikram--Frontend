@@ -1,9 +1,10 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
+import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyOrdersState } from '@components/orders/EmptyOrdersState';
@@ -13,8 +14,10 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { ORDER_FILTERS } from '@constants/orderStatus';
 import { useOrders } from '@hooks/useOrders';
 import { useReorder } from '@hooks/useReorder';
+import { useAuthStore } from '@store/useAuthStore';
 import type { Order, OrderFilterStatus } from '@/types/order';
 import { theme } from '@constants/theme';
+import { requireAuth } from '@utils/requireAuth';
 
 const AnimatedPressable = Animated.createAnimatedComponent(ScaledPressable);
 
@@ -78,6 +81,13 @@ export const OrdersScreen = memo(function OrdersScreen() {
   const [activeFilter, setActiveFilter] = useState<OrderFilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (!isFocused || isLoggedIn) return;
+    requireAuth('Please log in to view your orders.');
+  }, [isFocused, isLoggedIn]);
 
   const {
     orders,
@@ -96,6 +106,7 @@ export const OrdersScreen = memo(function OrdersScreen() {
 
   const handleReorder = useCallback(
     async (orderId: string) => {
+      if (!requireAuth('Please log in to reorder.')) return;
       await reorder(orderId);
     },
     [reorder],

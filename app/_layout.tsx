@@ -10,13 +10,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { VoiceAssistantSheet } from '@components/VoiceAssistantSheet';
+import { LoginRequiredSheet } from '@components/auth/LoginRequiredSheet';
 import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
 import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
 import { useAuthStore } from '@store/useAuthStore';
 import { useGstStore } from '@store/gstStore';
-import { useLanguageStore } from '@store/languageStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,15 +27,14 @@ function isTabRoot(pathname: string) {
 }
 
 export default function RootLayout() {
-  const language = useLanguageStore((s) => s.language);
-  const hydrateGuestMode = useAuthStore((s) => s.hydrateGuestMode);
+  const hydrateSession = useAuthStore((s) => s.hydrateSession);
   const pathname = usePathname();
 
   useEffect(() => {
     SplashScreen.hideAsync();
-    void hydrateGuestMode();
+    void hydrateSession();
     void useGstStore.getState().fetchGST();
-  }, [hydrateGuestMode]);
+  }, [hydrateSession]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -62,7 +61,6 @@ export default function RootLayout() {
           <BottomSheetModalProvider>
             <StatusBar style="auto" />
             <Stack
-              key={language}
               screenOptions={{
                 headerShown: false,
                 animation: 'slide_from_right',
@@ -120,6 +118,7 @@ export default function RootLayout() {
             <AddToCartSuccessToast />
             <ReorderToast />
             <ReorderUnavailableSheet />
+            <LoginRequiredSheet />
           </BottomSheetModalProvider>
         </QueryProvider>
       </SafeAreaProvider>

@@ -5,11 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useTranslation } from '@store/languageStore';
-
-const DEFAULT_SITE = {
-  name: 'Site A – Mumbai North Industrial Estate',
-  address: 'Plot 42, Sector 12, Kandivali West, Mumbai, 400067',
-};
+import { useUserStore } from '@store/userStore';
 
 interface DeliveryDestinationCardProps {
   site?: DeliverySite;
@@ -17,6 +13,7 @@ interface DeliveryDestinationCardProps {
 
 export function DeliveryDestinationCard({ site }: DeliveryDestinationCardProps) {
   const { t } = useTranslation();
+  const customerName = useUserStore((s) => s.user.name);
 
   return (
     <View style={styles.card}>
@@ -33,8 +30,19 @@ export function DeliveryDestinationCard({ site }: DeliveryDestinationCardProps) 
           <Text style={styles.changeText}>{t('change')}</Text>
         </ScaledPressable>
       </View>
-      <Text style={styles.siteName}>{site?.name ?? DEFAULT_SITE.name}</Text>
-      <Text style={styles.siteAddress}>{site?.address ?? DEFAULT_SITE.address}</Text>
+
+      {customerName ? (
+        <Text style={styles.deliveredBy}>Delivery by {customerName}</Text>
+      ) : null}
+
+      {site?.name ? (
+        <>
+          <Text style={styles.siteName}>{site.name}</Text>
+          {site.address ? <Text style={styles.siteAddress}>{site.address}</Text> : null}
+        </>
+      ) : (
+        <Text style={styles.siteAddress}>Select a delivery site to continue</Text>
+      )}
     </View>
   );
 }
@@ -72,6 +80,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#FEB623',
+  },
+  deliveredBy: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555555',
+    marginBottom: 6,
   },
   siteName: {
     fontSize: 14,

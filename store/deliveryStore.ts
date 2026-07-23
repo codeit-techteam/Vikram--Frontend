@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import type { CustomerAddress } from '@services/customer.api';
+
 export interface DeliverySite {
   id: string;
   name: string;
@@ -37,22 +39,7 @@ const DEFAULT_SITES: DeliverySite[] = [
   { id: 's4', name: 'Pune IT Tower D', address: 'Hinjewadi Phase 3' },
 ];
 
-export const DEFAULT_PROFILE_SITES: ProfileSite[] = [
-  {
-    id: 'ps1',
-    name: 'Andheri East Site',
-    address: 'Plot 42, MIDC Industrial Estate, Near Metro Station, Mumbai 400093',
-    isPrimary: true,
-    icon: 'person',
-  },
-  {
-    id: 'ps2',
-    name: 'Worli Project',
-    address: 'Senapati Bapat Marg, Opp. Phoenix Mall, Worli, Mumbai 400018',
-    icon: 'business',
-  },
-];
-
+/** Retained for checkout/demo flows that still need sample project sites. */
 export const DEFAULT_PROJECT_SITES: ProjectSite[] = [
   {
     id: 'site1',
@@ -102,6 +89,25 @@ export const DEFAULT_PROJECT_SITES: ProjectSite[] = [
   },
 ];
 
+/** Maps `/customer/address` records onto the account screen's `ProfileSite` shape. */
+export function mapAddressesToProfileSites(addresses: CustomerAddress[]): ProfileSite[] {
+  return addresses.map((addr, index) => {
+    const addressLine =
+      addr.address ??
+      [addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.pincode ?? addr.postalCode]
+        .filter(Boolean)
+        .join(', ');
+
+    return {
+      id: addr.id ?? `addr-${index}`,
+      name: addr.label ?? addr.name ?? `Site ${index + 1}`,
+      address: addressLine,
+      isPrimary: Boolean(addr.isDefault ?? addr.isPrimary),
+      icon: addr.type === 'business' ? 'business' : 'person',
+    };
+  });
+}
+
 interface DeliveryState {
   sites: DeliverySite[];
   selectedSiteId: string;
@@ -109,6 +115,7 @@ interface DeliveryState {
   projectSites: ProjectSite[];
   setSelectedSite: (id: string) => void;
   setSites: (sites: DeliverySite[]) => void;
+  setProfileSitesFromAddresses: (addresses: CustomerAddress[]) => void;
   updateProfileSite: (id: string, data: Partial<ProfileSite>) => void;
   addProfileSite: (site: Omit<ProfileSite, 'id'>) => void;
   addProjectSite: (site: Omit<ProjectSite, 'id'>) => void;
@@ -119,7 +126,7 @@ interface DeliveryState {
 export const useDeliveryStore = create<DeliveryState>((set) => ({
   sites: DEFAULT_SITES,
   selectedSiteId: DEFAULT_SITES[0].id,
-  profileSites: DEFAULT_PROFILE_SITES,
+  profileSites: [],
   projectSites: DEFAULT_PROJECT_SITES,
 
   setSelectedSite: (id) => set({ selectedSiteId: id }),
@@ -129,6 +136,9 @@ export const useDeliveryStore = create<DeliveryState>((set) => ({
       sites: sites.length > 0 ? sites : DEFAULT_SITES,
       selectedSiteId: sites.length > 0 ? sites[0].id : state.selectedSiteId,
     })),
+
+  setProfileSitesFromAddresses: (addresses) =>
+    set({ profileSites: mapAddressesToProfileSites(addresses) }),
 
   updateProfileSite: (id, data) =>
     set((state) => ({
@@ -157,7 +167,7 @@ export const useDeliveryStore = create<DeliveryState>((set) => ({
     set({
       sites: DEFAULT_SITES,
       selectedSiteId: DEFAULT_SITES[0].id,
-      profileSites: DEFAULT_PROFILE_SITES,
+      profileSites: [],
       projectSites: DEFAULT_PROJECT_SITES,
     }),
 }));

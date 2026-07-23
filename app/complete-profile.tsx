@@ -13,8 +13,10 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { YellowBackHeader } from '@components/BackHeader';
+import { updateProfile } from '@services/customer.api';
 import { useAuthStore } from '@store/useAuthStore';
 import { useLanguageStore, useTranslation, type AppLanguage } from '@store/languageStore';
+import type { ApiError } from '@/types';
 
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
@@ -38,24 +40,59 @@ export default function CompleteProfileScreen() {
   const language = useLanguageStore((st) => st.language);
   const setLanguage = useLanguageStore((st) => st.setLanguage);
   const { t } = useTranslation();
-  const companyName = useAuthStore((st) => st.companyName);
   const setCompanyName = useAuthStore((st) => st.setCompanyName);
+  const refreshProfile = useAuthStore((st) => st.refreshProfile);
+  const existingName = useAuthStore((st) => st.customer?.name ?? '');
 
+  const [fullName, setFullName] = useState(existingName);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [nameFocused, setNameFocused] = useState(false);
 
-  const handleContinue = () => {
+  const persistProfile = async (skip = false) => {
     if (loading) return;
     setLoading(true);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    router.push('/delivery-location' as Href);
-    setLoading(false);
+    setErrorMessage(null);
+    void Haptics.impactAsync(
+      skip ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
+    ).catch(() => undefined);
+
+    try {
+      const trimmed = fullName.trim();
+      if (!skip && trimmed) {
+        setCompanyName(trimmed);
+        await updateProfile({
+          fullName: trimmed,
+          language,
+        });
+        await refreshProfile();
+      } else if (!skip) {
+        setErrorMessage('Please enter your full name.');
+        setLoading(false);
+        return;
+      } else {
+        await updateProfile({ language }).catch(() => undefined);
+      }
+
+      if (skip) {
+        router.replace('/(tabs)' as Href);
+      } else {
+        router.push('/delivery-location' as Href);
+      }
+    } catch (error) {
+      const apiErr = error as ApiError;
+      setErrorMessage(apiErr?.message ?? 'Failed to save profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContinue = () => {
+    void persistProfile(false);
   };
 
   const handleSkipProfile = () => {
-    if (loading) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    router.replace('/(tabs)' as Href);
+    void persistProfile(true);
   };
 
   const handleLanguageSelect = (lang: AppLanguage) => {
@@ -141,12 +178,18 @@ export default function CompleteProfileScreen() {
               }}
               placeholder="Enter your full name"
               placeholderTextColor="#BBAA88"
-              value={companyName}
-              onChangeText={setCompanyName}
+              value={fullName}
+              onChangeText={setFullName}
               onFocus={() => setNameFocused(true)}
               onBlur={() => setNameFocused(false)}
             />
           </View>
+
+          {errorMessage ? (
+            <Text style={{ color: '#C62828', fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
+              {errorMessage}
+            </Text>
+          ) : null}
 
           <View style={{ height: 1, backgroundColor: WARM_BORDER, marginBottom: 24 }} />
 

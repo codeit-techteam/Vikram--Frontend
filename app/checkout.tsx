@@ -68,8 +68,12 @@ export default function CheckoutScreen() {
   const dismissSuccessBanner = useGstStore((s) => s.dismissSuccessBanner);
 
   const selectedSite = useDeliveryStore((s) => {
-    const site = s.sites.find((x) => x.id === s.selectedSiteId);
-    return site ?? s.sites[0];
+    const fromSites = s.sites.find((x) => x.id === s.selectedSiteId) ?? s.sites[0];
+    if (fromSites) return fromSites;
+    const primary = s.profileSites.find((x) => x.isPrimary) ?? s.profileSites[0];
+    return primary
+      ? { id: primary.id, name: primary.name, address: primary.address }
+      : undefined;
   });
 
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
@@ -163,6 +167,11 @@ export default function CheckoutScreen() {
   const handlePay = async () => {
     if (!requireAuth('Please log in to place an order.')) return;
     if (!paymentMethod || items.length === 0) return;
+    if (!selectedSite) {
+      Alert.alert('Delivery site required', 'Please select a delivery site before placing your order.');
+      return;
+    }
+
     setPaying(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await new Promise((r) => setTimeout(r, 2000));

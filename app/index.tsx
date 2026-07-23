@@ -6,18 +6,35 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Logo, theme } from '@constants/theme';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { useAuthStore } from '@store/useAuthStore';
+
+const MIN_SPLASH_MS = 1200;
 
 export default function SplashScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
+  const hydrateSession = useAuthStore((s) => s.hydrateSession);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/login');
-    }, 2000);
+    const start = Date.now();
 
-    return () => clearTimeout(timer);
-  }, []);
+    (async () => {
+      await hydrateSession();
+
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(MIN_SPLASH_MS - elapsed, 0);
+
+      setTimeout(() => {
+        const { isLoggedIn, isGuest } = useAuthStore.getState();
+
+        if (isLoggedIn || isGuest) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/login');
+        }
+      }, remaining);
+    })();
+  }, [hydrateSession]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.primary }} edges={['top', 'bottom']}>

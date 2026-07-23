@@ -20,6 +20,7 @@ import type { ProfileSite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
+import { updateProfile } from '@services/customer.api';
 import { safeGoBack } from '@utils/navigation';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { showToast } from '@utils/toast';
@@ -85,18 +86,29 @@ export default function EditProfileScreen() {
     if (!validate()) return;
     setSaveState('saving');
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    updateUserData({
-      name: name.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      businessType,
-      procurement,
-      city: city.trim(),
-    });
-    setSaveState('done');
-    await new Promise((r) => setTimeout(r, 600));
-    showToast(t('profileSaved'));
-    safeGoBack('/(tabs)/account');
+    try {
+      const profile = await updateProfile({
+        fullName: name.trim(),
+        email: email.trim() || undefined,
+        businessType: businessType || undefined,
+      });
+      useUserStore.getState().setFromProfile(profile);
+      updateUserData({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        businessType,
+        procurement,
+        city: city.trim(),
+      });
+      setSaveState('done');
+      await new Promise((r) => setTimeout(r, 600));
+      showToast(t('profileSaved'));
+      safeGoBack('/(tabs)/account');
+    } catch {
+      setSaveState('idle');
+      Alert.alert('Save failed', 'Could not update your profile. Please try again.');
+    }
   };
 
   const handleAvatar = async () => {

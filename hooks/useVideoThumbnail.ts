@@ -10,18 +10,23 @@ interface UseVideoThumbnailResult {
 }
 
 export function useVideoThumbnail(
-  videoModule: number,
+  videoModule: number | null | undefined,
   enabled: boolean,
 ): UseVideoThumbnailResult {
-  const [thumbnailUri, setThumbnailUri] = useState<string | null>(
-    () => peekVideoThumbnail(videoModule) ?? null,
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(() =>
+    typeof videoModule === 'number' ? peekVideoThumbnail(videoModule) ?? null : null,
   );
-  const [isLoading, setIsLoading] = useState(enabled && !thumbnailUri);
+  const [isLoading, setIsLoading] = useState(
+    enabled && typeof videoModule === 'number' && !thumbnailUri,
+  );
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || typeof videoModule !== 'number') {
+      setIsLoading(false);
+      return;
+    }
 
     const cached = peekVideoThumbnail(videoModule);
     if (cached) {
@@ -52,10 +57,7 @@ export function useVideoThumbnail(
     };
   }, [videoModule, enabled, attempt]);
 
-  return {
-    thumbnailUri,
-    isLoading,
-    error,
-    retry: () => setAttempt((n) => n + 1),
-  };
+  const retry = () => setAttempt((n) => n + 1);
+
+  return { thumbnailUri, isLoading, error, retry };
 }

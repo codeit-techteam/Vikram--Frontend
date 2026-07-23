@@ -24,6 +24,7 @@ import { useReorder } from '@hooks/useReorder';
 import { adaptLegacyOrder } from '@utils/orderAdapters';
 import { useOrderStore } from '@store/orderStore';
 import { useGstStore } from '@store/gstStore';
+import { useUserStore } from '@store/userStore';
 import { safeGoBack } from '@utils/navigation';
 import { formatDateKey } from '@utils/orderDateHelpers';
 import { theme, borderRadius } from '@constants/theme';
@@ -33,6 +34,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   const legacyOrder = useOrderStore((s) => s.getOrder(orderId ?? ''));
   const gstDetails = useGstStore((s) => s.details);
   const hasGst = useGstStore((s) => s.verified);
+  const customerName = useUserStore((s) => s.user.name);
   const { order: apiOrder, isLoading, cancelOrder, isCancelling } = useOrder(orderId);
   const { reorder, isReordering } = useReorder();
   const [downloading, setDownloading] = useState(false);
@@ -132,6 +134,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
           </View>
           <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
             Placed on {formatDateKey(order.createdAt)}
+            {customerName ? ` · Placed by ${customerName}` : ''}
           </Text>
           {order.expectedDelivery && order.status !== 'delivered' ? (
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.primary, marginTop: 8 }}>

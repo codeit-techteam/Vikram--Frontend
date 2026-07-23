@@ -37,6 +37,7 @@ interface GstState {
   triggerSuccessBanner: () => void;
   dismissSuccessBanner: () => void;
   setCheckoutInvoiceEnabled: (enabled: boolean) => void;
+  setFromProfile: (details: GstDetails | null) => void;
   reset: () => void;
 }
 
@@ -176,6 +177,10 @@ export const useGstStore = create<GstState>((set, get) => ({
       return;
     }
     set({ checkoutInvoiceEnabled: enabled });
+  },
+
+  setFromProfile: (details) => {
+    set({ ...mapDetails(details), isLoading: false, loading: false, validationError: null });
   },
 
   reset: () => set(initialState),

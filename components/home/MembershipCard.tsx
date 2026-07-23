@@ -2,58 +2,62 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-import { useTranslation } from '@store/languageStore';
-
-const BENEFIT_KEYS = [
-  'membershipExtraDiscount',
-  'membershipFreeDelivery',
-  'membershipBulkDiscounts',
-  'membershipInternationalTrips',
-  'membershipLuckyDraw',
-  'membershipLoyaltyPoints',
-] as const;
+import type { CmsPromotion } from '@/types/cms';
 
 interface MembershipCardProps {
   onJoin?: () => void;
+  promotion?: CmsPromotion | null;
 }
 
-export function MembershipCard({ onJoin }: MembershipCardProps) {
-  const { t } = useTranslation();
-
+export function MembershipCard({ onJoin, promotion }: MembershipCardProps) {
   const handleJoin = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onJoin?.();
   };
+
+  const badge = promotion?.badge ?? 'MEMBERSHIP';
+  const priceLabel = promotion?.description ?? '₹299';
+  const title = promotion?.title ?? 'Bajriwala Membership';
+  const subtitle =
+    promotion?.subtitle ?? 'Unlock premium savings and perks for your sites.';
+  const benefits = promotion?.benefits?.length
+    ? promotion.benefits
+    : [
+        'Extra Discount',
+        'Free Delivery',
+        'Bulk Discounts',
+        'International Trips',
+        'Lucky Draw',
+        'Loyalty Points',
+      ];
+  const buttonText = promotion?.buttonText ?? 'Join Now';
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View style={styles.badge}>
           <Ionicons name="diamond-outline" size={14} color="#1A1A1A" />
-          <Text style={styles.badgeText}>{t('membershipBadge')}</Text>
+          <Text style={styles.badgeText}>{badge}</Text>
         </View>
-        <Text style={styles.price}>
-          ₹299
-          <Text style={styles.priceUnit}>/{t('membershipPerYear')}</Text>
-        </Text>
+        <Text style={styles.price}>{priceLabel}</Text>
       </View>
 
-      <Text style={styles.title}>{t('membershipTitle')}</Text>
-      <Text style={styles.subtitle}>{t('membershipSubtitle')}</Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
 
       <View style={styles.benefits}>
-        {BENEFIT_KEYS.map((key) => (
-          <View key={key} style={styles.benefitRow}>
+        {benefits.map((label) => (
+          <View key={label} style={styles.benefitRow}>
             <View style={styles.check}>
               <Ionicons name="checkmark" size={12} color="#1A1A1A" />
             </View>
-            <Text style={styles.benefitText}>{t(key)}</Text>
+            <Text style={styles.benefitText}>{label}</Text>
           </View>
         ))}
       </View>
 
       <Pressable onPress={handleJoin} style={styles.cta} accessibilityRole="button">
-        <Text style={styles.ctaText}>{t('joinNow')}</Text>
+        <Text style={styles.ctaText}>{buttonText}</Text>
       </Pressable>
     </View>
   );
@@ -83,8 +87,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF4D1',
-    borderRadius: 20,
+    backgroundColor: '#FEB623',
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -92,32 +96,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#1A1A1A',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   price: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1A1A1A',
-  },
-  priceUnit: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999',
-  },
-  title: {
     fontSize: 18,
     fontWeight: '800',
     color: '#1A1A1A',
   },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 6,
+  },
   subtitle: {
-    marginTop: 4,
     fontSize: 13,
-    color: '#666',
+    color: '#666666',
     lineHeight: 18,
+    marginBottom: 14,
   },
   benefits: {
-    marginTop: 14,
-    gap: 8,
+    gap: 10,
+    marginBottom: 16,
   },
   benefitRow: {
     flexDirection: 'row',
@@ -133,21 +133,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   benefitText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#333333',
+    flex: 1,
   },
   cta: {
-    marginTop: 16,
     backgroundColor: '#FEB623',
     borderRadius: 28,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#C8900A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
   ctaText: {
     fontSize: 15,

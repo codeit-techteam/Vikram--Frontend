@@ -32,6 +32,8 @@ import type { ProfileSite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
+import { useAuthStore } from '@store/useAuthStore';
+import { updateProfile } from '@services/customer.api';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
@@ -53,6 +55,9 @@ export default function AccountScreen() {
   const setAvatar = useUserStore((st) => st.setAvatar);
   const profileSites = useDeliveryStore((st) => st.profileSites);
   const updateProfileSite = useDeliveryStore((st) => st.updateProfileSite);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const showGuestState = !isLoggedIn || isGuest;
 
   const tierLabels = {
     platinum: `⭐ ${t('platinumMember')}`,
@@ -114,11 +119,14 @@ export default function AccountScreen() {
         text: t('logout'),
         style: 'destructive',
         onPress: () => {
-          resetAppStores();
-          router.replace('/login');
+          void resetAppStores().then(() => router.replace('/(tabs)'));
         },
       },
     ]);
+  };
+
+  const handleLoginOrRegister = () => {
+    router.push('/login');
   };
 
   const handleLanguage = useCallback(
@@ -126,8 +134,11 @@ export default function AccountScreen() {
       if (lang === language) return;
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setLanguage(lang);
+      if (isLoggedIn) {
+        void updateProfile({ language: lang }).catch(() => undefined);
+      }
     },
-    [language, setLanguage],
+    [language, setLanguage, isLoggedIn],
   );
 
   return (
@@ -144,100 +155,130 @@ export default function AccountScreen() {
           <Text className="mb-2 text-[10px] font-bold tracking-widest text-text-secondary">
             {t('personalInformation').toUpperCase()}
           </Text>
-          <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
-            <View className="flex-row items-start gap-4">
-              <ScaledPressable onPress={handleAvatarPress}>
-                <Animated.View style={avatarStyle}>
-                  <View>
-                    {user.avatar ? (
-                      <Image
-                        source={{ uri: user.avatar }}
-                        style={{ width: 64, height: 64, borderRadius: 32 }}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <InitialsAvatar name={user.name} size={64} />
-                    )}
-                    <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full bg-primary">
-                      <Ionicons name="camera" size={12} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </Animated.View>
-              </ScaledPressable>
 
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-text">{user.name}</Text>
-                <Text className="mt-0.5 text-sm text-text-secondary">
-                  {user.company} • ●
-                </Text>
-                <View className="mt-2 self-start rounded-full bg-primary px-2.5 py-1">
-                  <Text className="text-[10px] font-bold text-onPrimary">
-                    {tierLabels[user.memberTier]}
-                  </Text>
-                </View>
+          {showGuestState ? (
+            <View className="mb-4 items-center rounded-card border border-border bg-surface p-6">
+              <View className="mb-3 h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+                <Ionicons name="person" size={32} color="#FEB623" />
+              </View>
+              <Text className="text-xl font-bold text-text">Guest User</Text>
+              <Text className="mt-1 text-center text-sm text-text-secondary">
+                Please Login to continue
+              </Text>
+              <View className="mt-4 w-full">
+                <ScaledPressable
+                  onPress={handleLoginOrRegister}
+                  className="h-[52px] w-full items-center justify-center rounded-pill bg-primary">
+                  <Text className="text-base font-bold text-text">Login / Register</Text>
+                </ScaledPressable>
               </View>
             </View>
-
-            <ScaledPressable
-              onPress={() => router.push('/account/edit-profile')}
-              className="mt-4 h-11 items-center justify-center rounded-pill bg-primary">
-              <Text className="text-sm font-bold text-onPrimary">{t('editProfile')}</Text>
-            </ScaledPressable>
-          </View>
-
-          {/* Business Details */}
-          <ScaledPressable
-            onPress={() => router.push('/account/business-details' as Href)}
-            className="mb-4 flex-row items-center rounded-card border border-border bg-surface px-4 py-4 shadow-sm">
-            <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-info/10">
-              <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
-              <Text className="text-xs text-text-secondary">{t('manageGstDetails')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#CCCCCC" />
-          </ScaledPressable>
-
-          {/* Saved Delivery Sites */}
-          <CollapsibleSection
-            icon="location-outline"
-            title={t('savedDeliverySites')}
-            expanded={sitesOpen}
-            onToggle={() => toggleSection(setSitesOpen)}
-            rightElement={
-              <ScaledPressable
-                onPress={() => router.push('/account/add-sites')}
-                hitSlop={8}>
-                <View className="h-7 w-7 items-center justify-center rounded-full border border-primary">
-                  <Ionicons name="add" size={16} color="#FEB623" />
-                </View>
-              </ScaledPressable>
-            }>
-            {profileSites.map((site) => (
-              <ScaledPressable
-                key={site.id}
-                onPress={() => openSiteSheet(site)}
-                className="mt-3 rounded-lg border border-border bg-background p-3">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons
-                      name={site.icon === 'person' ? 'person-outline' : 'business-outline'}
-                      size={18}
-                      color="#FEB623"
-                    />
-                    <Text className="text-sm font-bold text-text">{site.name}</Text>
-                  </View>
-                  {site.isPrimary && (
-                    <View className="rounded bg-primary/10 px-2 py-0.5">
-                      <Text className="text-[10px] font-bold text-primary">PRIMARY</Text>
+          ) : (
+            <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
+              <View className="flex-row items-start gap-4">
+                <ScaledPressable onPress={handleAvatarPress}>
+                  <Animated.View style={avatarStyle}>
+                    <View>
+                      {user.avatar ? (
+                        <Image
+                          source={{ uri: user.avatar }}
+                          style={{ width: 64, height: 64, borderRadius: 32 }}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <InitialsAvatar name={user.name || '?'} size={64} />
+                      )}
+                      <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full bg-primary">
+                        <Ionicons name="camera" size={12} color="#FFFFFF" />
+                      </View>
                     </View>
-                  )}
+                  </Animated.View>
+                </ScaledPressable>
+
+                <View className="flex-1">
+                  <Text className="text-xl font-bold text-text">{user.name || 'Customer'}</Text>
+                  {user.company ? (
+                    <Text className="mt-0.5 text-sm text-text-secondary">{user.company}</Text>
+                  ) : null}
+                  <View className="mt-2 self-start rounded-full bg-primary px-2.5 py-1">
+                    <Text className="text-[10px] font-bold text-onPrimary">
+                      {tierLabels[user.memberTier]}
+                    </Text>
+                  </View>
                 </View>
-                <Text className="mt-1 pl-7 text-xs text-text-secondary">{site.address}</Text>
+              </View>
+
+              <ScaledPressable
+                onPress={() => router.push('/account/edit-profile')}
+                className="mt-4 h-11 items-center justify-center rounded-pill bg-primary">
+                <Text className="text-sm font-bold text-onPrimary">{t('editProfile')}</Text>
               </ScaledPressable>
-            ))}
-          </CollapsibleSection>
+            </View>
+          )}
+
+          {!showGuestState && (
+            <>
+              {/* Business Details */}
+              <ScaledPressable
+                onPress={() => router.push('/account/business-details' as Href)}
+                className="mb-4 flex-row items-center rounded-card border border-border bg-surface px-4 py-4 shadow-sm">
+                <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+                  <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
+                  <Text className="text-xs text-text-secondary">{t('manageGstDetails')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#CCCCCC" />
+              </ScaledPressable>
+
+              {/* Saved Delivery Sites */}
+              <CollapsibleSection
+                icon="location-outline"
+                title={t('savedDeliverySites')}
+                expanded={sitesOpen}
+                onToggle={() => toggleSection(setSitesOpen)}
+                rightElement={
+                  <ScaledPressable
+                    onPress={() => router.push('/account/add-sites')}
+                    hitSlop={8}>
+                    <View className="h-7 w-7 items-center justify-center rounded-full border border-primary">
+                      <Ionicons name="add" size={16} color="#FEB623" />
+                    </View>
+                  </ScaledPressable>
+                }>
+                {profileSites.length === 0 ? (
+                  <Text className="mt-3 text-xs text-text-secondary">
+                    No delivery sites saved yet. Tap + to add one.
+                  </Text>
+                ) : (
+                  profileSites.map((site) => (
+                    <ScaledPressable
+                      key={site.id}
+                      onPress={() => openSiteSheet(site)}
+                      className="mt-3 rounded-lg border border-border bg-background p-3">
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-2">
+                          <Ionicons
+                            name={site.icon === 'person' ? 'person-outline' : 'business-outline'}
+                            size={18}
+                            color="#FEB623"
+                          />
+                          <Text className="text-sm font-bold text-text">{site.name}</Text>
+                        </View>
+                        {site.isPrimary && (
+                          <View className="rounded bg-primary/10 px-2 py-0.5">
+                            <Text className="text-[10px] font-bold text-primary">PRIMARY</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="mt-1 pl-7 text-xs text-text-secondary">{site.address}</Text>
+                    </ScaledPressable>
+                  ))
+                )}
+              </CollapsibleSection>
+            </>
+          )}
 
           {/* Language */}
           <View className="mb-4 rounded-card border border-border bg-surface p-4">
@@ -266,74 +307,100 @@ export default function AccountScreen() {
           </View>
 
           {/* Quick Links */}
-          <View className="mb-4 overflow-hidden rounded-card border border-border bg-surface">
-            {QUICK_LINKS.map((link, i) => (
-              <ScaledPressable
-                key={link.key}
-                onPress={() => {
-                  if (
-                    (link.key === 'invoices' || link.key === 'loyalty') &&
-                    !requireAuth('Please log in to access this section.')
-                  ) {
-                    return;
-                  }
-                  router.push(link.route as Href);
-                }}
-                className={`flex-row items-center px-4 py-4 ${i < QUICK_LINKS.length - 1 ? 'border-b border-border' : ''}`}>
-                <Ionicons name={link.icon} size={20} color="#666666" />
-                <Text className="ml-3 flex-1 text-sm text-text">
-                  {link.key === 'history'
-                    ? t('orderHistoryMenu')
-                    : link.key === 'invoices'
-                      ? t('invoices')
-                      : link.key === 'loyalty'
-                        ? t('loyaltyWallet')
-                        : t('privacySecurity')}
+          <View className={`overflow-hidden rounded-card border border-border bg-surface ${showGuestState ? '' : 'mb-4'}`}>
+            {(showGuestState ? QUICK_LINKS.filter((l) => l.key === 'privacy') : QUICK_LINKS).map(
+              (link, i, arr) => (
+                <ScaledPressable
+                  key={link.key}
+                  onPress={() => {
+                    if (
+                      (link.key === 'invoices' || link.key === 'loyalty' || link.key === 'history') &&
+                      !requireAuth('Please log in to access this section.')
+                    ) {
+                      return;
+                    }
+                    router.push(link.route as Href);
+                  }}
+                  className={`flex-row items-center px-4 py-4 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}>
+                  <Ionicons name={link.icon} size={20} color="#666666" />
+                  <Text className="ml-3 flex-1 text-sm text-text">
+                    {link.key === 'history'
+                      ? t('orderHistoryMenu')
+                      : link.key === 'invoices'
+                        ? t('invoices')
+                        : link.key === 'loyalty'
+                          ? t('loyaltyWallet')
+                          : t('privacySecurity')}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+                </ScaledPressable>
+              ),
+            )}
+            {!showGuestState && (
+              <ScaledPressable onPress={handleLogout} className="flex-row items-center px-4 py-4">
+                <Ionicons name="log-out-outline" size={20} color="#FEB623" />
+                <Text className="ml-3 flex-1 text-sm font-semibold text-primary">
+                  {t('logout')}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
               </ScaledPressable>
-            ))}
-            <ScaledPressable onPress={handleLogout} className="flex-row items-center px-4 py-4">
-              <Ionicons name="log-out-outline" size={20} color="#FEB623" />
-              <Text className="ml-3 flex-1 text-sm font-semibold text-primary">{t('logout')}</Text>
-            </ScaledPressable>
+            )}
           </View>
 
+          {showGuestState && (
+            <View className="mt-4 items-center px-2">
+              <ScaledPressable
+                onPress={handleLoginOrRegister}
+                className="h-[52px] w-full items-center justify-center rounded-pill bg-primary">
+                <Text className="text-base font-bold text-text">Login / Register</Text>
+              </ScaledPressable>
+            </View>
+          )}
+
           {/* Payment Methods */}
-          <View className="rounded-card border border-border bg-surface p-4">
-            <View className="mb-3 flex-row items-center gap-2">
-              <View className="h-8 w-8 items-center justify-center rounded-lg bg-info/15">
-                <Ionicons name="card-outline" size={18} color="#2196F3" />
+          {!showGuestState && (
+            <View className="rounded-card border border-border bg-surface p-4">
+              <View className="mb-3 flex-row items-center gap-2">
+                <View className="h-8 w-8 items-center justify-center rounded-lg bg-info/15">
+                  <Ionicons name="card-outline" size={18} color="#2196F3" />
+                </View>
+                <Text className="text-base font-bold text-text">{t('paymentMethods')}</Text>
               </View>
-              <Text className="text-base font-bold text-text">{t('paymentMethods')}</Text>
+              {user.company || user.gstNumber ? (
+                <View className="flex-row items-center justify-between border-b border-border py-3">
+                  <Text className="text-sm text-text">
+                    {user.company
+                      ? `${user.company}${user.gstNumber ? ' (GST Reg)' : ''}`
+                      : `GST ${user.gstNumber}`}
+                  </Text>
+                  <View className="rounded bg-success/15 px-2 py-0.5">
+                    <Text className="text-[10px] font-bold text-success">PRIMARY</Text>
+                  </View>
+                </View>
+              ) : null}
+              <ScaledPressable
+                onPress={() => router.push('/account/payment-methods')}
+                className="flex-row items-center justify-between py-3">
+                <Text className="text-sm text-text">Manage payment methods</Text>
+                <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+              </ScaledPressable>
             </View>
-            <View className="flex-row items-center justify-between border-b border-border py-3">
-              <Text className="text-sm text-text">HDFC Bank (GST Reg)</Text>
-              <View className="rounded bg-success/15 px-2 py-0.5">
-                <Text className="text-[10px] font-bold text-success">PRIMARY</Text>
-              </View>
-            </View>
-            <ScaledPressable
-              onPress={() => router.push('/account/payment-methods')}
-              className="flex-row items-center justify-between py-3">
-              <Text className="text-sm text-text">Corporate UPI ID</Text>
-              <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
-            </ScaledPressable>
-          </View>
+          )}
         </ScrollView>
       </Animated.View>
 
-      <ProfileSiteSheet
-        ref={sheetRef}
-        editSite={editSite}
-        onClose={() => {
-          sheetRef.current?.close();
-          setEditSite(null);
-        }}
-        onSave={(data) => {
-          if (editSite) updateProfileSite(editSite.id, data);
-        }}
-      />
+      {!showGuestState ? (
+        <ProfileSiteSheet
+          ref={sheetRef}
+          editSite={editSite}
+          onClose={() => {
+            sheetRef.current?.close();
+            setEditSite(null);
+          }}
+          onSave={(data) => {
+            if (editSite) updateProfileSite(editSite.id, data);
+          }}
+        />
+      ) : null}
     </SafeAreaView>
     </DrawerShell>
   );

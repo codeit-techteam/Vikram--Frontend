@@ -1,54 +1,60 @@
-import { ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useTranslation } from '@store/languageStore';
+import { useUserStore } from '@store/userStore';
 import { safeGoBack } from '@utils/navigation';
-
-const METHODS = [
-  { id: 'hdfc', label: 'HDFC Bank (GST Reg)', primary: true, icon: 'business-outline' as const },
-  { id: 'upi', label: 'Corporate UPI ID', subtitle: 'premierbuild@hdfcbank', icon: 'phone-portrait-outline' as const },
-  { id: 'neft', label: 'NEFT / RTGS', subtitle: 'Account ending 4521', icon: 'swap-horizontal-outline' as const },
-];
 
 export default function PaymentMethodsScreen() {
   const { t } = useTranslation();
+  const user = useUserStore((s) => s.user);
+
+  const primaryLabel = user.company
+    ? `${user.company}${user.gstNumber ? ' (GST Reg)' : ''}`
+    : user.gstNumber
+      ? `GST ${user.gstNumber}`
+      : null;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <BackHeader title={t('paymentMethods')} onBack={() => safeGoBack('/(tabs)/account')} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {METHODS.map((method) => (
-          <View
-            key={method.id}
-            className="mb-3 flex-row items-center rounded-card border border-border bg-surface p-4">
-            <View className="mr-3 h-10 w-10 items-center justify-center rounded-lg bg-info/10">
-              <Ionicons name={method.icon} size={20} color="#2196F3" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-bold text-text">{method.label}</Text>
-              {method.subtitle && (
-                <Text className="text-xs text-text-secondary">{method.subtitle}</Text>
-              )}
-            </View>
-            {method.primary ? (
-              <View className="rounded bg-success/15 px-2 py-0.5">
-                <Text className="text-[10px] font-bold text-success">{t('primary')}</Text>
+      <View className="p-4">
+        <View className="overflow-hidden rounded-card border border-border bg-surface">
+          {primaryLabel ? (
+            <View className="flex-row items-center border-b border-border px-4 py-4">
+              <Ionicons name="business-outline" size={22} color="#666666" />
+              <View className="ml-3 flex-1">
+                <Text className="text-sm font-semibold text-text">{primaryLabel}</Text>
+                {user.gstNumber ? (
+                  <Text className="mt-0.5 text-xs text-text-secondary">{user.gstNumber}</Text>
+                ) : null}
               </View>
-            ) : (
-              <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
-            )}
-          </View>
-        ))}
+              <View className="rounded bg-success/15 px-2 py-0.5">
+                <Text className="text-[10px] font-bold text-success">PRIMARY</Text>
+              </View>
+            </View>
+          ) : (
+            <View className="px-4 py-6">
+              <Text className="text-center text-sm text-text-secondary">
+                No business payment profile yet. Add GST details from Business Details.
+              </Text>
+            </View>
+          )}
 
-        <ScaledPressable className="mt-2 flex-row items-center justify-center gap-2 rounded-pill border border-dashed border-primary py-3">
-          <Ionicons name="add" size={18} color="#FEB623" />
-          <Text className="text-sm font-semibold text-primary">{t('addPaymentMethodLabel')}</Text>
-        </ScaledPressable>
-      </ScrollView>
+          <ScaledPressable
+            onPress={() => router.push('/account/business-details')}
+            className="flex-row items-center px-4 py-4">
+            <Ionicons name="receipt-outline" size={22} color="#666666" />
+            <Text className="ml-3 flex-1 text-sm text-text">Manage GST / Business Details</Text>
+            <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+          </ScaledPressable>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }

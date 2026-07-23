@@ -11,8 +11,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { InitialsAvatar } from '@components/InitialsAvatar';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { images } from '@constants/images';
+import { useAuthStore } from '@store/useAuthStore';
 import { useUserStore } from '@store/userStore';
 
 const TIER_LABELS = {
@@ -28,6 +30,10 @@ interface DrawerHeaderProps {
 
 export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
   const user = useUserStore((s) => s.user);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const showGuestState = !isLoggedIn || isGuest;
+  const displayName = showGuestState || !user.name ? 'Guest User' : user.name;
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-12);
 
@@ -65,26 +71,38 @@ export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
           </ScaledPressable>
 
           <View className="flex-row items-end gap-3">
-            <Image
-              source={{ uri: user.avatar ?? undefined }}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                borderWidth: 2,
-                borderColor: '#FFFFFF',
-              }}
-              contentFit="cover"
-            />
+            {user.avatar ? (
+              <Image
+                source={{ uri: user.avatar }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  borderWidth: 2,
+                  borderColor: '#FFFFFF',
+                }}
+                contentFit="cover"
+              />
+            ) : (
+              <InitialsAvatar
+                name={showGuestState ? '' : user.name}
+                size={48}
+                style={{ borderWidth: 2, borderColor: '#FFFFFF' }}
+              />
+            )}
             <View className="flex-1 pb-1">
-              <Text className="text-base font-bold text-text-inverse">{user.name}</Text>
-              <Text className="text-xs text-text-inverse/90">{user.company}</Text>
-              <View className="mt-2 self-start flex-row items-center gap-1 rounded-full bg-primary px-2.5 py-1">
-                <Ionicons name="star" size={10} color="#1A1A1A" />
-                <Text className="text-[9px] font-bold tracking-wide text-onPrimary">
-                  {TIER_LABELS[user.memberTier]}
-                </Text>
-              </View>
+              <Text className="text-base font-bold text-text-inverse">{displayName}</Text>
+              {!showGuestState && user.company ? (
+                <Text className="text-xs text-text-inverse/90">{user.company}</Text>
+              ) : null}
+              {!showGuestState && (
+                <View className="mt-2 self-start flex-row items-center gap-1 rounded-full bg-primary px-2.5 py-1">
+                  <Ionicons name="star" size={10} color="#1A1A1A" />
+                  <Text className="text-[9px] font-bold tracking-wide text-onPrimary">
+                    {TIER_LABELS[user.memberTier]}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </LinearGradient>

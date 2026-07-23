@@ -5,6 +5,7 @@ import { useCartFeedbackStore } from '@store/cartFeedbackStore';
 import { useCartStore } from '@store/cartStore';
 import type { Product } from '@/types/catalog';
 import { productToCartItem, type CartItemOptions } from '@utils/cartHelpers';
+import { requireAuthOr } from '@utils/requireAuth';
 
 export type AddToCartButtonState = 'idle' | 'loading' | 'success';
 
@@ -23,19 +24,28 @@ export function useAddToCart() {
     async (product: Product, quantity: number, options?: CartItemOptions) => {
       if (buttonState === 'loading') return null;
 
-      setButtonState('loading');
-      await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
+      const runAdd = async () => {
+        setButtonState('loading');
+        await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
 
-      const cartItem = productToCartItem(product, quantity, options);
-      const outcome = upsertItem(cartItem);
+        const cartItem = productToCartItem(product, quantity, options);
+        const outcome = upsertItem(cartItem);
 
-      setButtonState('success');
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showFeedback({ outcome });
+        setButtonState('success');
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showFeedback({ outcome });
 
-      // Leave success briefly; callers own "Added ✓" via cart qty sync.
-      setTimeout(() => setButtonState('idle'), 600);
-      return outcome;
+        setTimeout(() => setButtonState('idle'), 600);
+        return outcome;
+      };
+
+      if (!requireAuthOr(() => {
+        void runAdd();
+      })) {
+        return null;
+      }
+
+      return runAdd();
     },
     [upsertItem, buttonState, showFeedback],
   );

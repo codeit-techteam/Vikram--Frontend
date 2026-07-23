@@ -2,51 +2,62 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-import { useTranslation } from '@store/languageStore';
-
-const BENEFIT_KEYS = [
-  'bulkUnlockDiscount',
-  'bulkUnlockTrips',
-  'bulkUnlockLuckyDraw',
-  'bulkUnlockLoyalty',
-] as const;
+import type { CmsPromotion } from '@/types/cms';
 
 interface BulkProcurementCardProps {
   onKnowMore: () => void;
+  promotion?: CmsPromotion | null;
 }
 
-export function BulkProcurementCard({ onKnowMore }: BulkProcurementCardProps) {
-  const { t } = useTranslation();
-
+export function BulkProcurementCard({
+  onKnowMore,
+  promotion,
+}: BulkProcurementCardProps) {
   const handlePress = async () => {
     await Haptics.selectionAsync();
     onKnowMore();
   };
 
+  const eyebrow = promotion?.description ?? 'Bulk Procurement';
+  const badge = promotion?.badge ?? 'Unlock';
+  const title = promotion?.title ?? 'Bulk Procurement Benefits';
+  const subtitle =
+    promotion?.subtitle ??
+    'Unlock exclusive benefits for large construction orders.';
+  const benefits = promotion?.benefits?.length
+    ? promotion.benefits
+    : [
+        'Unlock Discount up to 15%',
+        'International Trips',
+        'Lucky Draw',
+        'Loyalty Points',
+      ];
+  const buttonText = promotion?.buttonText ?? 'Unlock Benefits';
+
   return (
     <View style={styles.card}>
       <View style={styles.topRow}>
-        <Text style={styles.eyebrow}>{t('bulkProcurementSection')}</Text>
+        <Text style={styles.eyebrow}>{eyebrow}</Text>
         <View style={styles.unlockBadge}>
           <Ionicons name="diamond-outline" size={12} color="#1A1A1A" />
-          <Text style={styles.unlockBadgeText}>{t('unlock')}</Text>
+          <Text style={styles.unlockBadgeText}>{badge}</Text>
         </View>
       </View>
 
-      <Text style={styles.title}>{t('bulkProcurementCardTitle')}</Text>
-      <Text style={styles.subtitle}>{t('bulkProcurementCardSubtitle')}</Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
 
       <View style={styles.list}>
-        {BENEFIT_KEYS.map((key) => (
-          <View key={key} style={styles.row}>
+        {benefits.map((label) => (
+          <View key={label} style={styles.row}>
             <Ionicons name="checkmark-circle" size={18} color="#FEB623" />
-            <Text style={styles.rowText}>{t(key)}</Text>
+            <Text style={styles.rowText}>{label}</Text>
           </View>
         ))}
       </View>
 
       <Pressable onPress={handlePress} style={styles.cta} accessibilityRole="button">
-        <Text style={styles.ctaText}>{t('unlockBenefits')}</Text>
+        <Text style={styles.ctaText}>{buttonText}</Text>
         <Ionicons name="arrow-forward" size={18} color="#1A1A1A" />
       </Pressable>
     </View>

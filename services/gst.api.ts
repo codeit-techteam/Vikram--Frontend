@@ -7,15 +7,15 @@ const GST_BASE = '/gst';
 const MOCK_GST_LOOKUP: Record<string, Omit<GstDetails, 'status'>> = {
   '19ABCDE1234F1Z5': {
     gstNumber: '19ABCDE1234F1Z5',
-    businessName: 'Premier Construction Private Limited',
-    registeredAddress: 'Level 5, Sky Tower, BKC G-Block, Mumbai 400051',
-    state: 'Maharashtra',
+    businessName: 'Registered Business Entity',
+    registeredAddress: 'Registered office address will appear after verification',
+    state: 'West Bengal',
     pan: 'ABCDE1234F',
   },
   '27AAACR1234F1Z5': {
     gstNumber: '27AAACR1234F1Z5',
-    businessName: 'Prime Construction Ltd.',
-    registeredAddress: 'Plot 42, Industrial Estate, Andheri East, Mumbai 400069',
+    businessName: 'Registered Business Entity',
+    registeredAddress: 'Registered office address will appear after verification',
     state: 'Maharashtra',
     pan: 'AAACR1234F',
   },

@@ -13,9 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MobileInput, isValidMobileNumber } from '@components/MobileInput';
 import { images } from '@constants/images';
+import { sendOtp } from '@services/auth.api';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { storage } from '@lib/storage';
+import type { ApiError } from '@/types';
 
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
@@ -28,6 +30,7 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPhoneError, setShowPhoneError] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isFirstTime, setIsFirstTime] = useState(true);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
   const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
@@ -46,13 +49,20 @@ export default function LoginScreen() {
       return;
     }
 
+    setApiError(null);
     setLoading(true);
-    await clearGuestMode();
-    setPhoneNumber(phone);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      await sendOtp(phone);
+      await clearGuestMode();
+      setPhoneNumber(phone);
       router.push('/otp');
-    }, 1200);
+    } catch (error) {
+      const apiErr = error as ApiError;
+      setApiError(apiErr?.message ?? 'Unable to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSkip = async () => {
@@ -163,9 +173,16 @@ export default function LoginScreen() {
                 if (showPhoneError && isValidMobileNumber(value)) {
                   setShowPhoneError(false);
                 }
+                if (apiError) setApiError(null);
               }}
               showError={showPhoneError}
             />
+            {apiError ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
+                <Ionicons name="alert-circle" size={13} color="#FF3B30" />
+                <Text style={{ fontSize: 12, color: '#FF3B30', flex: 1 }}>{apiError}</Text>
+              </View>
+            ) : null}
           </View>
 
           <TouchableOpacity

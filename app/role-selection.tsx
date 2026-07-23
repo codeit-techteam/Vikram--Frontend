@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,8 +9,10 @@ import { PrimaryButton } from '@components/PrimaryButton';
 import { RoleCard } from '@components/RoleCard';
 import { images } from '@constants/images';
 import type { StringKey } from '@constants/strings';
+import { getRoles, ROLE_SLUG_MAP, selectRole } from '@services/customer.api';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useAuthStore, type UserRole } from '@store/useAuthStore';
+import type { ApiError } from '@/types';
 
 const ROLE_CONFIG: {
   role: UserRole;
@@ -54,6 +56,31 @@ export default function RoleSelectionScreen() {
   const { t } = useTranslation();
   const selectedRole = useAuthStore((s) => s.selectedRole);
   const setSelectedRole = useAuthStore((s) => s.setSelectedRole);
+  const refreshProfile = useAuthStore((s) => s.refreshProfile);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [roleIdBySlug, setRoleIdBySlug] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const roles = await getRoles();
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const role of roles) {
+          map[role.slug] = role.id;
+        }
+        setRoleIdBySlug(map);
+      } catch {
+        // Submit will surface a clear error if roles failed to load.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const roles = useMemo(
     () =>
@@ -65,9 +92,28 @@ export default function RoleSelectionScreen() {
     [language, t],
   );
 
-  const handleContinue = () => {
-    if (!selectedRole) return;
-    router.push('/complete-profile');
+  const handleContinue = async () => {
+    if (!selectedRole || submitting) return;
+
+    const slug = ROLE_SLUG_MAP[selectedRole] ?? selectedRole;
+    const roleId = roleIdBySlug[slug];
+    if (!roleId) {
+      setErrorMessage('Unable to load roles. Please try again.');
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await selectRole(roleId);
+      await refreshProfile();
+      router.push('/complete-profile');
+    } catch (error) {
+      const apiErr = error as ApiError;
+      setErrorMessage(apiErr?.message ?? 'Failed to save role. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -114,12 +160,24 @@ export default function RoleSelectionScreen() {
         </View>
       </ScrollView>
 
+      {errorMessage ? (
+        <Text className="px-5 pb-2 text-center text-sm text-red-600">{errorMessage}</Text>
+      ) : null}
+
       <View className="px-5 pb-2 pt-4">
-        <PrimaryButton
-          title={t('continueBtn')}
-          onPress={handleContinue}
-          disabled={!selectedRole}
-        />
+        {submitting ? (
+          <View className="h-12 items-center justify-center rounded-pill bg-primary">
+            <ActivityIndicator color="#1A1A1A" />
+          </View>
+        ) : (
+          <PrimaryButton
+            title={t('continueBtn')}
+            onPress={() => {
+              void handleContinue();
+            }}
+            disabled={!selectedRole}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

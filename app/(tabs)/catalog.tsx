@@ -87,6 +87,11 @@ export default function CatalogScreen() {
               message={t('unableToLoadCategories')}
               onRetry={() => void refresh()}
             />
+          ) : categories.length === 0 ? (
+            <CatalogErrorState
+              message={t('unableToLoadCategories')}
+              onRetry={() => void refresh()}
+            />
           ) : (
             <View className="mt-4 px-5">
               {rows.map((row, rowIndex) => (

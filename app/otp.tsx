@@ -13,8 +13,10 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { YellowBackHeader } from '@components/BackHeader';
+import { sendOtp } from '@services/auth.api';
 import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
+import type { ApiError } from '@/types';
 
 const RETURNING_USER_KEY = '@bajriwala/returning_user';
 
@@ -27,9 +29,12 @@ const BUTTON_INACTIVE = '#E8DFB8';
 
 export default function OTPScreen() {
   const phoneNumber = useAuthStore((s) => s.phoneNumber);
+  const loginWithOtp = useAuthStore((s) => s.loginWithOtp);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRefs = Array(6)
     .fill(null)
     .map(() => useRef<TextInput>(null));
@@ -47,23 +52,52 @@ export default function OTPScreen() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  const resendOtp = () => {
+  const resendOtp = async () => {
     setOtp(['', '', '', '', '', '']);
     setTimer(60);
+    setErrorMessage(null);
     inputRefs[0].current?.focus();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    setResending(true);
+    try {
+      await sendOtp(phoneNumber);
+    } catch (error) {
+      const apiErr = error as ApiError;
+      setErrorMessage(apiErr?.message ?? 'Unable to resend OTP. Please try again.');
+    } finally {
+      setResending(false);
+    }
   };
 
-  const handleVerify = () => {
-    if (otp.join('').length < 6) return;
+  const handleVerify = async () => {
+    if (otp.join('').length < 6 || loading) return;
+
+    setErrorMessage(null);
     setLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setTimeout(async () => {
-      setLoading(false);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const customer = await loginWithOtp(phoneNumber, otp.join(''));
       await storage.setItem(RETURNING_USER_KEY, 'true');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.push('/role-selection');
-    }, 1500);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (customer.isNewCustomer || !customer.roleSelected) {
+        router.replace('/role-selection');
+      } else if (!customer.profileCompleted) {
+        router.replace('/complete-profile');
+      } else {
+        router.replace('/(tabs)');
+        // Re-run whatever protected action prompted this login (e.g. add-to-cart, checkout).
+        useAuthStore.getState().consumePendingAction();
+      }
+    } catch (error) {
+      const apiErr = error as ApiError;
+      setErrorMessage(apiErr?.message ?? 'Invalid OTP. Please try again.');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isComplete = otp.join('').length === 6;
@@ -209,11 +243,31 @@ export default function OTPScreen() {
                 </Text>
               </Text>
             ) : (
-              <TouchableOpacity onPress={resendOtp}>
-                <Text style={{ color: GOLD, fontWeight: '700', fontSize: 13 }}>Resend OTP</Text>
+              <TouchableOpacity onPress={resendOtp} disabled={resending}>
+                <Text style={{ color: GOLD, fontWeight: '700', fontSize: 13 }}>
+                  {resending ? 'Resending…' : 'Resend OTP'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
+
+          {errorMessage ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: 'rgba(255,59,48,0.1)',
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 12,
+                marginBottom: 16,
+                width: '100%',
+              }}>
+              <Ionicons name="alert-circle" size={15} color="#FF3B30" />
+              <Text style={{ fontSize: 13, color: '#FF3B30', flex: 1 }}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
           {/* Verify button */}
           <TouchableOpacity
