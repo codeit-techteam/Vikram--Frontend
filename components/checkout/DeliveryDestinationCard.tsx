@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
@@ -14,36 +16,57 @@ interface DeliveryDestinationCardProps {
 export function DeliveryDestinationCard({ site }: DeliveryDestinationCardProps) {
   const { t } = useTranslation();
   const customerName = useUserStore((s) => s.user.name);
+  const sheetRef = useRef<BottomSheetModal>(null);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.labelRow}>
-          <Ionicons name="location" size={18} color="#FEB623" />
-          <Text style={styles.label}>{t('deliveryDestination')}</Text>
+    <>
+      <View style={styles.card}>
+        <View style={styles.headerRow}>
+          <View style={styles.labelRow}>
+            <Ionicons name="location" size={18} color="#FEB623" />
+            <Text style={styles.label}>{t('deliveryDestination')}</Text>
+          </View>
+          <ScaledPressable
+            onPress={() => sheetRef.current?.present()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('change')}>
+            <Text style={styles.changeText}>{t('change')}</Text>
+          </ScaledPressable>
         </View>
-        <ScaledPressable
-          onPress={() => router.push('/delivery-location')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel={t('change')}>
-          <Text style={styles.changeText}>{t('change')}</Text>
-        </ScaledPressable>
+
+        {customerName ? (
+          <Text style={styles.deliveredBy}>Delivery by {customerName}</Text>
+        ) : null}
+
+        {site?.name ? (
+          <>
+            <Text style={styles.siteName}>{site.name}</Text>
+            {site.address ? <Text style={styles.siteAddress}>{site.address}</Text> : null}
+          </>
+        ) : (
+          <View style={{ gap: 8 }}>
+            <Text style={styles.siteAddress}>Add Delivery Address Required</Text>
+            <ScaledPressable
+              onPress={() => sheetRef.current?.present()}
+              style={{
+                alignSelf: 'flex-start',
+                backgroundColor: '#FEB623',
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 10,
+              }}>
+              <Text style={{ fontWeight: '800', fontSize: 13 }}>Add Address</Text>
+            </ScaledPressable>
+          </View>
+        )}
       </View>
 
-      {customerName ? (
-        <Text style={styles.deliveredBy}>Delivery by {customerName}</Text>
-      ) : null}
-
-      {site?.name ? (
-        <>
-          <Text style={styles.siteName}>{site.name}</Text>
-          {site.address ? <Text style={styles.siteAddress}>{site.address}</Text> : null}
-        </>
-      ) : (
-        <Text style={styles.siteAddress}>Select a delivery site to continue</Text>
-      )}
-    </View>
+      <SitesPickerSheet
+        ref={sheetRef}
+        onClose={() => sheetRef.current?.dismiss()}
+      />
+    </>
   );
 }
 

@@ -15,8 +15,9 @@ export function useOrder(orderId: string | undefined) {
     queryKey: ['order', orderId],
     queryFn: () => fetchOrderById(orderId!),
     enabled: Boolean(orderId),
-    staleTime: ORDERS_STALE_TIME,
+    staleTime: 15_000,
     gcTime: ORDERS_STALE_TIME,
+    refetchInterval: 15_000,
   });
 
   const cancelMutation = useMutation({

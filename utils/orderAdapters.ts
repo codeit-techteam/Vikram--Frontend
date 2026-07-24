@@ -1,6 +1,7 @@
 import { ACTIVE_ORDER_STATUSES, matchesFilter } from '@constants/orderStatus';
 import type {
   Order,
+  OrderDriver,
   OrderProduct,
   OrderStatus,
   OrdersPage,
@@ -9,7 +10,6 @@ import type {
   TimelineStep,
 } from '@/types/order';
 import type { Order as LegacyOrder, OrderStatus as LegacyOrderStatus } from '@store/orderStore';
-import { SAMPLE_ORDERS } from '@store/orderStore';
 
 const LEGACY_STATUS_MAP: Record<LegacyOrderStatus, OrderStatus> = {
   processing: 'processing',
@@ -20,8 +20,37 @@ const LEGACY_STATUS_MAP: Record<LegacyOrderStatus, OrderStatus> = {
   cancelled: 'cancelled',
 };
 
+const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
+  PENDING: 'pending',
+  CONFIRMED: 'confirmed',
+  HUB_ASSIGNED: 'confirmed',
+  AWAITING_HUB_ALLOCATION: 'pending',
+  PROCESSING: 'processing',
+  PACKED: 'packed',
+  READY_FOR_DISPATCH: 'ready_for_dispatch',
+  DISPATCHED: 'out_for_delivery',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  processing: 'processing',
+  packed: 'packed',
+  ready_for_dispatch: 'ready_for_dispatch',
+  out_for_delivery: 'out_for_delivery',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
+  payment_failed: 'payment_failed',
+  refunded: 'refunded',
+};
+
 function mapLegacyStatus(status: LegacyOrderStatus): OrderStatus {
   return LEGACY_STATUS_MAP[status] ?? 'processing';
+}
+
+function mapBackendStatus(status: unknown): OrderStatus {
+  if (!status) return 'pending';
+  const key = String(status);
+  return BACKEND_STATUS_MAP[key] ?? BACKEND_STATUS_MAP[key.toUpperCase()] ?? 'pending';
 }
 
 function buildDefaultTimeline(status: OrderStatus): TimelineStep[] {
@@ -218,7 +247,7 @@ export function adaptLegacyOrder(order: LegacyOrder): Order {
 }
 
 export function getMockOrders(): Order[] {
-  return SAMPLE_ORDERS.map(adaptLegacyOrder);
+  return [];
 }
 
 export function filterMockOrders(
@@ -270,63 +299,137 @@ export function paginateMockOrders(
   };
 }
 
-export function normalizeApiOrder(raw: Record<string, unknown>): Order {
-  const products = Array.isArray(raw.products)
-    ? (raw.products as Record<string, unknown>[]).map((p) => ({
-        id: String(p.id ?? ''),
-        productId: String(p.productId ?? p.id ?? ''),
-        name: String(p.name ?? ''),
-        brand: p.brand ? String(p.brand) : undefined,
-        variant: p.variant ? String(p.variant) : undefined,
-        quantity: Number(p.quantity ?? 1),
-        unit: String(p.unit ?? ''),
-        unitPrice: Number(p.unitPrice ?? 0),
-        totalPrice: Number(p.totalPrice ?? p.unitPrice ?? 0),
-        image: p.image ? String(p.image) : undefined,
-        imageSearch: p.imageSearch ? String(p.imageSearch) : undefined,
-        delivered: Boolean(p.delivered),
-      }))
-    : [];
+function mapApiProducts(raw: Record<string, unknown>): OrderProduct[] {
+  const source = Array.isArray(raw.items)
+    ? (raw.items as Record<string, unknown>[])
+    : Array.isArray(raw.products)
+      ? (raw.products as Record<string, unknown>[])
+      : [];
 
-  const address = (raw.shippingAddress ?? {}) as Record<string, unknown>;
+  return source.map((p) => ({
+    id: String(p.id ?? ''),
+    productId: String(p.productId ?? p.id ?? ''),
+    name: String(p.name ?? ''),
+    brand: p.brand ? String(p.brand) : undefined,
+    variant: p.variant ? String(p.variant) : undefined,
+    quantity: Number(p.quantity ?? 1),
+    unit: String(p.unit ?? ''),
+    unitPrice: Number(p.unitPrice ?? 0),
+    totalPrice: Number(p.totalPrice ?? p.subtotal ?? p.unitPrice ?? 0),
+    image: p.image ? String(p.image) : undefined,
+    imageSearch: p.imageSearch ? String(p.imageSearch) : undefined,
+    delivered: Boolean(p.delivered),
+  }));
+}
+
+function mapApiDriver(raw: Record<string, unknown>): OrderDriver | undefined {
+  const tracking = raw.tracking as Record<string, unknown> | undefined;
+  const driver = (raw.driver ?? tracking?.driver) as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  if (!driver) return undefined;
+
+  const vehicle = raw.vehicle as Record<string, unknown> | undefined;
+  return {
+    name: String(driver.name ?? ''),
+    phone: String(driver.phone ?? ''),
+    vehicleNumber: String(driver.vehicleNumber ?? vehicle?.registration ?? ''),
+    image: driver.image ? String(driver.image) : undefined,
+  };
+}
+
+export function normalizeApiOrder(raw: Record<string, unknown>): Order {
+  const status = mapBackendStatus(raw.status ?? raw.orderStatus);
+  const payment = (raw.payment ?? {}) as Record<string, unknown>;
+  const addressRaw = (raw.address ??
+    raw.shippingAddress ??
+    raw.deliveryAddress ??
+    {}) as Record<string, unknown>;
+  const customer = (raw.customer ?? {}) as Record<string, unknown>;
+  const hub = (raw.hub ?? {}) as Record<string, unknown>;
+  const products = mapApiProducts(raw);
+  const driver = mapApiDriver(raw);
+  const timeline =
+    Array.isArray(raw.timeline) && raw.timeline.length > 0
+      ? (raw.timeline as Record<string, unknown>[]).map((entry, index) => ({
+          key: String(entry.key ?? entry.status ?? `step-${index}`).toLowerCase(),
+          label: String(entry.label ?? entry.statusLabel ?? entry.status ?? 'Update'),
+          time: entry.time
+            ? String(entry.time)
+            : entry.createdAt
+              ? new Date(String(entry.createdAt)).toLocaleString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : undefined,
+          done: Boolean(entry.done ?? index < (raw.timeline as unknown[]).length - 1),
+          active: Boolean(
+            entry.active ?? index === (raw.timeline as unknown[]).length - 1,
+          ),
+        }))
+      : buildDefaultTimeline(status);
+
+  const line1 = String(addressRaw.line1 ?? addressRaw.address ?? '');
+  const line2 = addressRaw.line2 ? String(addressRaw.line2) : '';
+  const city = addressRaw.city ? String(addressRaw.city) : '';
+  const pincode = String(addressRaw.pincode ?? addressRaw.pin ?? '');
+  const paymentMethod = String(payment.method ?? raw.paymentMethod ?? 'CASH').toUpperCase();
+  const paymentStatusRaw = String(
+    payment.status ?? raw.paymentStatus ?? 'PENDING',
+  ).toLowerCase();
 
   return {
     id: String(raw.id ?? ''),
     orderNumber: String(raw.orderNumber ?? raw.id ?? ''),
-    status: (raw.status as OrderStatus) ?? 'pending',
+    status,
     createdAt: String(raw.createdAt ?? new Date().toISOString()),
     expectedDelivery: raw.expectedDelivery ? String(raw.expectedDelivery) : undefined,
     deliveredAt: raw.deliveredAt ? String(raw.deliveredAt) : undefined,
     products,
     subtotal: Number(raw.subtotal ?? 0),
-    discount: Number(raw.discount ?? 0),
-    gst: Number(raw.gst ?? 0),
+    discount: Number(raw.discountAmount ?? raw.discount ?? 0),
+    gst: Number(raw.gstAmount ?? raw.gst ?? 0),
     couponDiscount: Number(raw.couponDiscount ?? 0),
     deliveryCharge: Number(raw.deliveryCharge ?? 0),
     platformFee: Number(raw.platformFee ?? 0),
     grandTotal: Number(raw.grandTotal ?? raw.total ?? 0),
     savings: raw.savings ? Number(raw.savings) : undefined,
-    paymentStatus: (raw.paymentStatus as Order['paymentStatus']) ?? 'paid',
-    paymentMethod: String(raw.paymentMethod ?? ''),
-    paymentMethodLabel: raw.paymentMethodLabel ? String(raw.paymentMethodLabel) : undefined,
+    paymentStatus: (paymentStatusRaw as Order['paymentStatus']) || 'pending',
+    paymentMethod,
+    paymentMethodLabel:
+      paymentMethod === 'CASH'
+        ? 'Cash on Delivery'
+        : raw.paymentMethodLabel
+          ? String(raw.paymentMethodLabel)
+          : paymentMethod,
     transactionId: raw.transactionId ? String(raw.transactionId) : undefined,
     shippingAddress: {
-      name: String(address.name ?? ''),
-      phone: String(address.phone ?? ''),
-      address: String(address.address ?? ''),
-      pin: String(address.pin ?? ''),
-      instructions: address.instructions ? String(address.instructions) : undefined,
+      name: String(addressRaw.name ?? customer.fullName ?? ''),
+      phone: String(addressRaw.phone ?? customer.phone ?? ''),
+      address: [line1, line2, city].filter(Boolean).join(', '),
+      pin: pincode,
+      instructions: addressRaw.instructions ? String(addressRaw.instructions) : undefined,
     },
-    tracking: raw.tracking as Order['tracking'],
+    tracking: {
+      currentStep: status,
+      steps: timeline,
+      driver,
+      warehouse: hub.name ? String(hub.name) : undefined,
+      ...(typeof raw.tracking === 'object' && raw.tracking
+        ? (raw.tracking as Order['tracking'])
+        : {}),
+    },
     refund: raw.refund as Order['refund'],
-    driver: raw.driver as Order['driver'],
-    cancellationReason: raw.cancellationReason ? String(raw.cancellationReason) : undefined,
+    driver,
+    cancellationReason:
+      String(raw.cancelReason ?? raw.cancellationReason ?? '') || undefined,
     invoiceUrl: raw.invoiceUrl ? String(raw.invoiceUrl) : undefined,
-    invoiceId: raw.invoiceId ? String(raw.invoiceId) : undefined,
+    invoiceId: String(raw.invoiceNumber ?? raw.invoiceId ?? '') || undefined,
     invoiceFileName: raw.invoiceFileName ? String(raw.invoiceFileName) : undefined,
-    timeline: Array.isArray(raw.timeline)
-      ? (raw.timeline as TimelineStep[])
-      : buildDefaultTimeline((raw.status as OrderStatus) ?? 'pending'),
+    timeline,
     deliveredEarly: Boolean(raw.deliveredEarly),
     loyaltyPointsEarned: raw.loyaltyPointsEarned
       ? Number(raw.loyaltyPointsEarned)

@@ -34,6 +34,8 @@ import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { updateProfile } from '@services/customer.api';
+import { formatSiteType } from '@services/sites.api';
+import { useSites, useSiteMutations } from '@hooks/useSites';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
@@ -57,7 +59,22 @@ export default function AccountScreen() {
   const updateProfileSite = useDeliveryStore((st) => st.updateProfileSite);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isGuest = useAuthStore((s) => s.isGuest);
+  const sessionCustomer = useAuthStore((s) => s.customer);
   const showGuestState = !isLoggedIn || isGuest;
+  const { data: apiSites = [], isLoading: sitesLoading } = useSites(isLoggedIn && !isGuest);
+  const { setPrimary, remove } = useSiteMutations();
+
+  const displaySites: ProfileSite[] =
+    apiSites.length > 0
+      ? apiSites.map((s) => ({
+          id: s.id,
+          name: s.siteName,
+          address: [s.fullAddress, s.city].filter(Boolean).join(', '),
+          isPrimary: s.isPrimary,
+          icon: 'business' as const,
+          siteType: s.siteType,
+        }))
+      : profileSites;
 
   const tierLabels = {
     platinum: `⭐ ${t('platinumMember')}`,
@@ -196,7 +213,9 @@ export default function AccountScreen() {
                 </ScaledPressable>
 
                 <View className="flex-1">
-                  <Text className="text-xl font-bold text-text">{user.name || 'Customer'}</Text>
+                  <Text className="text-xl font-bold text-text">
+                    {user.name || sessionCustomer?.name || sessionCustomer?.phone || 'Loading profile…'}
+                  </Text>
                   {user.company ? (
                     <Text className="mt-0.5 text-sm text-text-secondary">{user.company}</Text>
                   ) : null}
@@ -240,22 +259,34 @@ export default function AccountScreen() {
                 onToggle={() => toggleSection(setSitesOpen)}
                 rightElement={
                   <ScaledPressable
-                    onPress={() => router.push('/account/add-sites')}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/delivery-location',
+                        params: { returnTo: 'account' },
+                      })
+                    }
                     hitSlop={8}>
                     <View className="h-7 w-7 items-center justify-center rounded-full border border-primary">
                       <Ionicons name="add" size={16} color="#FEB623" />
                     </View>
                   </ScaledPressable>
                 }>
-                {profileSites.length === 0 ? (
+                {sitesLoading ? (
+                  <Text className="mt-3 text-xs text-text-secondary">Loading sites…</Text>
+                ) : displaySites.length === 0 ? (
                   <Text className="mt-3 text-xs text-text-secondary">
                     No delivery sites saved yet. Tap + to add one.
                   </Text>
                 ) : (
-                  profileSites.map((site) => (
+                  displaySites.map((site) => (
                     <ScaledPressable
                       key={site.id}
-                      onPress={() => openSiteSheet(site)}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/delivery-location',
+                          params: { returnTo: 'account' },
+                        })
+                      }
                       className="mt-3 rounded-lg border border-border bg-background p-3">
                       <View className="flex-row items-center justify-between">
                         <View className="flex-row items-center gap-2">
@@ -272,7 +303,22 @@ export default function AccountScreen() {
                           </View>
                         )}
                       </View>
+                      {site.siteType ? (
+                        <Text className="mt-1 pl-7 text-[11px] text-text-secondary">
+                          {formatSiteType(site.siteType as never)}
+                        </Text>
+                      ) : null}
                       <Text className="mt-1 pl-7 text-xs text-text-secondary">{site.address}</Text>
+                      {!site.isPrimary ? (
+                        <View className="mt-2 flex-row gap-4 pl-7">
+                          <ScaledPressable onPress={() => setPrimary.mutate(site.id)}>
+                            <Text className="text-xs font-bold text-primary">Set Primary</Text>
+                          </ScaledPressable>
+                          <ScaledPressable onPress={() => remove.mutate(site.id)}>
+                            <Text className="text-xs font-semibold text-red-500">Delete</Text>
+                          </ScaledPressable>
+                        </View>
+                      ) : null}
                     </ScaledPressable>
                   ))
                 )}

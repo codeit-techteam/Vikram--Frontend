@@ -280,21 +280,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profile = await getProfile();
       useUserStore.getState().setFromProfile(profile);
 
-      if (profile.addresses) {
-        useDeliveryStore.getState().setProfileSitesFromAddresses(profile.addresses);
-        // Keep checkout site picker in sync with saved delivery sites.
-        const sites = profile.addresses.map((a) => ({
-          id: a.id,
-          name: a.label ?? a.name ?? 'Site',
-          address: [a.address ?? a.addressLine1, a.city, a.pincode ?? a.postalCode]
-            .filter(Boolean)
-            .join(', '),
-        }));
-        if (sites.length > 0) {
-          useDeliveryStore.setState((state) => ({
-            sites,
-            selectedSiteId: state.selectedSiteId ?? sites[0]?.id ?? null,
-          }));
+      try {
+        const { getSites } = await import('@services/sites.api');
+        const deliverySites = await getSites();
+        useDeliveryStore.getState().setProfileSitesFromDeliverySites(deliverySites);
+        useDeliveryStore.getState().setSites(
+          deliverySites.map((s) => ({
+            id: s.id,
+            name: s.siteName,
+            address: [s.fullAddress, s.city].filter(Boolean).join(', '),
+          })),
+        );
+        const primary = deliverySites.find((s) => s.isPrimary) ?? deliverySites[0];
+        if (primary) {
+          useDeliveryStore.getState().setSelectedSite(primary.id);
+        }
+      } catch {
+        if (profile.addresses) {
+          useDeliveryStore.getState().setProfileSitesFromAddresses(profile.addresses);
         }
       }
 

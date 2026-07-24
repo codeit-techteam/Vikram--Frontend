@@ -18,6 +18,7 @@ import { BusinessBenefits } from '@components/gst/BusinessBenefits';
 import { DeliveryDestinationCard } from '@components/checkout/DeliveryDestinationCard';
 import { PaymentComingSoonSheet } from '@components/checkout/PaymentComingSoonSheet';
 import { PaymentMethodCard } from '@components/checkout/PaymentMethodCard';
+import { useSites } from '@hooks/useSites';
 import { GstBottomSheet } from '@components/gst/GstBottomSheet';
 import { GstInvoiceCard } from '@components/gst/GstInvoiceCard';
 import { GstSuccessBanner } from '@components/gst/GstSuccessBanner';
@@ -27,9 +28,11 @@ import { getLineTotal, useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useGstStore } from '@store/gstStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
-import { generateOrderId, useOrderStore } from '@store/orderStore';
+import { useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
+import { placeOrder } from '@services/orders.api';
+import { syncLocalCartToServer } from '@services/cart.api';
 import { safeGoBack } from '@utils/navigation';
 import { requireAuth } from '@utils/requireAuth';
 import { formatINR } from '@utils/formatCurrency';
@@ -75,11 +78,14 @@ export default function CheckoutScreen() {
       ? { id: primary.id, name: primary.name, address: primary.address }
       : undefined;
   });
+  const assignedHubName = useDeliveryStore((s) => s.assignedHubName);
+  const assignedHubCode = useDeliveryStore((s) => s.assignedHubCode);
+  useSites(true);
 
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>(DEFAULT_PAYMENT_METHOD);
   const [instructions, setInstructions] = useState('');
-  const [loyaltyPoints, setLoyaltyPoints] = useState(1000);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [paying, setPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
   const [bikeDelivery, setBikeDelivery] = useState(false);
@@ -174,31 +180,62 @@ export default function CheckoutScreen() {
 
     setPaying(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await new Promise((r) => setTimeout(r, 2000));
-    setPaySuccess(true);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const orderId = generateOrderId();
+    try {
+      await syncLocalCartToServer(items);
 
-    addOrder(
-      buildOrderFromCheckout({
-        id: orderId,
-        items: [...items],
-        total: checkoutTotal,
-        site: selectedSite,
-        paymentMethod,
-        deliveryETA: bikeDelivery ? '30–90 mins' : 'Today, 5:00 PM',
-      }),
-    );
+      const placed = await placeOrder({
+        addressId: selectedSite.id,
+        notes: instructions || undefined,
+        paymentMethod: 'CASH',
+        loyaltyPointsToRedeem: loyaltyPoints > 0 ? loyaltyPoints : undefined,
+      });
 
-    await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+      setPaySuccess(true);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    clearCart();
-    setPaying(false);
-    router.replace({
-      pathname: '/order-success',
-      params: { orderId },
-    });
+      const orderId = String(
+        (placed as { id?: string; orderNumber?: string }).id ||
+          (placed as { orderNumber?: string }).orderNumber ||
+          '',
+      );
+      const warehouseLabel =
+        assignedHubName
+          ? `${assignedHubName}${assignedHubCode ? ` (${assignedHubCode})` : ''}`
+          : 'Assigned Hub';
+
+      addOrder(
+        buildOrderFromCheckout({
+          id: orderId || String((placed as { orderNumber?: string }).orderNumber),
+          items: [...items],
+          total: checkoutTotal,
+          site: selectedSite,
+          paymentMethod,
+          deliveryETA: bikeDelivery ? '30–90 mins' : 'Today, 5:00 PM',
+          warehouse: warehouseLabel,
+        }),
+      );
+
+      await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+      clearCart();
+      setPaying(false);
+      router.replace({
+        pathname: '/order-success',
+        params: { orderId },
+      });
+    } catch (error) {
+      setPaying(false);
+      setPaySuccess(false);
+      const axiosData = (error as { response?: { data?: { message?: string | string[] } } })
+        ?.response?.data;
+      const apiMessage = Array.isArray(axiosData?.message)
+        ? axiosData.message.join(', ')
+        : axiosData?.message;
+      const message =
+        apiMessage ||
+        (error instanceof Error ? error.message : 'Unable to place order');
+      Alert.alert('Order failed', message);
+    }
   };
 
   return (

@@ -148,10 +148,10 @@ export default function OrderSuccessScreen() {
             <View className="flex-1">
               <Text className="text-[10px] font-bold text-text-secondary">{t('deliveryAddress')}</Text>
               <Text className="mt-1 text-sm font-bold text-text">
-                Site A – Mumbai North Industrial Estate
+                {order?.deliverySite?.name ?? 'Delivery site'}
               </Text>
               <Text className="mt-1 text-xs text-text-secondary">
-                {order?.deliverySite.address ?? 'Plot 44-B, Mumbai North Industrial Estate'}
+                {order?.deliverySite?.address ?? 'Address saved with order'}
               </Text>
             </View>
             <Image

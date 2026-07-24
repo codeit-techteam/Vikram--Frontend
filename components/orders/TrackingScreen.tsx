@@ -91,7 +91,8 @@ export const TrackingScreen = memo(function TrackingScreen() {
       ? `Delivering in ${order.tracking.estimatedMinutes} mins`
       : undefined);
   const { day: etaDay, time: etaTime } = parseEstimatedArrival(etaSource);
-  const timelineSteps = buildTimelineFromStatus(order.status);
+  const timelineSteps =
+    order.timeline?.length > 0 ? order.timeline : buildTimelineFromStatus(order.status);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
@@ -191,7 +192,9 @@ export const TrackingScreen = memo(function TrackingScreen() {
                 gap: 8,
               }}>
               <Ionicons name="call" size={18} color={theme.textPrimary} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>Call</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>
+                Call Driver
+              </Text>
             </ScaledPressable>
           </View>
         ) : null}
@@ -220,7 +223,7 @@ export const TrackingScreen = memo(function TrackingScreen() {
             value={getPaymentMethodLabel(order.paymentMethod, order.paymentMethodLabel)}
           />
           <InfoRow label="Total Amount" value={formatINR(order.grandTotal, false)} highlight />
-          {warehouse ? <InfoRow label="Warehouse" value={warehouse} /> : null}
+          {warehouse ? <InfoRow label="Assigned Hub" value={warehouse} /> : null}
           {order.expectedDelivery ? (
             <InfoRow label="Expected Delivery" value={order.expectedDelivery} />
           ) : null}

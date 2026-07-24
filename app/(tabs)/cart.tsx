@@ -127,7 +127,7 @@ function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
       </View>
       <View style={styles.siteInfo}>
         <Text style={styles.siteName}>
-          {site?.name ?? 'Site A – Mumbai North Industrial Estate'}
+          {site?.name ?? 'Select a delivery site'}
         </Text>
         <Text style={styles.siteAddress}>{site?.address ?? 'Plot 42, Goregaon West'}</Text>
         <View style={styles.siteEtaRow}>

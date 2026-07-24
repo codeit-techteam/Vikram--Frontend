@@ -72,6 +72,7 @@ export default function RootLayout() {
               <Stack.Screen name="role-selection" options={{ headerShown: false }} />
               <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
               <Stack.Screen name="delivery-location" options={{ headerShown: false }} />
+              <Stack.Screen name="confirm-location" options={{ headerShown: false }} />
               <Stack.Screen name="search" options={{ headerShown: false }} />
               <Stack.Screen name="cart" options={{ headerShown: false }} />
               <Stack.Screen

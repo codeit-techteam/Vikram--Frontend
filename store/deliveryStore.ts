@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import type { CustomerAddress } from '@services/customer.api';
+import type { DeliverySite as ApiDeliverySite } from '@services/sites.api';
 
 export interface DeliverySite {
   id: string;
@@ -14,6 +15,10 @@ export interface ProfileSite {
   address: string;
   isPrimary?: boolean;
   icon: 'person' | 'business';
+  siteType?: string | null;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ProjectSite {
@@ -32,63 +37,6 @@ export interface ProjectSite {
   lng: number;
 }
 
-const DEFAULT_SITES: DeliverySite[] = [
-  { id: 's1', name: 'Mumbai North Wing', address: 'Plot 42, Goregaon West' },
-  { id: 's2', name: 'Pune IT Tower B', address: 'Hinjewadi Phase 3' },
-  { id: 's3', name: 'Pune IT Tower C', address: 'Hinjewadi Phase 3' },
-  { id: 's4', name: 'Pune IT Tower D', address: 'Hinjewadi Phase 3' },
-];
-
-/** Retained for checkout/demo flows that still need sample project sites. */
-export const DEFAULT_PROJECT_SITES: ProjectSite[] = [
-  {
-    id: 'site1',
-    name: 'Skyline Tower Site',
-    contact: 'Vikram Malhotra',
-    phone: '+919876543210',
-    address: 'Andheri East, Near SEEPZ',
-    city: 'Mumbai',
-    pincode: '400093',
-    status: 'active',
-    warehouseDist: '8.4 km',
-    estDelivery: '45m',
-    gateNote:
-      'Gate 4, Heavy vehicle access only. Security clearance required at main entry.',
-    lat: 19.076,
-    lng: 72.877,
-  },
-  {
-    id: 'site2',
-    name: 'Mumbai Metro P-4',
-    contact: 'Sanjay Gupta',
-    phone: '+919876543211',
-    address: 'Hinjewadi Phase 3',
-    city: 'Mumbai',
-    pincode: '400050',
-    status: 'pending',
-    warehouseDist: '12.2 km',
-    estDelivery: '1h 15m',
-    gateNote: 'Flyover construction zone. Restricted hours 22:00 – 05:00 only.',
-    lat: 19.12,
-    lng: 72.85,
-  },
-  {
-    id: 'site3',
-    name: 'New Harbor Bridge',
-    contact: 'Anita Desai',
-    phone: '+919876543212',
-    address: 'Harbor Gate Entrance',
-    city: 'Mumbai',
-    pincode: '400001',
-    status: 'active',
-    warehouseDist: '18.5 km',
-    estDelivery: '2h 10m',
-    gateNote: 'Harbor Gate Entrance. Contact site manager 15 mins prior to arrival.',
-    lat: 18.95,
-    lng: 72.83,
-  },
-];
-
 /** Maps `/customer/address` records onto the account screen's `ProfileSite` shape. */
 export function mapAddressesToProfileSites(addresses: CustomerAddress[]): ProfileSite[] {
   return addresses.map((addr, index) => {
@@ -103,19 +51,44 @@ export function mapAddressesToProfileSites(addresses: CustomerAddress[]): Profil
       name: addr.label ?? addr.name ?? `Site ${index + 1}`,
       address: addressLine,
       isPrimary: Boolean(addr.isDefault ?? addr.isPrimary),
-      icon: addr.type === 'business' ? 'business' : 'person',
+      icon: addr.type === 'business' || addr.type === 'PROJECT_SITE' ? 'business' : 'person',
     };
   });
 }
 
+export function mapDeliverySitesToProfileSites(sites: ApiDeliverySite[]): ProfileSite[] {
+  return sites.map((site) => ({
+    id: site.id,
+    name: site.siteName,
+    address: [site.fullAddress, site.city, site.state, site.pincode]
+      .filter(Boolean)
+      .join(', '),
+    isPrimary: site.isPrimary,
+    icon: 'business' as const,
+    siteType: site.siteType,
+    city: site.city,
+    latitude: site.latitude,
+    longitude: site.longitude,
+  }));
+}
+
 interface DeliveryState {
   sites: DeliverySite[];
-  selectedSiteId: string;
+  selectedSiteId: string | null;
   profileSites: ProfileSite[];
   projectSites: ProjectSite[];
+  assignedHubId: string | null;
+  assignedHubName: string | null;
+  assignedHubCode: string | null;
   setSelectedSite: (id: string) => void;
   setSites: (sites: DeliverySite[]) => void;
+  setAssignedHub: (hub: {
+    id: string;
+    name: string;
+    code?: string;
+  } | null) => void;
   setProfileSitesFromAddresses: (addresses: CustomerAddress[]) => void;
+  setProfileSitesFromDeliverySites: (sites: ApiDeliverySite[]) => void;
   updateProfileSite: (id: string, data: Partial<ProfileSite>) => void;
   addProfileSite: (site: Omit<ProfileSite, 'id'>) => void;
   addProjectSite: (site: Omit<ProjectSite, 'id'>) => void;
@@ -124,21 +97,37 @@ interface DeliveryState {
 }
 
 export const useDeliveryStore = create<DeliveryState>((set) => ({
-  sites: DEFAULT_SITES,
-  selectedSiteId: DEFAULT_SITES[0].id,
+  sites: [],
+  selectedSiteId: null,
   profileSites: [],
-  projectSites: DEFAULT_PROJECT_SITES,
+  projectSites: [],
+  assignedHubId: null,
+  assignedHubName: null,
+  assignedHubCode: null,
 
   setSelectedSite: (id) => set({ selectedSiteId: id }),
 
   setSites: (sites) =>
     set((state) => ({
-      sites: sites.length > 0 ? sites : DEFAULT_SITES,
-      selectedSiteId: sites.length > 0 ? sites[0].id : state.selectedSiteId,
+      sites,
+      selectedSiteId:
+        sites.find((s) => s.id === state.selectedSiteId)?.id ??
+        sites[0]?.id ??
+        null,
     })),
+
+  setAssignedHub: (hub) =>
+    set({
+      assignedHubId: hub?.id ?? null,
+      assignedHubName: hub?.name ?? null,
+      assignedHubCode: hub?.code ?? null,
+    }),
 
   setProfileSitesFromAddresses: (addresses) =>
     set({ profileSites: mapAddressesToProfileSites(addresses) }),
+
+  setProfileSitesFromDeliverySites: (sites) =>
+    set({ profileSites: mapDeliverySitesToProfileSites(sites) }),
 
   updateProfileSite: (id, data) =>
     set((state) => ({
@@ -165,9 +154,15 @@ export const useDeliveryStore = create<DeliveryState>((set) => ({
 
   reset: () =>
     set({
-      sites: DEFAULT_SITES,
-      selectedSiteId: DEFAULT_SITES[0].id,
+      sites: [],
+      selectedSiteId: null,
       profileSites: [],
-      projectSites: DEFAULT_PROJECT_SITES,
+      projectSites: [],
+      assignedHubId: null,
+      assignedHubName: null,
+      assignedHubCode: null,
     }),
 }));
+
+/** @deprecated Use empty defaults — kept for any leftover demo imports */
+export const DEFAULT_PROJECT_SITES: ProjectSite[] = [];

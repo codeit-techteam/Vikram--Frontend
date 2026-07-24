@@ -85,6 +85,7 @@ export default function ProductDetailScreen() {
   const sites = useDeliveryStore((s) => s.sites);
   const selectedSiteId = useDeliveryStore((s) => s.selectedSiteId);
   const setSelectedSite = useDeliveryStore((s) => s.setSelectedSite);
+  const assignedHubName = useDeliveryStore((s) => s.assignedHubName);
 
   const btnScale = useSharedValue(1);
   const subtotalScale = useSharedValue(1);
@@ -417,7 +418,7 @@ export default function ProductDetailScreen() {
 
         <SiteSelector
           sites={sites}
-          selectedSiteId={selectedSiteId}
+          selectedSiteId={selectedSiteId ?? ''}
           onSelect={setSelectedSite}
         />
 
@@ -435,6 +436,7 @@ export default function ProductDetailScreen() {
           selected={deliveryType}
           onSelect={setDeliveryType}
           siteName={selectedSite?.name ?? 'your site'}
+          hubName={assignedHubName ?? undefined}
         />
 
         {relatedItems.length > 0 ? <FrequentlyBoughtTogether items={relatedItems} /> : null}

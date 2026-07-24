@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo, theme } from '@constants/theme';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
+import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
 
 const MIN_SPLASH_MS = 1200;
 
@@ -25,13 +26,22 @@ export default function SplashScreen() {
       const remaining = Math.max(MIN_SPLASH_MS - elapsed, 0);
 
       setTimeout(() => {
-        const { isLoggedIn, isGuest } = useAuthStore.getState();
+        void (async () => {
+          const { isLoggedIn, isGuest } = useAuthStore.getState();
 
-        if (isLoggedIn || isGuest) {
-          router.replace('/(tabs)');
-        } else {
-          router.replace('/login');
-        }
+          if (isLoggedIn) {
+            const hasSites = await customerHasDeliverySites();
+            if (!hasSites) {
+              router.replace('/delivery-location');
+              return;
+            }
+            router.replace('/(tabs)');
+          } else if (isGuest) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/login');
+          }
+        })();
       }, remaining);
     })();
   }, [hydrateSession]);

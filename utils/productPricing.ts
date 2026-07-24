@@ -55,9 +55,8 @@ export function getProductPricing(
 
 export function getStockLeft(product: Product): number | null {
   if (product.stockLeft != null) return product.stockLeft;
-  if (product.status === 'LIMITED STOCK') return 8;
-  if (product.status === 'READY FOR DISPATCH') return 24;
-  if (product.status === 'IN STOCK') return 48;
+  // No fabricated stock — availability must come from hub inventory / catalog API.
+  if (product.status === 'OUT OF STOCK') return 0;
   return null;
 }
 

@@ -92,7 +92,7 @@ function getResultForQuery(text: string): VoiceSearchResult {
   if (lower.includes('cement') || lower.includes('bag')) {
     return {
       title: 'Cement Available',
-      body: '1,240 bags in stock at Thane West warehouse. Delivery in 90 mins.',
+      body: 'Live hub inventory is synced from your assigned warehouse. Delivery ETA depends on hub coverage.',
       actionLabel: 'View Catalog →',
       navigateTo: '/(tabs)/catalog' as Href,
     };

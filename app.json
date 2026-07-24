@@ -43,7 +43,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Bajriwala to access your location for delivery site setup."
+          "locationAlwaysAndWhenInUsePermission": "Allow Bajriwala to access your location for delivery site setup.",
+          "locationWhenInUsePermission": "Allow Bajriwala to use your location while using the app to set delivery sites."
         }
       ],
       "expo-build-properties",

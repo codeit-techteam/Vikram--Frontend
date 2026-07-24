@@ -1,244 +1,418 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  Pressable,
+  RefreshControl,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
-import { AddSiteSheet } from '@components/AddSiteSheet';
 import { PrimaryButton } from '@components/PrimaryButton';
-import { ScaledPressable } from '@components/ScaledPressable';
-import { SiteCard } from '@components/SiteCard';
-import { useTranslation } from '@store/languageStore';
-import { useSiteStore, type DeliverySite } from '@store/useSiteStore';
+import { SiteDetailsSheet } from '@components/location/SiteDetailsSheet';
+import { theme } from '@constants/theme';
+import { useSiteMutations, useSites } from '@hooks/useSites';
+import {
+  LocationService,
+  type PlaceSuggestion,
+  type ResolvedAddress,
+} from '@services/LocationService';
+import {
+  formatSiteType,
+  type DeliverySite,
+} from '@services/sites.api';
 
 export default function DeliveryLocationScreen() {
-  const { t } = useTranslation();
-  const sites = useSiteStore((st) => st.sites);
-  const addSite = useSiteStore((st) => st.addSite);
-  const updateSite = useSiteStore((st) => st.updateSite);
-  const removeSite = useSiteStore((st) => st.removeSite);
+  const params = useLocalSearchParams<{ returnTo?: string; mode?: string }>();
+  const { data: sites = [], isLoading, isRefetching, refetch, isError } = useSites();
+  const { remove, setPrimary } = useSiteMutations();
 
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const [locationLabel, setLocationLabel] = useState('Bangalore, Karnataka');
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [fetchingGps, setFetchingGps] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [listFilter, setListFilter] = useState('');
   const [editSite, setEditSite] = useState<DeliverySite | null>(null);
-  const [manualAddress, setManualAddress] = useState('');
-  const [manualCity, setManualCity] = useState('');
-  const [manualPincode, setManualPincode] = useState('');
-  const [showManualForm, setShowManualForm] = useState(false);
+  const [sheetAddress, setSheetAddress] = useState<ResolvedAddress | null>(null);
 
-  const requestLocation = useCallback(async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setShowManualForm(true);
-        return;
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filteredSites = useMemo(() => {
+    const q = listFilter.trim().toLowerCase();
+    if (!q) return sites;
+    return sites.filter(
+      (s) =>
+        s.siteName.toLowerCase().includes(q) ||
+        s.fullAddress.toLowerCase().includes(q) ||
+        s.city.toLowerCase().includes(q),
+    );
+  }, [sites, listFilter]);
+
+  const openConfirm = useCallback(
+    (addr: ResolvedAddress) => {
+      router.push({
+        pathname: '/confirm-location',
+        params: {
+          lat: String(addr.latitude),
+          lng: String(addr.longitude),
+          address: addr.fullAddress,
+          city: addr.city,
+          state: addr.state,
+          pincode: addr.pincode,
+          country: addr.country,
+          returnTo: params.returnTo ?? 'home',
+        },
+      } as unknown as Href);
+    },
+    [params.returnTo],
+  );
+
+  const onSearchChange = (text: string) => {
+    setQuery(text);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (text.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await LocationService.searchPlaces(text);
+        setSuggestions(results);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
       }
+    }, 350);
+  };
 
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setLocationLabel(`${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
-      setShowManualForm(false);
+  const onSelectSuggestion = async (item: PlaceSuggestion) => {
+    setQuery(item.description);
+    setSuggestions([]);
+    setSearching(true);
+    try {
+      const addr = await LocationService.resolvePlace(item.placeId);
+      openConfirm(addr);
     } catch {
-      setShowManualForm(true);
+      setGpsError('Unable to resolve that place. Try again or use current location.');
+    } finally {
+      setSearching(false);
     }
-  }, []);
-
-  const openAddSheet = () => {
-    setEditSite(null);
-    bottomSheetRef.current?.present();
   };
 
-  const handleEdit = (site: DeliverySite) => {
-    setEditSite(site);
-    bottomSheetRef.current?.present();
-  };
-
-  const handleSaveSite = (data: Omit<DeliverySite, 'id'>) => {
-    if (editSite) {
-      updateSite(editSite.id, data);
-    } else {
-      addSite(data);
+  const onFetchLocation = async () => {
+    setGpsError(null);
+    setFetchingGps(true);
+    try {
+      const addr = await LocationService.fetchCurrentAddress();
+      openConfirm(addr);
+    } catch (e) {
+      const code = (e as Error)?.message;
+      if (code === 'LOCATION_PERMISSION_DENIED') {
+        setGpsError('Location permission denied. Search an address instead.');
+      } else {
+        setGpsError('Could not fetch location. Check GPS and try again.');
+      }
+    } finally {
+      setFetchingGps(false);
     }
-    setEditSite(null);
   };
 
   const handleContinue = () => {
-    router.replace('/(tabs)' as Href);
+    if (sites.length === 0) return;
+    const returnTo = params.returnTo;
+    if (returnTo === 'checkout') {
+      router.replace('/checkout' as Href);
+    } else {
+      router.replace('/(tabs)' as Href);
+    }
   };
 
-  const closeSheet = () => {
-    bottomSheetRef.current?.dismiss();
+  const openEdit = (site: DeliverySite) => {
+    setEditSite(site);
+    setSheetAddress({
+      fullAddress: site.fullAddress,
+      city: site.city,
+      state: site.state,
+      country: site.country,
+      pincode: site.pincode,
+      latitude: site.latitude,
+      longitude: site.longitude,
+    });
+    sheetRef.current?.present();
   };
+
+  useEffect(() => {
+    // First-time users must add at least one site before leaving.
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <BackHeader
-          title={t('deliveryLocation')}
-          titleColor="#FEB623"
-          rightElement={
-            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="location-outline" size={20} color="#FEB623" />
-              </TouchableOpacity>
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: '#FEB623',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: '#1A1A1A' }}>CP</Text>
-              </View>
-            </View>
-          }
-        />
+        <BackHeader title="Delivery Location" titleColor={theme.primary} />
 
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View className="relative mx-4 mt-3 overflow-hidden rounded-card" style={{ height: 220 }}>
-            <View className="flex-1 items-center justify-center bg-[#1a2332]">
-              <Ionicons name="map" size={48} color="#FEB623" />
-              <Text className="mt-3 text-sm font-semibold text-white">{locationLabel}</Text>
-              <Text className="mt-1 px-6 text-center text-xs text-white/70">
-                {t('preciseGpsPinning')}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FFFEF8',
+              borderWidth: 1,
+              borderColor: '#E8E0C8',
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              height: 48,
+            }}>
+            <Ionicons name="search" size={18} color="#888" />
+            <TextInput
+              value={query}
+              onChangeText={onSearchChange}
+              placeholder="Search address (Kalyani, Salt Lake, BKC…)"
+              placeholderTextColor="#AAA"
+              style={{ flex: 1, marginLeft: 8, fontSize: 15, color: '#1A1A1A' }}
+              autoCorrect={false}
+            />
+            {searching ? <ActivityIndicator size="small" color={theme.primary} /> : null}
+          </View>
+
+          {suggestions.length > 0 ? (
+            <View
+              style={{
+                marginTop: 6,
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E8E0C8',
+                maxHeight: 220,
+                overflow: 'hidden',
+              }}>
+              <FlatList
+                keyboardShouldPersistTaps="handled"
+                data={suggestions}
+                keyExtractor={(item) => item.placeId}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => void onSelectSuggestion(item)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#F3EEE0',
+                    }}>
+                    <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>{item.mainText}</Text>
+                    {item.secondaryText ? (
+                      <Text style={{ color: '#777', fontSize: 12, marginTop: 2 }}>
+                        {item.secondaryText}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                )}
+              />
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={() => void onFetchLocation()}
+            disabled={fetchingGps}
+            style={{
+              marginTop: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              backgroundColor: '#1A1A1A',
+              borderRadius: 14,
+              height: 48,
+            }}>
+            {fetchingGps ? (
+              <ActivityIndicator color={theme.primary} />
+            ) : (
+              <>
+                <Ionicons name="locate" size={18} color={theme.primary} />
+                <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 15 }}>
+                  Allow Fetch Location
+                </Text>
+              </>
+            )}
+          </Pressable>
+          {gpsError ? (
+            <Text style={{ color: '#C0392B', marginTop: 8, fontSize: 13 }}>{gpsError}</Text>
+          ) : null}
+        </View>
+
+        <View style={{ flex: 1, paddingHorizontal: 16 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 10,
+              marginTop: 8,
+            }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A1A1A' }}>
+              Saved Delivery Sites
+            </Text>
+            {sites.length > 3 ? (
+              <TextInput
+                value={listFilter}
+                onChangeText={setListFilter}
+                placeholder="Search sites"
+                placeholderTextColor="#AAA"
+                style={{
+                  width: 120,
+                  borderWidth: 1,
+                  borderColor: '#E8E0C8',
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  fontSize: 12,
+                }}
+              />
+            ) : null}
+          </View>
+
+          {isLoading ? (
+            <View style={{ gap: 10 }}>
+              {[1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  style={{
+                    height: 88,
+                    borderRadius: 14,
+                    backgroundColor: '#F5F0E0',
+                  }}
+                />
+              ))}
+            </View>
+          ) : isError ? (
+            <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+              <Ionicons name="cloud-offline-outline" size={40} color="#C0392B" />
+              <Text style={{ color: '#1A1A1A', fontWeight: '700', textAlign: 'center' }}>
+                Can’t reach the server
+              </Text>
+              <Text style={{ color: '#666', textAlign: 'center', paddingHorizontal: 16 }}>
+                Check that the backend is running and EXPO_PUBLIC_API_URL matches your Mac IP
+                (ipconfig getifaddr en0). Then pull to retry.
+              </Text>
+              <PrimaryButton title="Retry" onPress={() => void refetch()} />
+            </View>
+          ) : filteredSites.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 48, gap: 10 }}>
+              <Ionicons name="map-outline" size={56} color="#D4C89A" />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
+                No saved delivery sites yet
+              </Text>
+              <Text style={{ color: '#888', textAlign: 'center', paddingHorizontal: 24 }}>
+                Search an address or use your current location to add your first site.
               </Text>
             </View>
-
-            <View className="absolute left-3 right-3 top-3">
-              <View className="flex-row items-center rounded-input border border-border bg-surface px-3 py-2.5 shadow-sm">
-                <Ionicons name="search" size={18} color="#FEB623" />
-                <Text className="ml-2 flex-1 text-sm text-text-secondary">{t('searchSiteAddress')}</Text>
-              </View>
-            </View>
-
-            <ScaledPressable
-              onPress={requestLocation}
-              className="absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-primary shadow-md">
-              <Ionicons name="locate" size={22} color="#FFFFFF" />
-            </ScaledPressable>
-          </View>
-
-          {showManualForm && (
-            <View className="mx-4 mt-4 rounded-card bg-surface p-4">
-              <Text className="mb-3 text-sm font-semibold text-text">{t('fullAddress')}</Text>
-              <TextInput
-                value={manualAddress}
-                onChangeText={setManualAddress}
-                placeholder={t('addressLine1')}
-                placeholderTextColor="#999"
-                className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-              />
-              <TextInput
-                value={manualCity}
-                onChangeText={setManualCity}
-                placeholder={t('city')}
-                placeholderTextColor="#999"
-                className="mb-3 rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-              />
-              <TextInput
-                value={manualPincode}
-                onChangeText={setManualPincode}
-                keyboardType="number-pad"
-                placeholder={t('pincode')}
-                placeholderTextColor="#999"
-                className="rounded-input border border-border bg-input px-4 py-3 text-base text-text"
-              />
-            </View>
-          )}
-
-          <View className="mx-4 mt-5">
-            <Text className="text-lg font-bold text-text">{t('savedDeliverySites')}</Text>
-            <Text className="mt-0.5 text-sm text-text-secondary">{t('manageProjects')}</Text>
-
-            {sites.length > 0 ? (
-              <View className="mt-4">
-                {sites.map((site) => (
-                  <SiteCard
-                    key={site.id}
-                    site={site}
-                    editLabel={t('edit')}
-                    deleteLabel={t('delete')}
-                    onEdit={handleEdit}
-                    onDelete={removeSite}
-                  />
-                ))}
-              </View>
-            ) : (
-              <ScaledPressable
-                onPress={openAddSheet}
-                className="mt-4 items-center rounded-card border-2 border-dashed border-border bg-surface py-8">
-                <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
-                  <Ionicons name="add" size={28} color="#FFFFFF" />
+          ) : (
+            <FlatList
+              data={filteredSites}
+              keyExtractor={(item) => item.id}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefetching}
+                  onRefresh={() => void refetch()}
+                  tintColor={theme.primary}
+                />
+              }
+              contentContainerStyle={{ paddingBottom: 120, gap: 10 }}
+              renderItem={({ item }) => (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: item.isPrimary ? theme.primary : '#E8E0C8',
+                    borderRadius: 14,
+                    padding: 14,
+                    backgroundColor: '#FFFEF8',
+                  }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontWeight: '800', fontSize: 15, color: '#1A1A1A' }}>
+                          {item.siteName}
+                        </Text>
+                        {item.isPrimary ? (
+                          <View
+                            style={{
+                              backgroundColor: theme.primary,
+                              borderRadius: 6,
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                            }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800' }}>PRIMARY</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+                        {formatSiteType(item.siteType)}
+                      </Text>
+                      <Text style={{ color: '#555', fontSize: 13, marginTop: 6 }} numberOfLines={2}>
+                        {item.fullAddress}
+                      </Text>
+                      <Text style={{ color: '#888', fontSize: 12, marginTop: 4 }}>
+                        {item.city}
+                        {item.pincode ? ` · ${item.pincode}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
+                    <Pressable onPress={() => openEdit(item)}>
+                      <Text style={{ color: theme.primary, fontWeight: '700' }}>Edit</Text>
+                    </Pressable>
+                    {!item.isPrimary ? (
+                      <Pressable onPress={() => setPrimary.mutate(item.id)}>
+                        <Text style={{ color: '#1A1A1A', fontWeight: '600' }}>Set Primary</Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable onPress={() => remove.mutate(item.id)}>
+                      <Text style={{ color: '#C0392B', fontWeight: '600' }}>Delete</Text>
+                    </Pressable>
+                  </View>
                 </View>
-                <Text className="mt-3 text-base font-bold text-primary">{t('addNewSite')}</Text>
-                <Text className="mt-1 text-sm text-text-secondary">{t('registerDeliveryPoint')}</Text>
-              </ScaledPressable>
-            )}
-          </View>
+              )}
+            />
+          )}
+        </View>
 
-          <View className="mx-4 mt-5 gap-3">
-            <View className="flex-row gap-3 rounded-card bg-trust p-4">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <Ionicons name="shield-checkmark" size={20} color="#FEB623" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-text">{t('industrialPrecision')}</Text>
-                <Text className="mt-1 text-xs leading-4 text-text-secondary">
-                  {t('industrialPrecisionDesc')}
-                </Text>
-              </View>
-            </View>
-            <View className="flex-row gap-3 rounded-card bg-trust p-4">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <Ionicons name="headset" size={20} color="#FEB623" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-text">{t('siteLogisticsSupport')}</Text>
-                <Text className="mt-1 text-xs leading-4 text-text-secondary">
-                  {t('siteLogisticsSupportDesc')}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View className="mx-4 mt-6 mb-4">
-            <PrimaryButton title={t('allowFetchLocation')} onPress={requestLocation} />
-            <View className="mt-3">
-              <PrimaryButton title={t('continueBtn')} onPress={handleContinue} showArrow />
-            </View>
-          </View>
-        </ScrollView>
-
-        <AddSiteSheet
-          ref={bottomSheetRef}
-          editSite={editSite}
-          labels={{
-            siteName: t('siteName'),
-            fullAddress: t('fullAddress'),
-            pincode: t('pincode'),
-            gateInstructions: t('gateInstructions'),
-            saveSite: t('saveSite'),
-          }}
-          onSave={handleSaveSite}
-          onClose={closeSheet}
-        />
+        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#F0EAD8' }}>
+          <PrimaryButton
+            title={sites.length === 0 ? 'Add a site to continue' : 'Continue'}
+            onPress={handleContinue}
+            disabled={sites.length === 0}
+          />
+        </View>
       </KeyboardAvoidingView>
+
+      {sheetAddress ? (
+        <SiteDetailsSheet
+          ref={sheetRef}
+          initialAddress={sheetAddress}
+          editSite={editSite}
+          onSaved={() => {
+            sheetRef.current?.dismiss();
+            setEditSite(null);
+          }}
+          onClose={() => {
+            sheetRef.current?.dismiss();
+            setEditSite(null);
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

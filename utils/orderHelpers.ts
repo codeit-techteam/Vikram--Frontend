@@ -48,6 +48,7 @@ export function buildOrderFromCheckout(params: {
   site: DeliverySite;
   paymentMethod: string;
   deliveryETA: string;
+  warehouse?: string;
 }): Order {
   const primary = params.items[0];
   const subtotal = params.items.reduce((sum, i) => sum + getLineTotal(i), 0);
@@ -93,8 +94,8 @@ export function buildOrderFromCheckout(params: {
       { label: 'Estimated Arrival', time: params.deliveryETA, done: false },
     ],
     deliverySite: params.site,
-    driverName: 'Rajesh Kumar',
-    vehicleNumber: 'MH 01 AB 1234',
+    driverName: 'Assigning…',
+    vehicleNumber: '—',
     loyaltyPointsEarned: Math.round(params.total / 100),
     invoiceId,
     invoiceFileName: `Invoice_${params.id.replace('-', '_')}.pdf`,
@@ -111,7 +112,7 @@ export function buildOrderFromCheckout(params: {
     arrivingBy: params.deliveryETA,
     eta: params.deliveryETA,
     estimatedDelivery: params.deliveryETA,
-    warehouse: 'Thane West Hub Warehouse',
+    warehouse: params.warehouse || 'Assigned Hub',
     statusLabel: 'PROCESSING',
     quantitySummary: `${params.items.reduce((s, i) => s + i.quantity, 0)} items`,
     productGrade: primary?.unit ?? '',

@@ -74,11 +74,8 @@ export default function CompleteProfileScreen() {
         await updateProfile({ language }).catch(() => undefined);
       }
 
-      if (skip) {
-        router.replace('/(tabs)' as Href);
-      } else {
-        router.push('/delivery-location' as Href);
-      }
+      // Always collect a delivery site before home — skip profile name still requires a site.
+      router.replace('/delivery-location' as Href);
     } catch (error) {
       const apiErr = error as ApiError;
       setErrorMessage(apiErr?.message ?? 'Failed to save profile. Please try again.');

@@ -16,6 +16,7 @@ import { YellowBackHeader } from '@components/BackHeader';
 import { sendOtp } from '@services/auth.api';
 import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
+import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
 import type { ApiError } from '@/types';
 
 const RETURNING_USER_KEY = '@bajriwala/returning_user';
@@ -87,9 +88,13 @@ export default function OTPScreen() {
       } else if (!customer.profileCompleted) {
         router.replace('/complete-profile');
       } else {
-        router.replace('/(tabs)');
-        // Re-run whatever protected action prompted this login (e.g. add-to-cart, checkout).
-        useAuthStore.getState().consumePendingAction();
+        const hasSites = await customerHasDeliverySites();
+        if (!hasSites) {
+          router.replace('/delivery-location');
+        } else {
+          router.replace('/(tabs)');
+          useAuthStore.getState().consumePendingAction();
+        }
       }
     } catch (error) {
       const apiErr = error as ApiError;

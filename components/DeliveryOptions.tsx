@@ -12,6 +12,8 @@ interface DeliveryOptionsProps {
   selected: DeliveryType;
   onSelect: (type: DeliveryType) => void;
   siteName: string;
+  hubName?: string;
+  distanceKm?: number | null;
 }
 
 function DeliveryCard({
@@ -51,8 +53,19 @@ function DeliveryCard({
   );
 }
 
-export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOptionsProps) {
+export function DeliveryOptions({
+  selected,
+  onSelect,
+  siteName,
+  hubName,
+  distanceKm,
+}: DeliveryOptionsProps) {
   const { t } = useTranslation();
+  const warehouseLabel = hubName || 'Assigned Hub';
+  const distanceLabel =
+    distanceKm != null && Number.isFinite(distanceKm)
+      ? `${distanceKm.toFixed(1)} km`
+      : null;
 
   return (
     <View className="mx-5 mt-6">
@@ -69,7 +82,9 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
         <Text className="text-sm font-bold text-text">{t('deliveryIn24')}</Text>
       </View>
       <Text className="mt-1 text-xs text-text-secondary">
-        {t('nearestWarehouse')}: 4.2 km (Thane West)
+        {t('nearestWarehouse')}: {distanceLabel ? `${distanceLabel} (` : ''}
+        {warehouseLabel}
+        {distanceLabel ? ')' : ''}
       </Text>
 
       <View className="mt-4 flex-row gap-2">
@@ -122,7 +137,10 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
             <Text className="text-sm font-semibold text-text">{formatINR(400, false)}</Text>
           </View>
           <View className="flex-row justify-between">
-            <Text className="text-sm text-text-secondary">{t('distance')} (4.2km)</Text>
+            <Text className="text-sm text-text-secondary">
+              {t('distance')}
+              {distanceLabel ? ` (${distanceLabel})` : ''}
+            </Text>
             <Text className="text-sm font-bold text-success">INCLUDED</Text>
           </View>
           <View className="flex-row justify-between">
@@ -135,7 +153,8 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
       <View className="mt-4 flex-row items-center gap-2 rounded-card bg-primary px-4 py-3">
         <Ionicons name="flash" size={16} color="#FFFFFF" />
         <Text className="flex-1 text-xs font-medium text-onPrimary">
-          {t('fastestDelivery')} {siteName}. {t('materialsAvailable')} Thane West {t('warehouse').toLowerCase()}.
+          {t('fastestDelivery')} {siteName}. {t('materialsAvailable')} {warehouseLabel}{' '}
+          {t('warehouse').toLowerCase()}.
         </Text>
       </View>
 
@@ -159,7 +178,7 @@ export function DeliveryOptions({ selected, onSelect, siteName }: DeliveryOption
           <Text className="text-[10px] font-bold text-text-secondary">{t('warehouse')}</Text>
           <View className="mt-2 flex-row items-center gap-2">
             <Ionicons name="home-outline" size={18} color="#FEB623" />
-            <Text className="text-sm font-bold text-text">Thane West</Text>
+            <Text className="text-sm font-bold text-text">{warehouseLabel}</Text>
           </View>
         </View>
         <View className="flex-1 rounded-card border border-border bg-surface p-3">

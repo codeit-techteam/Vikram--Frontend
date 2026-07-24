@@ -13,6 +13,7 @@ import { router, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -21,6 +22,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@components/AppHeader';
+import { HomeHeaderCard } from '@components/home/HomeHeaderCard';
 import { SearchBar } from '@components/SearchBar';
 import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
@@ -39,12 +41,13 @@ import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
 import { useCmsHome } from '@hooks/useCmsHome';
 import { useHomeCatalog } from '@hooks/useHome';
+import { useSites } from '@hooks/useSites';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
-import { useUserStore } from '@store/userStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
 import { useSearch } from '@hooks/useSearch';
 import { requireAuth } from '@utils/requireAuth';
+import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
 import type { CatalogCategory } from '@/types/catalog';
 import {
   adaptHeroSlides,
@@ -69,7 +72,22 @@ function pickHomeCategories(
 export default function HomeScreen() {
   const { t, language } = useTranslation();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const customerName = useUserStore((s) => s.user.name);
+  useSites(isLoggedIn);
+  const homeScrollY = useSharedValue(0);
+  const onHomeScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      homeScrollY.value = event.contentOffset.y;
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    void customerHasDeliverySites().then((hasSites) => {
+      if (!hasSites) {
+        router.replace('/delivery-location' as Href);
+      }
+    });
+  }, [isLoggedIn]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSwipeEnabled, setDrawerSwipeEnabled] = useState(true);
   const screenOpacity = useSharedValue(1);
@@ -417,11 +435,13 @@ export default function HomeScreen() {
 
         <Animated.View style={[styles.content, contentStyle, fadeStyle]}>
           <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-            <ScrollView
+            <Animated.ScrollView
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
               className="flex-1"
               contentContainerStyle={styles.scrollContent}
+              onScroll={onHomeScroll}
+              scrollEventThrottle={16}
               refreshControl={
                 <RefreshControl
                   refreshing={catalogRefreshing || cmsRefreshing}
@@ -433,12 +453,7 @@ export default function HomeScreen() {
                 isDrawerOpen={drawerOpen}
                 menuIconStyle={iconStyle}
               />
-
-              <View style={styles.greetingWrap}>
-                <Text style={styles.greetingText}>
-                  {isLoggedIn && customerName ? `Hi, ${customerName}` : 'Welcome Guest'}
-                </Text>
-              </View>
+              <HomeHeaderCard scrollY={homeScrollY} />
 
               <View style={styles.searchWrap}>
                 <SearchBar
@@ -458,7 +473,7 @@ export default function HomeScreen() {
               {sectionOrder.map((type) => renderSection(type))}
 
               <View style={styles.bottomSpacer} />
-            </ScrollView>
+            </Animated.ScrollView>
           </SafeAreaView>
         </Animated.View>
 
@@ -490,16 +505,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 8,
-  },
-  greetingWrap: {
-    paddingHorizontal: H_PAD,
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
-  greetingText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
   },
   searchWrap: {
     marginBottom: 0,
