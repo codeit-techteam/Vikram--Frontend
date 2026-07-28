@@ -9,9 +9,10 @@ export interface StatusBadgeConfig {
 export const ORDER_STATUS_BADGES: Record<OrderStatus, StatusBadgeConfig> = {
   pending: { label: 'Pending', color: '#B8860B', backgroundColor: '#FFF8E1' },
   confirmed: { label: 'Confirmed', color: '#1A73E8', backgroundColor: '#E3F2FD' },
-  processing: { label: 'Processing', color: '#1A73E8', backgroundColor: '#E3F2FD' },
+  // Prefer order.statusLabel from API when available (Accepted by Hub / Picking / Hub Assigned).
+  processing: { label: 'Accepted by Hub', color: '#1A73E8', backgroundColor: '#E3F2FD' },
   packed: { label: 'Packed', color: '#7B1FA2', backgroundColor: '#F3E5F5' },
-  ready_for_dispatch: { label: 'Ready For Dispatch', color: '#7B1FA2', backgroundColor: '#F3E5F5' },
+  ready_for_dispatch: { label: 'Driver Assigned', color: '#7B1FA2', backgroundColor: '#F3E5F5' },
   out_for_delivery: { label: 'Out For Delivery', color: '#E65100', backgroundColor: '#FFF3E0' },
   delivered: { label: 'Delivered', color: '#2E7D32', backgroundColor: '#E8F5E9' },
   cancelled: { label: 'Cancelled', color: '#C62828', backgroundColor: '#FFEBEE' },
@@ -64,7 +65,8 @@ export const STATUS_PROGRESS_INDEX: Record<OrderStatus, number> = {
   refunded: -1,
 };
 
-export const CANCELLABLE_STATUSES: OrderStatus[] = ['pending', 'confirmed', 'processing'];
+/** Aligns with backend: PENDING, CONFIRMED, HUB_ASSIGNED (mapped → confirmed), AWAITING_HUB_ALLOCATION (→ pending). */
+export const CANCELLABLE_STATUSES: OrderStatus[] = ['pending', 'confirmed'];
 
 export function isActiveStatus(status: OrderStatus): boolean {
   return ACTIVE_ORDER_STATUSES.includes(status);

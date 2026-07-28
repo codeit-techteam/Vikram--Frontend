@@ -66,7 +66,15 @@ export const OrderCardActions = memo(function OrderCardActions({
         <ActionButton label="Contact Driver" onPress={handleContactDriver} icon="call-outline" />
       ) : null}
       {actions.includes('details') ? (
-        <ActionButton label="View Details" onPress={handleDetails} icon="eye-outline" />
+        <ActionButton
+          label={
+            order.status === 'delivered' || order.status === 'refunded'
+              ? 'View Order Details'
+              : 'View Details'
+          }
+          onPress={handleDetails}
+          icon="eye-outline"
+        />
       ) : null}
       {actions.includes('reorder') ? (
         <ActionButton
@@ -103,15 +111,16 @@ function getActionsForStatus(status: Order['status']): string[] {
       return ['track', 'contact'];
     case 'delivered':
     case 'refunded':
-      return ['reorder', 'invoice', 'rate'];
+      return ['details', 'reorder', 'invoice', 'rate'];
     case 'cancelled':
     case 'payment_failed':
       return ['details', 'reorder'];
-    case 'processing':
     case 'confirmed':
-    case 'packed':
     case 'pending':
       return ['details', 'cancel'];
+    case 'processing':
+    case 'packed':
+      return ['details', 'track'];
     default:
       return ['details'];
   }

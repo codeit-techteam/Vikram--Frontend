@@ -3,7 +3,6 @@ import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,12 +16,9 @@ import { OrderTimeline } from '@components/orders/OrderTimeline';
 import { PaymentSection } from '@components/orders/PaymentSection';
 import { PriceSummary } from '@components/orders/PriceSummary';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { buildInvoiceHtml, getInvoiceData } from '@constants/invoiceData';
-import { isActiveStatus } from '@constants/orderStatus';
+import { CANCELLABLE_STATUSES, isActiveStatus } from '@constants/orderStatus';
 import { useOrder } from '@hooks/useOrder';
 import { useReorder } from '@hooks/useReorder';
-import { adaptLegacyOrder } from '@utils/orderAdapters';
-import { useOrderStore } from '@store/orderStore';
 import { useGstStore } from '@store/gstStore';
 import { useUserStore } from '@store/userStore';
 import { safeGoBack } from '@utils/navigation';
@@ -31,30 +27,42 @@ import { theme, borderRadius } from '@constants/theme';
 
 export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const legacyOrder = useOrderStore((s) => s.getOrder(orderId ?? ''));
   const gstDetails = useGstStore((s) => s.details);
   const hasGst = useGstStore((s) => s.verified);
   const customerName = useUserStore((s) => s.user.name);
-  const { order: apiOrder, isLoading, cancelOrder, isCancelling } = useOrder(orderId);
+  const {
+    order,
+    isLoading,
+    cancelOrder,
+    isCancelling,
+    downloadInvoicePdf,
+  } = useOrder(orderId);
   const { reorder, isReordering } = useReorder();
   const [downloading, setDownloading] = useState(false);
 
-  const order = apiOrder ?? (legacyOrder ? adaptLegacyOrder(legacyOrder) : undefined);
-
   const handleDownloadInvoice = useCallback(async () => {
-    if (!order) return;
+    if (!orderId) return;
     setDownloading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const invoice = getInvoiceData(order.invoiceId ?? order.id, legacyOrder);
-      const { uri } = await Print.printToFileAsync({ html: buildInvoiceHtml(invoice) });
+      const { uri, filename } = await downloadInvoicePdf();
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: filename,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Invoice ready', `Saved as ${filename}`);
       }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to download invoice';
+      Alert.alert('Invoice download failed', message);
     } finally {
       setDownloading(false);
     }
-  }, [order, legacyOrder]);
+  }, [orderId, downloadInvoicePdf]);
 
   const handleReorder = useCallback(async () => {
     if (!orderId) return;
@@ -100,6 +108,15 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   }
 
   const showTrack = isActiveStatus(order.status);
+  const canCancel =
+    typeof order.canCancel === 'boolean'
+      ? order.canCancel
+      : CANCELLABLE_STATUSES.includes(order.status);
+  const invoiceStatusLabel = order.invoiceStatus
+    ? String(order.invoiceStatus).replace(/_/g, ' ')
+    : order.invoiceNumber
+      ? `Invoice ${order.invoiceNumber}`
+      : 'Available after delivery';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
@@ -130,7 +147,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             <Text style={{ fontSize: 12, color: theme.textMuted }}>
               Order ID: {order.orderNumber}
             </Text>
-            <OrderStatusBadge status={order.status} compact />
+            <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
           </View>
           <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
             Placed on {formatDateKey(order.createdAt)}
@@ -169,7 +186,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
           <DownloadInvoiceCard
             details={gstDetails}
             title="Business Invoice"
-            invoiceStatus="Available after delivery"
+            invoiceStatus={invoiceStatusLabel}
             onDownload={handleDownloadInvoice}
             isDownloading={downloading}
             downloadLabel="Download GST Invoice"
@@ -218,7 +235,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             </Text>
           </ScaledPressable>
 
-          {order.status === 'processing' || order.status === 'confirmed' || order.status === 'pending' ? (
+          {canCancel ? (
             <ScaledPressable
               onPress={handleCancel}
               disabled={isCancelling}

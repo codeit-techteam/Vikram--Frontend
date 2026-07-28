@@ -25,9 +25,13 @@ const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
   CONFIRMED: 'confirmed',
   HUB_ASSIGNED: 'confirmed',
   AWAITING_HUB_ALLOCATION: 'pending',
+  ACCEPTED_BY_HUB: 'processing',
+  PICKING: 'processing',
   PROCESSING: 'processing',
   PACKED: 'packed',
   READY_FOR_DISPATCH: 'ready_for_dispatch',
+  DRIVER_ASSIGNED: 'ready_for_dispatch',
+  OUT_FOR_DELIVERY: 'out_for_delivery',
   DISPATCHED: 'out_for_delivery',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
@@ -51,6 +55,30 @@ function mapBackendStatus(status: unknown): OrderStatus {
   if (!status) return 'pending';
   const key = String(status);
   return BACKEND_STATUS_MAP[key] ?? BACKEND_STATUS_MAP[key.toUpperCase()] ?? 'pending';
+}
+
+/** Fallback labels when API omits statusLabel (e.g. place-order timeline). */
+const BACKEND_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Order Placed',
+  CONFIRMED: 'Confirmed',
+  HUB_ASSIGNED: 'Hub Assigned',
+  AWAITING_HUB_ALLOCATION: 'Awaiting Hub Allocation',
+  ACCEPTED_BY_HUB: 'Accepted by Hub',
+  PICKING: 'Picking',
+  PROCESSING: 'Accepted by Hub',
+  PACKED: 'Packed',
+  READY_FOR_DISPATCH: 'Packed',
+  DRIVER_ASSIGNED: 'Driver Assigned',
+  OUT_FOR_DELIVERY: 'Out For Delivery',
+  DISPATCHED: 'Out For Delivery',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+};
+
+function backendStatusLabel(status: unknown): string | undefined {
+  if (!status) return undefined;
+  const key = String(status).toUpperCase();
+  return BACKEND_STATUS_LABELS[key];
 }
 
 function buildDefaultTimeline(status: OrderStatus): TimelineStep[] {
@@ -223,21 +251,25 @@ export function adaptLegacyOrder(order: LegacyOrder): Order {
           estimatedArrival: order.arrivingBy ?? order.eta,
           estimatedMinutes: status === 'out_for_delivery' ? 8 : undefined,
           warehouse: order.warehouse,
-          driver: {
-            name: order.driverName,
-            phone: '+919999999999',
-            vehicleNumber: order.vehicleNumber,
-          },
+          driver: order.driverName
+            ? {
+                name: order.driverName,
+                phone: '',
+                vehicleNumber: order.vehicleNumber,
+              }
+            : undefined,
         }
       : undefined,
     refund: order.refundAmount
       ? { status: 'credited', amount: order.refundAmount }
       : undefined,
-    driver: {
-      name: order.driverName,
-      phone: '+919999999999',
-      vehicleNumber: order.vehicleNumber,
-    },
+    driver: order.driverName
+      ? {
+          name: order.driverName,
+          phone: '',
+          vehicleNumber: order.vehicleNumber,
+        }
+      : undefined,
     invoiceId: order.invoiceId,
     invoiceFileName: order.invoiceFileName,
     timeline: buildTimeline(order, status),
@@ -328,19 +360,72 @@ function mapApiDriver(raw: Record<string, unknown>): OrderDriver | undefined {
     | Record<string, unknown>
     | null
     | undefined;
-  if (!driver) return undefined;
+  if (!driver || typeof driver !== 'object') return undefined;
+
+  const name = String(driver.name ?? '').trim();
+  const phone = String(driver.phone ?? '').trim();
+  if (!name && !phone) return undefined;
 
   const vehicle = raw.vehicle as Record<string, unknown> | undefined;
   return {
-    name: String(driver.name ?? ''),
-    phone: String(driver.phone ?? ''),
-    vehicleNumber: String(driver.vehicleNumber ?? vehicle?.registration ?? ''),
+    name,
+    phone,
+    vehicleNumber: String(
+      driver.vehicleNumber ?? vehicle?.registration ?? '',
+    ).trim(),
     image: driver.image ? String(driver.image) : undefined,
   };
 }
 
+function formatEta(value: unknown): string | undefined {
+  if (!value) return undefined;
+  const raw = String(value);
+  const date = new Date(raw);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  return raw;
+}
+
+function mapApiTimeline(
+  rawTimeline: Record<string, unknown>[],
+): TimelineStep[] {
+  const lastIndex = rawTimeline.length - 1;
+  return rawTimeline.map((entry, index) => ({
+    key: String(entry.key ?? entry.status ?? `step-${index}`).toLowerCase(),
+    label: String(
+      entry.message ??
+        entry.statusLabel ??
+        entry.label ??
+        backendStatusLabel(entry.status) ??
+        entry.status ??
+        'Update',
+    ),
+    time: entry.time
+      ? String(entry.time)
+      : entry.createdAt
+        ? new Date(String(entry.createdAt)).toLocaleString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : undefined,
+    done: index < lastIndex,
+    active: index === lastIndex,
+  }));
+}
+
 export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const status = mapBackendStatus(raw.status ?? raw.orderStatus);
+  const statusLabel =
+    (raw.statusLabel ? String(raw.statusLabel) : undefined) ??
+    backendStatusLabel(raw.status ?? raw.orderStatus);
   const payment = (raw.payment ?? {}) as Record<string, unknown>;
   const addressRaw = (raw.address ??
     raw.shippingAddress ??
@@ -350,27 +435,11 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const hub = (raw.hub ?? {}) as Record<string, unknown>;
   const products = mapApiProducts(raw);
   const driver = mapApiDriver(raw);
+  const rawTimeline = Array.isArray(raw.timeline)
+    ? (raw.timeline as Record<string, unknown>[])
+    : [];
   const timeline =
-    Array.isArray(raw.timeline) && raw.timeline.length > 0
-      ? (raw.timeline as Record<string, unknown>[]).map((entry, index) => ({
-          key: String(entry.key ?? entry.status ?? `step-${index}`).toLowerCase(),
-          label: String(entry.label ?? entry.statusLabel ?? entry.status ?? 'Update'),
-          time: entry.time
-            ? String(entry.time)
-            : entry.createdAt
-              ? new Date(String(entry.createdAt)).toLocaleString('en-IN', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : undefined,
-          done: Boolean(entry.done ?? index < (raw.timeline as unknown[]).length - 1),
-          active: Boolean(
-            entry.active ?? index === (raw.timeline as unknown[]).length - 1,
-          ),
-        }))
-      : buildDefaultTimeline(status);
+    rawTimeline.length > 0 ? mapApiTimeline(rawTimeline) : buildDefaultTimeline(status);
 
   const line1 = String(addressRaw.line1 ?? addressRaw.address ?? '');
   const line2 = addressRaw.line2 ? String(addressRaw.line2) : '';
@@ -380,13 +449,17 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const paymentStatusRaw = String(
     payment.status ?? raw.paymentStatus ?? 'PENDING',
   ).toLowerCase();
+  const expectedDelivery = formatEta(
+    raw.expectedDeliveryAt ?? raw.expectedDelivery,
+  );
 
   return {
     id: String(raw.id ?? ''),
     orderNumber: String(raw.orderNumber ?? raw.id ?? ''),
     status,
+    statusLabel,
     createdAt: String(raw.createdAt ?? new Date().toISOString()),
-    expectedDelivery: raw.expectedDelivery ? String(raw.expectedDelivery) : undefined,
+    expectedDelivery,
     deliveredAt: raw.deliveredAt ? String(raw.deliveredAt) : undefined,
     products,
     subtotal: Number(raw.subtotal ?? 0),
@@ -407,27 +480,30 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
           : paymentMethod,
     transactionId: raw.transactionId ? String(raw.transactionId) : undefined,
     shippingAddress: {
-      name: String(addressRaw.name ?? customer.fullName ?? ''),
+      name: String(addressRaw.name ?? customer.fullName ?? addressRaw.label ?? ''),
       phone: String(addressRaw.phone ?? customer.phone ?? ''),
       address: [line1, line2, city].filter(Boolean).join(', '),
       pin: pincode,
       instructions: addressRaw.instructions ? String(addressRaw.instructions) : undefined,
     },
-    tracking: {
-      currentStep: status,
-      steps: timeline,
-      driver,
-      warehouse: hub.name ? String(hub.name) : undefined,
-      ...(typeof raw.tracking === 'object' && raw.tracking
-        ? (raw.tracking as Order['tracking'])
-        : {}),
-    },
+    tracking: ACTIVE_ORDER_STATUSES.includes(status)
+      ? {
+          currentStep: status,
+          steps: timeline,
+          estimatedArrival: expectedDelivery,
+          driver,
+          warehouse: hub.name ? String(hub.name) : undefined,
+        }
+      : undefined,
     refund: raw.refund as Order['refund'],
     driver,
     cancellationReason:
       String(raw.cancelReason ?? raw.cancellationReason ?? '') || undefined,
+    canCancel: typeof raw.canCancel === 'boolean' ? raw.canCancel : undefined,
     invoiceUrl: raw.invoiceUrl ? String(raw.invoiceUrl) : undefined,
-    invoiceId: String(raw.invoiceNumber ?? raw.invoiceId ?? '') || undefined,
+    invoiceId: String(raw.invoiceId ?? raw.invoiceNumber ?? '') || undefined,
+    invoiceNumber: raw.invoiceNumber ? String(raw.invoiceNumber) : undefined,
+    invoiceStatus: raw.invoiceStatus ? String(raw.invoiceStatus) : undefined,
     invoiceFileName: raw.invoiceFileName ? String(raw.invoiceFileName) : undefined,
     timeline,
     deliveredEarly: Boolean(raw.deliveredEarly),

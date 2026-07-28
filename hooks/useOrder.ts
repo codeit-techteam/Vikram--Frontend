@@ -4,9 +4,12 @@ import {
   cancelOrder,
   fetchOrderById,
   fetchOrderInvoice,
+  fetchOrderInvoicePdf,
 } from '@services/orders.api';
 import { ORDERS_STALE_TIME } from '@hooks/useOrders';
 import type { CancelOrderPayload, Order } from '@/types/order';
+
+const ORDER_POLL_MS = 10_000;
 
 export function useOrder(orderId: string | undefined) {
   const queryClient = useQueryClient();
@@ -15,9 +18,9 @@ export function useOrder(orderId: string | undefined) {
     queryKey: ['order', orderId],
     queryFn: () => fetchOrderById(orderId!),
     enabled: Boolean(orderId),
-    staleTime: 15_000,
+    staleTime: ORDER_POLL_MS,
     gcTime: ORDERS_STALE_TIME,
-    refetchInterval: 15_000,
+    refetchInterval: ORDER_POLL_MS,
   });
 
   const cancelMutation = useMutation({
@@ -31,6 +34,7 @@ export function useOrder(orderId: string | undefined) {
           ? {
               ...old,
               status: 'cancelled',
+              statusLabel: 'Cancelled',
               cancellationReason: 'Cancelling…',
             }
           : old,
@@ -53,6 +57,10 @@ export function useOrder(orderId: string | undefined) {
     mutationFn: () => fetchOrderInvoice(orderId!),
   });
 
+  const invoicePdfMutation = useMutation({
+    mutationFn: () => fetchOrderInvoicePdf(orderId!),
+  });
+
   return {
     order: query.data,
     isLoading: query.isLoading,
@@ -63,5 +71,7 @@ export function useOrder(orderId: string | undefined) {
     isCancelling: cancelMutation.isPending,
     fetchInvoice: invoiceMutation.mutateAsync,
     isFetchingInvoice: invoiceMutation.isPending,
+    downloadInvoicePdf: invoicePdfMutation.mutateAsync,
+    isDownloadingInvoicePdf: invoicePdfMutation.isPending,
   };
 }

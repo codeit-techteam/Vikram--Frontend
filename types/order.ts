@@ -73,6 +73,8 @@ export interface Order {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  /** Backend display label (SSOT) — prefer over badge map when present */
+  statusLabel?: string;
   createdAt: string;
   expectedDelivery?: string;
   deliveredAt?: string;
@@ -94,8 +96,11 @@ export interface Order {
   refund?: OrderRefund;
   driver?: OrderDriver;
   cancellationReason?: string;
+  canCancel?: boolean;
   invoiceUrl?: string;
   invoiceId?: string;
+  invoiceNumber?: string;
+  invoiceStatus?: string;
   invoiceFileName?: string;
   timeline: TimelineStep[];
   deliveredEarly?: boolean;

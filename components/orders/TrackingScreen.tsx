@@ -13,8 +13,6 @@ import { OrderStatusBadge } from '@components/orders/OrderStatusBadge';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { ORDER_STATUS_BADGES } from '@constants/orderStatus';
 import { useOrder } from '@hooks/useOrder';
-import { adaptLegacyOrder } from '@utils/orderAdapters';
-import { useOrderStore } from '@store/orderStore';
 import { safeGoBack } from '@utils/navigation';
 import { formatDateKey } from '@utils/orderDateHelpers';
 import { formatINR } from '@utils/formatCurrency';
@@ -40,10 +38,7 @@ function parseEstimatedArrival(expected?: string) {
 
 export const TrackingScreen = memo(function TrackingScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const legacyOrder = useOrderStore((s) => s.getOrder(orderId ?? ''));
-  const { order: apiOrder, isLoading: orderLoading } = useOrder(orderId);
-
-  const order = apiOrder ?? (legacyOrder ? adaptLegacyOrder(legacyOrder) : undefined);
+  const { order, isLoading: orderLoading } = useOrder(orderId);
 
   const handleCallDriver = useCallback(() => {
     const phone = order?.driver?.phone ?? order?.tracking?.driver?.phone;
@@ -81,18 +76,20 @@ export const TrackingScreen = memo(function TrackingScreen() {
     );
   }
 
-  const driver = order.tracking?.driver ?? order.driver;
+  const driver = order.driver ?? order.tracking?.driver;
   const warehouse = order.tracking?.warehouse;
   const statusConfig = ORDER_STATUS_BADGES[order.status];
+  const statusLabel = order.statusLabel?.trim() || statusConfig.label;
   const etaSource =
-    order.tracking?.estimatedArrival ??
     order.expectedDelivery ??
+    order.tracking?.estimatedArrival ??
     (order.tracking?.estimatedMinutes != null
       ? `Delivering in ${order.tracking.estimatedMinutes} mins`
       : undefined);
   const { day: etaDay, time: etaTime } = parseEstimatedArrival(etaSource);
   const timelineSteps =
     order.timeline?.length > 0 ? order.timeline : buildTimelineFromStatus(order.status);
+  const canCallDriver = Boolean(driver?.phone);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
@@ -125,10 +122,10 @@ export const TrackingScreen = memo(function TrackingScreen() {
             <View>
               <Text style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Current Status</Text>
               <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
-                {statusConfig.label}
+                {statusLabel}
               </Text>
             </View>
-            <OrderStatusBadge status={order.status} compact />
+            <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
           </View>
           {etaDay || etaTime ? (
             <View
@@ -172,30 +169,39 @@ export const TrackingScreen = memo(function TrackingScreen() {
               />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
-                  {driver.name}
+                  {driver.name || 'Assigned driver'}
                 </Text>
-                <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
-                  Vehicle: {driver.vehicleNumber}
-                </Text>
+                {driver.vehicleNumber ? (
+                  <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
+                    Vehicle: {driver.vehicleNumber}
+                  </Text>
+                ) : null}
+                {driver.phone ? (
+                  <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
+                    {driver.phone}
+                  </Text>
+                ) : null}
               </View>
             </View>
-            <ScaledPressable
-              onPress={handleCallDriver}
-              style={{
-                marginTop: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.primary,
-                borderRadius: borderRadius.md,
-                paddingVertical: 12,
-                gap: 8,
-              }}>
-              <Ionicons name="call" size={18} color={theme.textPrimary} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>
-                Call Driver
-              </Text>
-            </ScaledPressable>
+            {canCallDriver ? (
+              <ScaledPressable
+                onPress={handleCallDriver}
+                style={{
+                  marginTop: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.primary,
+                  borderRadius: borderRadius.md,
+                  paddingVertical: 12,
+                  gap: 8,
+                }}>
+                <Ionicons name="call" size={18} color={theme.textPrimary} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>
+                  Call Driver
+                </Text>
+              </ScaledPressable>
+            ) : null}
           </View>
         ) : null}
 

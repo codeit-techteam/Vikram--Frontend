@@ -124,7 +124,7 @@ export const ActiveOrderCard = memo(function ActiveOrderCard(props: OrderCardBas
               </Text>
             )}
           </View>
-          {order.status === 'out_for_delivery' ? <EnRouteBadge /> : <OrderStatusBadge status={order.status} compact />}
+          {order.status === 'out_for_delivery' ? <EnRouteBadge /> : <OrderStatusBadge status={order.status} label={order.statusLabel} compact />}
         </View>
         <ActiveOrderProgress currentIndex={progressIndex} />
         <View style={{ marginTop: 12 }}>
@@ -257,7 +257,7 @@ export const CancelledOrderCard = memo(function CancelledOrderCard(props: OrderC
               </Text>
             ) : null}
           </View>
-          <OrderStatusBadge status={order.status} compact />
+          <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
         </View>
         {order.refund ? (
           <View
@@ -319,7 +319,7 @@ export const DefaultOrderCard = memo(function DefaultOrderCard(props: OrderCardB
               {order.expectedDelivery ? `Expected: ${order.expectedDelivery}` : 'Processing'}
             </Text>
           </View>
-          <OrderStatusBadge status={order.status} compact />
+          <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
         </View>
         <View style={{ marginTop: 12 }}>
           <OrderProductPreview products={order.products} />

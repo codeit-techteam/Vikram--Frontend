@@ -9,6 +9,7 @@ import type {
   ReorderResponse,
 } from '@/types/order';
 import { normalizeApiOrder } from '@utils/orderAdapters';
+import { File, Paths } from 'expo-file-system';
 
 const ORDERS_BASE = '/orders';
 
@@ -117,11 +118,34 @@ export async function cancelOrder(
   return normalizeApiOrder(data.data);
 }
 
-export async function fetchOrderInvoice(orderId: string): Promise<{ url: string }> {
-  const { data } = await api.get<ApiResponse<{ url: string }>>(
+export async function fetchOrderInvoice(
+  orderId: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await api.get<ApiResponse<Record<string, unknown>>>(
     `${ORDERS_BASE}/${orderId}/invoice`,
   );
   return data.data;
+}
+
+/** Downloads backend GST invoice PDF and writes it to a local cache file for Sharing. */
+export async function fetchOrderInvoicePdf(
+  orderId: string,
+): Promise<{ uri: string; filename: string }> {
+  const response = await api.get<ArrayBuffer>(`${ORDERS_BASE}/${orderId}/invoice/pdf`, {
+    responseType: 'arraybuffer',
+    headers: { Accept: 'application/pdf' },
+  });
+
+  const disposition = String(response.headers?.['content-disposition'] ?? '');
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || `invoice-${orderId}.pdf`;
+  const file = new File(Paths.cache, filename);
+  if (file.exists) {
+    file.delete();
+  }
+  file.create();
+  file.write(new Uint8Array(response.data));
+  return { uri: file.uri, filename };
 }
 
 export async function placeOrder(payload: {

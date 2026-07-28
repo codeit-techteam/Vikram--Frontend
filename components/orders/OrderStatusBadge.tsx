@@ -7,14 +7,18 @@ import type { OrderStatus } from '@/types/order';
 
 interface OrderStatusBadgeProps {
   status: OrderStatus;
+  /** Prefer backend statusLabel when present */
+  label?: string;
   compact?: boolean;
 }
 
 export const OrderStatusBadge = memo(function OrderStatusBadge({
   status,
+  label,
   compact = false,
 }: OrderStatusBadgeProps) {
   const config = ORDER_STATUS_BADGES[status] ?? ORDER_STATUS_BADGES.processing;
+  const displayLabel = label?.trim() || config.label;
 
   return (
     <Animated.View
@@ -31,7 +35,7 @@ export const OrderStatusBadge = memo(function OrderStatusBadge({
           fontWeight: '700',
           color: config.color,
         }}>
-        {config.label}
+        {displayLabel}
       </Text>
     </Animated.View>
   );

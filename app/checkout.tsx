@@ -30,6 +30,7 @@ import { useGstStore } from '@store/gstStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
+import { normalizeApiOrder } from '@utils/orderAdapters';
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
 import { placeOrder } from '@services/orders.api';
 import { syncLocalCartToServer } from '@services/cart.api';
@@ -194,16 +195,23 @@ export default function CheckoutScreen() {
       setPaySuccess(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const orderId = String(
-        (placed as { id?: string; orderNumber?: string }).id ||
-          (placed as { orderNumber?: string }).orderNumber ||
-          '',
-      );
+      const apiOrder = normalizeApiOrder(placed as Record<string, unknown>);
+      const orderId = apiOrder.id || apiOrder.orderNumber;
       const warehouseLabel =
         assignedHubName
           ? `${assignedHubName}${assignedHubCode ? ` (${assignedHubCode})` : ''}`
-          : 'Assigned Hub';
+          : apiOrder.tracking?.warehouse || 'Assigned Hub';
 
+      // Seed React Query so Track/Details bind to API order immediately.
+      if (orderId) {
+        queryClient.setQueryData(['order', orderId], apiOrder);
+      }
+      await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+      if (orderId) {
+        void queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+      }
+
+      // Brief local success toast only — Track screens fetch by id from API.
       addOrder(
         buildOrderFromCheckout({
           id: orderId || String((placed as { orderNumber?: string }).orderNumber),
@@ -211,12 +219,11 @@ export default function CheckoutScreen() {
           total: checkoutTotal,
           site: selectedSite,
           paymentMethod,
-          deliveryETA: bikeDelivery ? '30–90 mins' : 'Today, 5:00 PM',
+          deliveryETA: apiOrder.expectedDelivery ?? (bikeDelivery ? '30–90 mins' : 'Today, 5:00 PM'),
           warehouse: warehouseLabel,
         }),
       );
 
-      await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
       clearCart();
       setPaying(false);
       router.replace({
