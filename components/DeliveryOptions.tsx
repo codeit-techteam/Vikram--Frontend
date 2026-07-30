@@ -12,8 +12,7 @@ interface DeliveryOptionsProps {
   selected: DeliveryType;
   onSelect: (type: DeliveryType) => void;
   siteName: string;
-  hubName?: string;
-  distanceKm?: number | null;
+  deliveryMessage?: string;
 }
 
 function DeliveryCard({
@@ -57,15 +56,10 @@ export function DeliveryOptions({
   selected,
   onSelect,
   siteName,
-  hubName,
-  distanceKm,
+  deliveryMessage,
 }: DeliveryOptionsProps) {
   const { t } = useTranslation();
-  const warehouseLabel = hubName || 'Assigned Hub';
-  const distanceLabel =
-    distanceKm != null && Number.isFinite(distanceKm)
-      ? `${distanceKm.toFixed(1)} km`
-      : null;
+  const etaLabel = deliveryMessage || 'Fast delivery available';
 
   return (
     <View className="mx-5 mt-6">
@@ -77,15 +71,16 @@ export function DeliveryOptions({
         </View>
       </View>
 
-      <View className="mt-3 flex-row items-center gap-2">
-        <Ionicons name="time-outline" size={16} color="#FEB623" />
-        <Text className="text-sm font-bold text-text">{t('deliveryIn24')}</Text>
+      <View className="mt-3 rounded-card border border-border bg-trust p-4">
+        <View className="flex-row items-center gap-2">
+          <Ionicons name="flash-outline" size={18} color="#FEB623" />
+          <Text className="text-sm font-bold text-text">Estimated Delivery</Text>
+        </View>
+        <Text className="mt-2 text-lg font-extrabold text-primary">{etaLabel}</Text>
+        <Text className="mt-1 text-xs text-text-secondary">
+          Delivering to {siteName}
+        </Text>
       </View>
-      <Text className="mt-1 text-xs text-text-secondary">
-        {t('nearestWarehouse')}: {distanceLabel ? `${distanceLabel} (` : ''}
-        {warehouseLabel}
-        {distanceLabel ? ')' : ''}
-      </Text>
 
       <View className="mt-4 flex-row gap-2">
         <DeliveryCard
@@ -137,10 +132,7 @@ export function DeliveryOptions({
             <Text className="text-sm font-semibold text-text">{formatINR(400, false)}</Text>
           </View>
           <View className="flex-row justify-between">
-            <Text className="text-sm text-text-secondary">
-              {t('distance')}
-              {distanceLabel ? ` (${distanceLabel})` : ''}
-            </Text>
+            <Text className="text-sm text-text-secondary">{t('distance')}</Text>
             <Text className="text-sm font-bold text-success">INCLUDED</Text>
           </View>
           <View className="flex-row justify-between">
@@ -153,8 +145,7 @@ export function DeliveryOptions({
       <View className="mt-4 flex-row items-center gap-2 rounded-card bg-primary px-4 py-3">
         <Ionicons name="flash" size={16} color="#FFFFFF" />
         <Text className="flex-1 text-xs font-medium text-onPrimary">
-          {t('fastestDelivery')} {siteName}. {t('materialsAvailable')} {warehouseLabel}{' '}
-          {t('warehouse').toLowerCase()}.
+          {t('fastestDelivery')} {siteName}. {etaLabel}.
         </Text>
       </View>
 
@@ -171,23 +162,6 @@ export function DeliveryOptions({
             </Text>
           </View>
         ))}
-      </View>
-
-      <View className="mt-4 flex-row gap-3">
-        <View className="flex-1 rounded-card border border-border bg-surface p-3">
-          <Text className="text-[10px] font-bold text-text-secondary">{t('warehouse')}</Text>
-          <View className="mt-2 flex-row items-center gap-2">
-            <Ionicons name="home-outline" size={18} color="#FEB623" />
-            <Text className="text-sm font-bold text-text">{warehouseLabel}</Text>
-          </View>
-        </View>
-        <View className="flex-1 rounded-card border border-border bg-surface p-3">
-          <Text className="text-[10px] font-bold text-text-secondary">{t('vehicle')}</Text>
-          <View className="mt-2 flex-row items-center gap-2">
-            <Ionicons name="bus-outline" size={18} color="#FEB623" />
-            <Text className="text-sm font-bold text-text">10-Ton Tipper</Text>
-          </View>
-        </View>
       </View>
     </View>
   );

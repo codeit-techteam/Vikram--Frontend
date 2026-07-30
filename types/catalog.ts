@@ -47,8 +47,17 @@ export interface ProductVariant {
   count?: number;
   quantity?: number;
   price: number;
+  mrp?: number | null;
+  discountPercent?: number;
   bulkPrice?: number | null;
   inStock?: boolean;
+  stockLeft?: number | null;
+}
+
+export interface BulkPricingTier {
+  minQty: number;
+  price: number;
+  label?: string | null;
 }
 
 export interface Product {
@@ -59,10 +68,14 @@ export interface Product {
   image?: ImageSourcePropType;
   /** Remote URL when storage is configured; null → local placeholder */
   imageUrl?: string | null;
+  brandLogoUrl?: string | null;
   imageSearch: string;
   category: string;
   categoryId?: string;
   categorySlug?: string;
+  subcategoryId?: string | null;
+  subcategorySlug?: string | null;
+  subcategoryName?: string | null;
   brand?: string;
   name: string;
   nameHi?: string;
@@ -75,16 +88,20 @@ export interface Product {
   hasVariants?: boolean;
   productVariants?: ProductVariant[];
   defaultVariantId?: string;
+  variantCount?: number;
   /** When true, pack-size variant replaces quantity stepper (e.g. bricks) */
   variantIsQuantity?: boolean;
   perPiecePrice?: number;
   bulkPerPiecePrice?: number;
   retailPrice: string;
   retailPriceValue: number;
+  mrp?: number | null;
+  discountPercent?: number;
   salePrice?: number | null;
   bulkLabel: string;
   bulkPrice: string;
   bulkPriceValue: number;
+  bulkPricing?: BulkPricingTier[];
   unit: string;
   defaultQuantity: number;
   minOrder?: number;
@@ -96,15 +113,29 @@ export interface Product {
   categoryType: ProductCategoryType;
   detailName?: string;
   stockLeft?: number | null;
+  availableStock?: number | null;
   deliveryETA?: string | null;
+  deliveryMessage?: string | null;
+  estimatedDeliveryMinutes?: number | null;
+  deliveryEligible?: boolean;
   gst?: number;
   rating?: number | null;
+  averageRating?: number | null;
+  reviewCount?: number | null;
   isFeatured?: boolean;
   isBestSelling?: boolean;
+  isNewArrival?: boolean;
   isAvailable?: boolean;
   specsMap?: Record<string, string> | null;
   carouselUrls?: string[];
+  gallery?: string[];
   relatedProducts?: Product[];
+  hubInventory?: Array<{
+    hubId: string;
+    hubName?: string | null;
+    availableQty: number;
+    variantId?: string | null;
+  }>;
 }
 
 export interface TechSpecItem {

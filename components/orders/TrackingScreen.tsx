@@ -77,14 +77,13 @@ export const TrackingScreen = memo(function TrackingScreen() {
   }
 
   const driver = order.driver ?? order.tracking?.driver;
-  const warehouse = order.tracking?.warehouse;
   const statusConfig = ORDER_STATUS_BADGES[order.status];
   const statusLabel = order.statusLabel?.trim() || statusConfig.label;
   const etaSource =
     order.expectedDelivery ??
     order.tracking?.estimatedArrival ??
     (order.tracking?.estimatedMinutes != null
-      ? `Delivering in ${order.tracking.estimatedMinutes} mins`
+      ? `Delivery in ${order.tracking.estimatedMinutes} mins`
       : undefined);
   const { day: etaDay, time: etaTime } = parseEstimatedArrival(etaSource);
   const timelineSteps =
@@ -229,7 +228,6 @@ export const TrackingScreen = memo(function TrackingScreen() {
             value={getPaymentMethodLabel(order.paymentMethod, order.paymentMethodLabel)}
           />
           <InfoRow label="Total Amount" value={formatINR(order.grandTotal, false)} highlight />
-          {warehouse ? <InfoRow label="Assigned Hub" value={warehouse} /> : null}
           {order.expectedDelivery ? (
             <InfoRow label="Expected Delivery" value={order.expectedDelivery} />
           ) : null}

@@ -11,6 +11,37 @@ function isUuid(value?: string): value is string {
     );
 }
 
+export interface AddToCartApiPayload {
+  productId: string;
+  quantity?: number;
+  variantId?: string;
+  hubId?: string;
+  etaMinutes?: number;
+}
+
+export async function addCartItemApi(payload: AddToCartApiPayload): Promise<unknown> {
+  const { data } = await api.post<ApiResponse<unknown>>(CART_BASE, payload);
+  return data.data;
+}
+
+export async function updateCartItemApi(
+  itemId: string,
+  quantity: number,
+): Promise<unknown> {
+  const { data } = await api.patch<ApiResponse<unknown>>(
+    `${CART_BASE}/item/${itemId}`,
+    { quantity },
+  );
+  return data.data;
+}
+
+export async function removeCartItemApi(itemId: string): Promise<unknown> {
+  const { data } = await api.delete<ApiResponse<unknown>>(
+    `${CART_BASE}/item/${itemId}`,
+  );
+  return data.data;
+}
+
 /** Replace server cart with local cart lines so place-order can use backend checkout. */
 export async function syncLocalCartToServer(items: CartItem[]): Promise<void> {
   await api.delete(`${CART_BASE}`);
@@ -22,10 +53,12 @@ export async function syncLocalCartToServer(items: CartItem[]): Promise<void> {
         `Cart item "${item.name}" is missing a catalog product id. Please re-add it from the catalog.`,
       );
     }
-    // Backend route is POST /cart (not /cart/items)
     await api.post(`${CART_BASE}`, {
       productId,
       quantity: item.quantity,
+      variantId: item.variantId && isUuid(item.variantId) ? item.variantId : undefined,
+      hubId: item.hubId && isUuid(item.hubId) ? item.hubId : undefined,
+      etaMinutes: item.etaMinutes,
     });
   }
 }

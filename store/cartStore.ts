@@ -1,4 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { useEtaStore } from '@store/etaStore';
 
 export interface CartItem {
   id: string;
@@ -18,6 +22,8 @@ export interface CartItem {
   unit: string;
   variantId?: string;
   variantLabel?: string;
+  hubId?: string;
+  etaMinutes?: number;
 }
 
 export type CartAddResult = 'added' | 'quantity_updated';
@@ -31,7 +37,9 @@ export interface CartAddOutcome {
 }
 
 export function getEffectivePrice(item: CartItem): number {
-  return item.quantity >= item.bulkThreshold ? item.bulkPrice : item.unitPrice;
+  return item.quantity >= item.bulkThreshold && item.bulkThreshold > 0
+    ? item.bulkPrice
+    : item.unitPrice;
 }
 
 export function getLineTotal(item: CartItem): number {
@@ -72,179 +80,203 @@ interface CartState {
   grandTotal: () => number;
 }
 
-const DELIVERY_CHARGE = 1200;
+const FALLBACK_DELIVERY_CHARGE = 150;
 const LOYALTY_DISCOUNT = 500;
 
-export const useCartStore = create<CartState>((set, get) => ({
-  items: [],
-  savedForLater: [],
-  pointsApplied: true,
-  cartBumpVersion: 0,
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      savedForLater: [],
+      pointsApplied: true,
+      cartBumpVersion: 0,
 
-  addItem: (item) => {
-    const state = get();
-    const existing = state.items.find((i) => i.id === item.id);
+      addItem: (item) => {
+        const state = get();
+        const existing = state.items.find((i) => i.id === item.id);
 
-    if (existing) {
-      const totalQuantity = existing.quantity + item.quantity;
-      const merged: CartItem = { ...existing, ...item, quantity: totalQuantity };
-      set({
-        cartBumpVersion: state.cartBumpVersion + 1,
-        items: state.items.map((i) => (i.id === item.id ? merged : i)),
-      });
-      return {
-        result: 'quantity_updated',
-        item: merged,
-        quantityAdded: item.quantity,
-        totalQuantity,
-        lineTotal: getLineTotal(merged),
-      };
-    }
+        if (existing) {
+          const totalQuantity = existing.quantity + item.quantity;
+          const merged: CartItem = { ...existing, ...item, quantity: totalQuantity };
+          set({
+            cartBumpVersion: state.cartBumpVersion + 1,
+            items: state.items.map((i) => (i.id === item.id ? merged : i)),
+          });
+          return {
+            result: 'quantity_updated',
+            item: merged,
+            quantityAdded: item.quantity,
+            totalQuantity,
+            lineTotal: getLineTotal(merged),
+          };
+        }
 
-    set({
-      cartBumpVersion: state.cartBumpVersion + 1,
-      items: [...state.items, item],
-    });
-    return {
-      result: 'added',
-      item,
-      quantityAdded: item.quantity,
-      totalQuantity: item.quantity,
-      lineTotal: getLineTotal(item),
-    };
-  },
+        set({
+          cartBumpVersion: state.cartBumpVersion + 1,
+          items: [...state.items, item],
+        });
+        return {
+          result: 'added',
+          item,
+          quantityAdded: item.quantity,
+          totalQuantity: item.quantity,
+          lineTotal: getLineTotal(item),
+        };
+      },
 
-  upsertItem: (item) => {
-    const state = get();
-    const existing = state.items.find((i) => i.id === item.id);
-    const qty = Math.max(0, item.quantity);
+      upsertItem: (item) => {
+        const state = get();
+        const existing = state.items.find((i) => i.id === item.id);
+        const qty = Math.max(0, item.quantity);
 
-    if (qty <= 0) {
-      if (existing) {
-        get().removeItem(item.id);
-      }
-      return {
-        result: 'quantity_updated',
-        item: { ...item, quantity: 0 },
-        quantityAdded: 0,
-        totalQuantity: 0,
-        lineTotal: 0,
-      };
-    }
+        if (qty <= 0) {
+          if (existing) {
+            get().removeItem(item.id);
+          }
+          return {
+            result: 'quantity_updated',
+            item: { ...item, quantity: 0 },
+            quantityAdded: 0,
+            totalQuantity: 0,
+            lineTotal: 0,
+          };
+        }
 
-    if (existing) {
-      const merged: CartItem = { ...existing, ...item, quantity: qty };
-      set({
-        cartBumpVersion: state.cartBumpVersion + 1,
-        items: state.items.map((i) => (i.id === item.id ? merged : i)),
-      });
-      return {
-        result: 'quantity_updated',
-        item: merged,
-        quantityAdded: qty - existing.quantity,
-        totalQuantity: qty,
-        lineTotal: getLineTotal(merged),
-      };
-    }
+        if (existing) {
+          const merged: CartItem = { ...existing, ...item, quantity: qty };
+          set({
+            cartBumpVersion: state.cartBumpVersion + 1,
+            items: state.items.map((i) => (i.id === item.id ? merged : i)),
+          });
+          return {
+            result: 'quantity_updated',
+            item: merged,
+            quantityAdded: qty - existing.quantity,
+            totalQuantity: qty,
+            lineTotal: getLineTotal(merged),
+          };
+        }
 
-    const created = { ...item, quantity: qty };
-    set({
-      cartBumpVersion: state.cartBumpVersion + 1,
-      items: [...state.items, created],
-    });
-    return {
-      result: 'added',
-      item: created,
-      quantityAdded: qty,
-      totalQuantity: qty,
-      lineTotal: getLineTotal(created),
-    };
-  },
+        const created = { ...item, quantity: qty };
+        set({
+          cartBumpVersion: state.cartBumpVersion + 1,
+          items: [...state.items, created],
+        });
+        return {
+          result: 'added',
+          item: created,
+          quantityAdded: qty,
+          totalQuantity: qty,
+          lineTotal: getLineTotal(created),
+        };
+      },
 
-  removeItem: (id) =>
-    set((state) => ({
-      cartBumpVersion: state.cartBumpVersion + 1,
-      items: state.items.filter((i) => i.id !== id),
-    })),
+      removeItem: (id) =>
+        set((state) => ({
+          cartBumpVersion: state.cartBumpVersion + 1,
+          items: state.items.filter((i) => i.id !== id),
+        })),
 
-  remove: (id) => get().removeItem(id),
+      remove: (id) => get().removeItem(id),
 
-  updateQuantity: (id, qty) => {
-    if (qty <= 0) {
-      get().removeItem(id);
-      return;
-    }
-    set((state) => ({
-      cartBumpVersion: state.cartBumpVersion + 1,
-      items: state.items.map((i) => (i.id === id ? { ...i, quantity: qty } : i)),
-    }));
-  },
+      updateQuantity: (id, qty) => {
+        if (qty <= 0) {
+          get().removeItem(id);
+          return;
+        }
+        set((state) => ({
+          cartBumpVersion: state.cartBumpVersion + 1,
+          items: state.items.map((i) => (i.id === id ? { ...i, quantity: qty } : i)),
+        }));
+      },
 
-  increment: (id, by = 1) => {
-    const item = get().items.find((i) => i.id === id);
-    if (!item) return;
-    get().updateQuantity(id, item.quantity + by);
-  },
+      increment: (id, by = 1) => {
+        const item = get().items.find((i) => i.id === id);
+        if (!item) return;
+        get().updateQuantity(id, item.quantity + by);
+      },
 
-  decrement: (id, by = 1) => {
-    const item = get().items.find((i) => i.id === id);
-    if (!item) return;
-    get().updateQuantity(id, item.quantity - by);
-  },
+      decrement: (id, by = 1) => {
+        const item = get().items.find((i) => i.id === id);
+        if (!item) return;
+        get().updateQuantity(id, item.quantity - by);
+      },
 
-  saveForLater: (id) =>
-    set((state) => {
-      const item = state.items.find((i) => i.id === id);
-      if (!item) return state;
-      const saved = state.savedForLater.find((i) => i.id === id);
-      return {
-        cartBumpVersion: state.cartBumpVersion + 1,
-        items: state.items.filter((i) => i.id !== id),
-        savedForLater: saved ? state.savedForLater : [...state.savedForLater, item],
-      };
+      saveForLater: (id) =>
+        set((state) => {
+          const item = state.items.find((i) => i.id === id);
+          if (!item) return state;
+          const saved = state.savedForLater.find((i) => i.id === id);
+          return {
+            cartBumpVersion: state.cartBumpVersion + 1,
+            items: state.items.filter((i) => i.id !== id),
+            savedForLater: saved ? state.savedForLater : [...state.savedForLater, item],
+          };
+        }),
+
+      togglePoints: () => set((state) => ({ pointsApplied: !state.pointsApplied })),
+
+      clearCart: () =>
+        set((state) => ({ items: [], cartBumpVersion: state.cartBumpVersion + 1 })),
+
+      clear: () => get().clearCart(),
+
+      totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
+
+      itemsTotal: () => get().items.reduce((sum, i) => sum + getLineTotal(i), 0),
+
+      getTotalItems: () => get().totalItems(),
+
+      getTotalPrice: () => get().itemsTotal(),
+
+      getQuantity: (id) => get().items.find((i) => i.id === id)?.quantity ?? 0,
+
+      getProductQuantity: (productId) =>
+        get().items.reduce(
+          (sum, i) => (resolveProductId(i) === productId ? sum + i.quantity : sum),
+          0,
+        ),
+
+      getLineIdForProduct: (productId, variantId) => {
+        const items = get().items;
+        if (variantId) {
+          return items.find(
+            (i) => resolveProductId(i) === productId && i.variantId === variantId,
+          )?.id;
+        }
+        return (
+          items.find((i) => resolveProductId(i) === productId && !i.variantId)?.id ??
+          items.find((i) => resolveProductId(i) === productId)?.id
+        );
+      },
+
+      gst: () => get().itemsTotal() * 0.18,
+
+      deliveryCharge: () => {
+        if (get().items.length === 0) return 0;
+        const eta = useEtaStore.getState().eta;
+        if (eta) {
+          if (eta.freeDelivery) return 0;
+          return eta.deliveryCharge ?? FALLBACK_DELIVERY_CHARGE;
+        }
+        return FALLBACK_DELIVERY_CHARGE;
+      },
+
+      loyaltyDiscount: () => (get().pointsApplied ? LOYALTY_DISCOUNT : 0),
+
+      grandTotal: () => {
+        const s = get();
+        return s.itemsTotal() + s.deliveryCharge() - s.loyaltyDiscount();
+      },
     }),
-
-  togglePoints: () => set((state) => ({ pointsApplied: !state.pointsApplied })),
-
-  clearCart: () => set((state) => ({ items: [], cartBumpVersion: state.cartBumpVersion + 1 })),
-
-  clear: () => get().clearCart(),
-
-  totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
-
-  itemsTotal: () => get().items.reduce((sum, i) => sum + getLineTotal(i), 0),
-
-  getTotalItems: () => get().totalItems(),
-
-  getTotalPrice: () => get().itemsTotal(),
-
-  getQuantity: (id) => get().items.find((i) => i.id === id)?.quantity ?? 0,
-
-  getProductQuantity: (productId) =>
-    get().items.reduce(
-      (sum, i) => (resolveProductId(i) === productId ? sum + i.quantity : sum),
-      0,
-    ),
-
-  getLineIdForProduct: (productId, variantId) => {
-    const items = get().items;
-    if (variantId) {
-      return items.find(
-        (i) => resolveProductId(i) === productId && i.variantId === variantId,
-      )?.id;
-    }
-    return items.find((i) => resolveProductId(i) === productId && !i.variantId)?.id
-      ?? items.find((i) => resolveProductId(i) === productId)?.id;
-  },
-
-  gst: () => get().itemsTotal() * 0.18,
-
-  deliveryCharge: () => (get().items.length > 0 ? DELIVERY_CHARGE : 0),
-
-  loyaltyDiscount: () => (get().pointsApplied ? LOYALTY_DISCOUNT : 0),
-
-  grandTotal: () => {
-    const s = get();
-    return s.itemsTotal() + s.deliveryCharge() - s.loyaltyDiscount();
-  },
-}));
+    {
+      name: 'bajriwala-cart',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        items: state.items,
+        savedForLater: state.savedForLater,
+        pointsApplied: state.pointsApplied,
+      }),
+    },
+  ),
+);

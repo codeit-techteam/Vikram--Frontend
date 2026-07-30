@@ -179,9 +179,16 @@ export function usesQuantityStepperOnDetail(_product: Product): boolean {
   return true;
 }
 
-/** Direct add-to-cart only when there is a single SKU (no pack variants). */
+/** Direct add-to-cart when zero or one variant SKU. Multi-variant opens sheet. */
 export function allowsDirectAddToCart(product: Product): boolean {
-  return !productHasStructuredVariants(product) && !product.variantsPlaceholder;
+  const count = getVariantCount(product);
+  if (count > 1) return false;
+  if (product.variantsPlaceholder) return false;
+  return true;
+}
+
+export function shouldOpenVariantSheet(product: Product): boolean {
+  return getVariantCount(product) > 1;
 }
 
 export function getStartingPrice(product: Product): number {

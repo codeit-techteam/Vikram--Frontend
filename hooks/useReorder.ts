@@ -21,9 +21,15 @@ export function useReorder() {
   const mutation = useMutation({
     mutationFn: async (orderId: string) => {
       setPendingOrderId(orderId);
-      const response = await reorderItems(orderId);
+      let responseProducts;
+      try {
+        const response = await reorderItems(orderId);
+        responseProducts = response.products;
+      } catch {
+        responseProducts = undefined;
+      }
       const order = await fetchOrderById(orderId);
-      const products = resolveReorderProducts(response.products, order.products);
+      const products = resolveReorderProducts(responseProducts, order.products);
       const result = applyReorderToCart(products);
       return { ...result, orderId };
     },

@@ -98,14 +98,18 @@ export default function OrderSuccessScreen() {
             <View className="flex-1 rounded-card bg-trust p-3">
               <Ionicons name="time-outline" size={18} color="#FEB623" />
               <Text className="mt-2 text-[10px] font-bold text-text-secondary">{t('deliveryETA')}</Text>
-              <Text className="text-sm font-bold text-text">90 {t('mins')}</Text>
+              <Text className="text-sm font-bold text-text">
+                {order?.deliveryETA ?? order?.estimatedDelivery ?? order?.eta ?? 'Soon'}
+              </Text>
             </View>
             <View className="flex-1 rounded-card bg-trust p-3">
-              <Ionicons name="business-outline" size={18} color="#FEB623" />
+              <Ionicons name="location-outline" size={18} color="#FEB623" />
               <Text className="mt-2 text-[10px] font-bold text-text-secondary">
-                {t('assignedWarehouse')}
+                {t('deliveryAddress')}
               </Text>
-              <Text className="text-sm font-bold text-text">Mumbai Central</Text>
+              <Text className="text-sm font-bold text-text" numberOfLines={2}>
+                {order?.deliverySite?.name ?? 'Your site'}
+              </Text>
             </View>
           </View>
 

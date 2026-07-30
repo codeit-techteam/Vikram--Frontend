@@ -92,7 +92,7 @@ function getResultForQuery(text: string): VoiceSearchResult {
   if (lower.includes('cement') || lower.includes('bag')) {
     return {
       title: 'Cement Available',
-      body: 'Live hub inventory is synced from your assigned warehouse. Delivery ETA depends on hub coverage.',
+      body: 'Live inventory is synced for your location. Delivery ETA updates automatically based on your address.',
       actionLabel: 'View Catalog →',
       navigateTo: '/(tabs)/catalog' as Href,
     };

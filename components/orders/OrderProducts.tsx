@@ -20,6 +20,8 @@ function toCartItem(product: OrderProduct): CartItem {
     productId: product.productId,
     name: product.name,
     productName: product.name,
+    brand: product.brand,
+    category: product.category,
     description: product.variant ?? '',
     image: product.image ?? product.imageSearch ?? 'construction materials',
     imageSearch: product.imageSearch ?? product.image,
@@ -189,6 +191,11 @@ export const OrderProducts = memo(function OrderProducts({
                 {product.brand}
               </Text>
             ) : null}
+            {product.sku ? (
+              <Text style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
+                SKU: {product.sku}
+              </Text>
+            ) : null}
             {product.variant ? (
               <Text style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
                 {product.variant}
@@ -205,6 +212,7 @@ export const OrderProducts = memo(function OrderProducts({
               }}>
               <Text style={{ fontSize: 12, color: theme.textMuted }}>
                 Unit: ₹{product.unitPrice.toLocaleString('en-IN')}
+                {product.gst != null ? ` · GST ${product.gst}%` : ''}
               </Text>
               <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primary }}>
                 ₹{product.totalPrice.toLocaleString('en-IN')}

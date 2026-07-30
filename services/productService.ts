@@ -1,6 +1,7 @@
 import { api } from '@services/api';
 import type { ApiResponse } from '@/types';
 import type {
+  ApiHomeProductsResponse,
   ApiProduct,
   ApiProductList,
   ProductQueryParams,
@@ -9,6 +10,15 @@ import { adaptApiProduct } from '@utils/catalogAdapters';
 import type { Product } from '@/types/catalog';
 
 const PRODUCTS_BASE = '/products';
+
+export type HomeProductSection = 'featured' | 'popular' | 'offers' | 'new';
+
+export interface HomeProductsData {
+  featured: Product[];
+  popular: Product[];
+  offers: Product[];
+  recentlyAdded: Product[];
+}
 
 export interface ProductListPage {
   items: Product[];
@@ -26,15 +36,48 @@ function buildQuery(params: ProductQueryParams = {}): string {
   if (params.search) query.set('search', params.search);
   if (params.featured === true) query.set('featured', 'true');
   if (params.bestSelling === true) query.set('bestSelling', 'true');
+  if (params.offers === true) query.set('offers', 'true');
   if (params.listingType) query.set('listingType', params.listingType);
   if (params.brand) query.set('brand', params.brand);
   if (params.grade) query.set('grade', params.grade);
   if (params.status) query.set('status', params.status);
   if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
   if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
+  if (params.hubId) query.set('hubId', params.hubId);
 
   const qs = query.toString();
   return qs ? `?${qs}` : '';
+}
+
+function adaptHomeProducts(payload: ApiHomeProductsResponse): HomeProductsData {
+  const map = (items: ApiProduct[] | undefined) =>
+    (items ?? []).map(adaptApiProduct);
+  return {
+    featured: map(payload.featured),
+    popular: map(payload.popular),
+    offers: map(payload.offers),
+    recentlyAdded: map(payload.recentlyAdded),
+  };
+}
+
+export async function fetchHomeProducts(params?: {
+  latitude?: number;
+  longitude?: number;
+  pincode?: string;
+  limit?: number;
+  section?: HomeProductSection;
+}): Promise<HomeProductsData> {
+  const query = new URLSearchParams();
+  if (params?.latitude != null) query.set('latitude', String(params.latitude));
+  if (params?.longitude != null) query.set('longitude', String(params.longitude));
+  if (params?.pincode) query.set('pincode', params.pincode);
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.section) query.set('section', params.section);
+  const qs = query.toString();
+  const { data } = await api.get<ApiResponse<ApiHomeProductsResponse>>(
+    `${PRODUCTS_BASE}/home${qs ? `?${qs}` : ''}`,
+  );
+  return adaptHomeProducts(data.data);
 }
 
 export async function fetchProducts(
@@ -87,9 +130,33 @@ export async function searchProductsApi(
   return fetchProducts({ ...params, search: q });
 }
 
+export async function fetchCategoryProducts(
+  categoryIdOrSlug: string,
+  params: Omit<ProductQueryParams, 'category'> = {},
+): Promise<ProductListPage> {
+  const query = new URLSearchParams();
+  if (params.page != null) query.set('page', String(params.page));
+  if (params.limit != null) query.set('limit', String(params.limit));
+  if (params.sortBy) query.set('sortBy', params.sortBy);
+  if (params.sortOrder) query.set('sortOrder', params.sortOrder);
+  if (params.search) query.set('search', params.search);
+  if (params.brand) query.set('brand', params.brand);
+  const qs = query.toString();
+  const { data } = await api.get<ApiResponse<ApiProductList>>(
+    `/categories/${encodeURIComponent(categoryIdOrSlug)}/products${qs ? `?${qs}` : ''}`,
+  );
+  const payload = data.data;
+  return {
+    items: (payload.items ?? []).map(adaptApiProduct),
+    meta: payload.meta,
+  };
+}
+
 export const productService = {
+  fetchHomeProducts,
   fetchProducts,
   fetchProductBySlug,
   fetchRelatedProducts,
   searchProductsApi,
+  fetchCategoryProducts,
 };

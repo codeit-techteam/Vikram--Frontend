@@ -26,6 +26,8 @@ const PAYMENT_STATUS_CONFIG: Record<
   refunded: { label: 'Refunded', color: '#1B5E20', bg: '#C8E6C9' },
 };
 
+const DEFAULT_PAYMENT_STATUS = PAYMENT_STATUS_CONFIG.pending;
+
 export const PaymentSection = memo(function PaymentSection({
   paymentMethod,
   paymentMethodLabel,
@@ -34,7 +36,8 @@ export const PaymentSection = memo(function PaymentSection({
   onDownloadInvoice,
   isDownloading,
 }: PaymentSectionProps) {
-  const statusConfig = PAYMENT_STATUS_CONFIG[paymentStatus];
+  const statusConfig =
+    PAYMENT_STATUS_CONFIG[paymentStatus] ?? DEFAULT_PAYMENT_STATUS;
 
   return (
     <View

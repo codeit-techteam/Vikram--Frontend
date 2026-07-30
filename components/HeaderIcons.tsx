@@ -1,7 +1,15 @@
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { AppIcon } from '@components/ui/AppIcon';
+import { IconButton } from '@components/ui/IconButton';
+import { CountBadge } from '@components/ui/CountBadge';
+import { ICON_SIZE } from '@constants/icons';
+import { theme } from '@constants/theme';
+import { useCartStore } from '@store/cartStore';
+import { useNotificationStore } from '@store/notificationStore';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,40 +17,39 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { useCartStore } from '@store/cartStore';
-import { useNotificationStore } from '@store/notificationStore';
-
 interface HeaderIconProps {
   color?: string;
   size?: number;
 }
 
-export function NotificationBell({ color = '#1A1A1A', size = 20 }: HeaderIconProps) {
+/** @deprecated Prefer AppHeader action cluster. Kept for legacy screens. */
+export function NotificationBell({
+  color = theme.textPrimary,
+  size = ICON_SIZE.header,
+}: HeaderIconProps) {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   return (
-    <Pressable
+    <IconButton
+      accessibilityLabel="Notifications"
       onPress={() => router.push('/notifications')}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-      <View>
-        <Ionicons name="notifications-outline" size={size} color={color} />
-        {unreadCount > 0 ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-          </View>
-        ) : null}
-      </View>
-    </Pressable>
+      surface={false}>
+      <AppIcon name="notification" size={size} color={color} />
+      <CountBadge count={unreadCount} />
+    </IconButton>
   );
 }
 
-export function CartIcon({ color = '#1A1A1A', size = 20 }: HeaderIconProps) {
+/** @deprecated Prefer AppHeader action cluster. Kept for legacy screens. */
+export function CartIcon({
+  color = theme.textPrimary,
+  size = ICON_SIZE.header,
+}: HeaderIconProps) {
   const cartCount = useCartStore((s) =>
     s.items.reduce((sum, item) => sum + item.quantity, 0),
   );
   const cartBumpVersion = useCartStore((s) => s.cartBumpVersion);
   const cartScale = useSharedValue(1);
-  const badgeScale = useSharedValue(1);
 
   useEffect(() => {
     if (cartBumpVersion === 0) return;
@@ -50,55 +57,41 @@ export function CartIcon({ color = '#1A1A1A', size = 20 }: HeaderIconProps) {
       withSpring(1.2, { damping: 8, stiffness: 280 }),
       withSpring(1, { damping: 12 }),
     );
-    badgeScale.value = withSequence(
-      withSpring(1.45, { damping: 6, stiffness: 320 }),
-      withSpring(1, { damping: 10 }),
-    );
-  }, [cartBumpVersion, cartScale, badgeScale]);
+  }, [cartBumpVersion, cartScale]);
 
   const cartAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: cartScale.value }],
   }));
 
-  const badgeAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: badgeScale.value }],
-  }));
-
   return (
-    <Pressable
+    <IconButton
+      accessibilityLabel="Cart"
       onPress={() => router.push('/cart')}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      surface={false}>
       <Animated.View style={cartAnimStyle}>
-        <Ionicons name="cart-outline" size={size} color={color} />
-        {cartCount > 0 ? (
-          <Animated.View style={[styles.badge, badgeAnimStyle]}>
-            <Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text>
-          </Animated.View>
-        ) : null}
+        <AppIcon name="cart" size={size} color={color} />
+        <CountBadge count={cartCount} />
       </Animated.View>
-    </Pressable>
+    </IconButton>
+  );
+}
+
+/** Convenience row of standard header actions. */
+export function HeaderActionCluster() {
+  return (
+    <View style={styles.row}>
+      <NotificationBell />
+      <CartIcon />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -6,
-    backgroundColor: '#FEB623',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  badgeText: {
-    color: '#1A1A1A',
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
   },
 });
+
+export const NotificationBadge = CountBadge;
+export const CartBadge = CountBadge;

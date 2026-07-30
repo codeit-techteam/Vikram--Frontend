@@ -6,6 +6,7 @@ import {
   areCategoriesFresh,
   useCatalogStore,
 } from '@store/catalogStore';
+import { useCategoryStore } from '@store/categoryStore';
 
 export const CATEGORIES_QUERY_KEY = 'categories';
 export const CATEGORIES_STALE_TIME = 1000 * 60 * 10;
@@ -14,6 +15,7 @@ export function useCategories(options?: { featured?: boolean; enabled?: boolean 
   const setCategories = useCatalogStore((s) => s.setCategories);
   const storeCategories = useCatalogStore((s) => s.categories);
   const fetchedAt = useCatalogStore((s) => s.categoriesFetchedAt);
+  const setCategoryStore = useCategoryStore((s) => s.setCategories);
 
   const query = useQuery({
     queryKey: [CATEGORIES_QUERY_KEY, options?.featured ?? 'all'],
@@ -25,8 +27,9 @@ export function useCategories(options?: { featured?: boolean; enabled?: boolean 
   useEffect(() => {
     if (query.data && options?.featured !== true) {
       setCategories(query.data);
+      setCategoryStore(query.data);
     }
-  }, [query.data, options?.featured, setCategories]);
+  }, [query.data, options?.featured, setCategories, setCategoryStore]);
 
   const categories =
     query.data ??

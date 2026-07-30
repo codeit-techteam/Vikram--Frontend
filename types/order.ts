@@ -21,11 +21,14 @@ export interface OrderProduct {
   productId: string;
   name: string;
   brand?: string;
+  sku?: string;
+  category?: string;
   variant?: string;
   quantity: number;
   unit: string;
   unitPrice: number;
   totalPrice: number;
+  gst?: number;
   image?: string;
   imageSearch?: string;
   delivered?: boolean;

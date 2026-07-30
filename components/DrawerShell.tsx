@@ -10,10 +10,18 @@ interface DrawerShellProps {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  /** Rendered above the gesture area so header buttons always receive touches. */
+  header?: ReactNode;
   children: ReactNode;
 }
 
-export function DrawerShell({ isOpen, onOpen, onClose, children }: DrawerShellProps) {
+export function DrawerShell({
+  isOpen,
+  onOpen,
+  onClose,
+  header,
+  children,
+}: DrawerShellProps) {
   const { panGesture, drawerStyle, overlayStyle, contentStyle } = useDrawerAnimation(
     isOpen,
     onOpen,
@@ -30,21 +38,28 @@ export function DrawerShell({ isOpen, onOpen, onClose, children }: DrawerShellPr
   }, [isOpen, onClose]);
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <View style={styles.root}>
-        <Animated.View
-          style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
-          pointerEvents={isOpen ? 'auto' : 'none'}>
+    <View style={styles.root}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
+        pointerEvents={isOpen ? 'auto' : 'none'}>
+        {isOpen ? (
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
+        ) : null}
+      </Animated.View>
 
-        <Animated.View style={[styles.content, contentStyle]}>{children}</Animated.View>
+      <Animated.View style={[styles.content, contentStyle]}>
+        {header}
+        <GestureDetector gesture={panGesture}>
+          <View style={styles.gestureBody}>{children}</View>
+        </GestureDetector>
+      </Animated.View>
 
-        <Animated.View style={[drawerPanelStyle.drawer, drawerStyle]} pointerEvents={isOpen ? 'auto' : 'none'}>
-          <DrawerMenu isOpen={isOpen} onClose={onClose} />
-        </Animated.View>
-      </View>
-    </GestureDetector>
+      <Animated.View
+        style={[drawerPanelStyle.drawer, drawerStyle]}
+        pointerEvents={isOpen ? 'auto' : 'none'}>
+        <DrawerMenu isOpen={isOpen} onClose={onClose} />
+      </Animated.View>
+    </View>
   );
 }
 
@@ -59,5 +74,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     zIndex: 1,
+  },
+  gestureBody: {
+    flex: 1,
   },
 });

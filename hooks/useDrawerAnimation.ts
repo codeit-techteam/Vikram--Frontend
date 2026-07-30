@@ -141,9 +141,10 @@ export function useDrawerAnimation(
     }
   }, [isOpen, isOpenShared, animateOpen, animateClosed]);
 
+  // Edge-only open swipe (≤16px). Keeps hamburger / header buttons tappable.
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-18, 18])
-    .failOffsetY([-14, 14])
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-12, 12])
     .onTouchesDown((event, state) => {
       'worklet';
       if (!drawerSwipeEnabled.value) {
@@ -152,7 +153,8 @@ export function useDrawerAnimation(
       }
       if (isOpenShared.value) return;
       const touch = event.allTouches[0];
-      if (touch && touch.x > 36) {
+      // Only claim the far-left system edge — not the 48dp menu button.
+      if (touch && touch.x > 16) {
         state.fail();
       }
     })

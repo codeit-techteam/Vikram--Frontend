@@ -11,21 +11,25 @@ import { ProductStockInfo } from '@components/product/ProductStockInfo';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { HighlightedText } from '@components/search/HighlightedText';
 import { ProductUnit } from '@components/product/ProductUnit';
-import { getProductImageSource } from '@constants/catalogData';
 import {
   allowsDirectAddToCart,
+  getVariantCount,
   productHasStructuredVariants,
+  shouldOpenVariantSheet,
 } from '@constants/catalogVariantHelpers';
 import type { Product } from '@/types/catalog';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
+import { useVariantStore } from '@store/variantStore';
 import { useAddToCart } from '@hooks/useAddToCart';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import {
   getDeliveryEta,
   getOfferLabel,
   getProductPricing,
   getStockLeft,
 } from '@utils/productPricing';
+import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 
 const GOLD = '#FEB623';
 const DARK = '#1A1A1A';
@@ -42,8 +46,11 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
   const hasVariants = productHasStructuredVariants(product);
+  const variantCount = getVariantCount(product);
   const directAdd = allowsDirectAddToCart(product);
+  const openVariantSheet = useVariantStore((s) => s.open);
   const { addToCart, buttonState } = useAddToCart();
+  const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: false });
 
   const cartQty = useCartStore(
     (s) =>
@@ -70,9 +77,15 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
 
   const pricing = getProductPricing(product);
   const stockLeft = getStockLeft(product);
-  const deliveryEta = getDeliveryEta(product);
+  const deliveryEta = getDeliveryEta(product, estimatedMinutes, etaLabel);
   const offer = getOfferLabel(product);
   const mode = getAddToCartMode(localQty, cartQty);
+
+  const imageSource = resolveProductImageSource({
+    imageUrl: product.imageUrl,
+    productSlug: product.slug,
+    categorySlug: product.categorySlug,
+  });
 
   const openDetail = () => {
     router.push({
@@ -87,21 +100,37 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
   };
 
   const handleAddToCart = async () => {
-    if (!directAdd || hasVariants) {
+    if (shouldOpenVariantSheet(product)) {
+      openVariantSheet(product);
+      return;
+    }
+    if (hasVariants && variantCount === 1) {
+      await addToCart(product, localQty, {
+        variantId: product.productVariants?.[0]?.id,
+      });
+      return;
+    }
+    if (!directAdd) {
       openDetail();
       return;
     }
     await addToCart(product, localQty);
   };
 
+  const addLabel =
+    shouldOpenVariantSheet(product)
+      ? `${variantCount} Options`
+      : undefined;
+
   return (
     <View style={styles.card}>
       <ScaledPressable onPress={openDetail} style={styles.imageWrap}>
         <Image
-          source={getProductImageSource(product)}
+          source={imageSource}
           style={styles.image}
           contentFit="cover"
           recyclingKey={product.slug || product.id}
+          transition={200}
         />
         {offer ? (
           <View style={styles.offerBadge}>
@@ -158,10 +187,10 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
           ) : (
             <AddToCartButton
               mode="add"
-              onPress={openDetail}
+              onPress={() => void handleAddToCart()}
               compact
               fullWidth={false}
-              labelOverride={t('addToCart')}
+              labelOverride={addLabel ?? t('addToCart')}
             />
           )}
         </View>

@@ -2,13 +2,12 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { storage } from '@lib/storage';
 import type { ApiError } from '@/types';
+import { resolveApiBaseUrl } from '@utils/resolveApiBaseUrl';
 
 const AUTH_TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
-const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL?.trim() || DEFAULT_API_URL;
+export const API_BASE_URL = resolveApiBaseUrl();
 
 if (__DEV__) {
   // Expo inlines EXPO_PUBLIC_* at Metro start — restart after changing .env

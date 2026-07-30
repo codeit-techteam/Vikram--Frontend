@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,6 +7,12 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+
+import {
+  CATEGORY_GRID_GAP,
+  CATEGORY_GRID_PADDING,
+  getCategoryGridColumns,
+} from '@components/home/categoryGridLayout';
 
 function SkeletonBlock({
   style,
@@ -99,13 +105,30 @@ export function ProductDetailSkeleton() {
   );
 }
 
-export function HomeCategoriesSkeleton() {
+/** Grid skeleton matching Material Categories layout (no horizontal scroll). */
+export function HomeCategoriesSkeleton({ rows = 3 }: { rows?: number }) {
+  const { width } = useWindowDimensions();
+  const columns = useMemo(() => getCategoryGridColumns(width), [width]);
+  const count = columns * rows;
+
+  const gridRows: number[][] = [];
+  for (let i = 0; i < count; i += columns) {
+    gridRows.push(
+      Array.from({ length: columns }, (_, col) => i + col).filter((n) => n < count),
+    );
+  }
+
   return (
-    <View style={styles.homeCats}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <View key={i} style={styles.homeCatItem}>
-          <SkeletonBlock style={styles.homeCatImage} delay={i * 50} />
-          <SkeletonBlock style={styles.homeCatLabel} delay={i * 50 + 40} />
+    <View style={styles.homeCatsGrid}>
+      {gridRows.map((row, rowIndex) => (
+        <View key={rowIndex} style={styles.homeCatsRow}>
+          {row.map((i) => (
+            <View key={i} style={styles.homeCatCard}>
+              <SkeletonBlock style={styles.homeCatImage} delay={i * 40} />
+              <SkeletonBlock style={styles.homeCatLabel} delay={i * 40 + 40} />
+              <SkeletonBlock style={styles.homeCatLabelShort} delay={i * 40 + 70} />
+            </View>
+          ))}
         </View>
       ))}
     </View>
@@ -212,23 +235,38 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 8,
   },
-  homeCats: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
+  homeCatsGrid: {
+    paddingHorizontal: CATEGORY_GRID_PADDING,
+    gap: CATEGORY_GRID_GAP,
   },
-  homeCatItem: {
+  homeCatsRow: {
+    flexDirection: 'row',
+    gap: CATEGORY_GRID_GAP,
+  },
+  homeCatCard: {
+    flex: 1,
     alignItems: 'center',
-    width: 80,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+    paddingHorizontal: 6,
   },
   homeCatImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
+    width: 68,
+    height: 68,
+    borderRadius: 14,
   },
   homeCatLabel: {
     marginTop: 8,
     height: 10,
-    width: 56,
+    width: '70%',
+    borderRadius: 4,
+  },
+  homeCatLabelShort: {
+    marginTop: 6,
+    height: 10,
+    width: '45%',
+    borderRadius: 4,
   },
 });

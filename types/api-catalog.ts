@@ -34,14 +34,31 @@ export interface ApiProductVariant {
   size?: number | null;
   sizeUnit?: string | null;
   price: number;
+  mrp?: number | null;
+  discountPercent?: number;
   bulkPrice?: number | null;
   inStock: boolean;
+  stockLeft?: number | null;
+}
+
+export interface ApiBulkPricingTier {
+  minQty: number;
+  price: number;
+  label?: string | null;
+}
+
+export interface ApiHubInventorySummary {
+  hubId: string;
+  hubName?: string | null;
+  availableQty: number;
+  variantId?: string | null;
 }
 
 export interface ApiProductCategorySummary {
   id: string;
   slug: string;
   name: string;
+  parentId?: string | null;
 }
 
 export interface ApiProduct {
@@ -52,10 +69,14 @@ export interface ApiProduct {
   nameHi?: string | null;
   detailName?: string | null;
   brand?: string | null;
+  brandLogoUrl?: string | null;
   description?: string | null;
   categoryId: string;
   categorySlug: string;
   categoryName: string;
+  subcategoryId?: string | null;
+  subcategorySlug?: string | null;
+  subcategoryName?: string | null;
   category?: ApiProductCategorySummary;
   grade?: string | null;
   badge?: string | null;
@@ -65,24 +86,42 @@ export interface ApiProduct {
   unit: string;
   retailPrice: number;
   price: number;
+  mrp?: number | null;
+  discountPercent?: number;
   gst: number;
   thumbnail?: string | null;
+  gallery?: string[];
   bulkPrice?: number | null;
   bulkThreshold: number;
   bulkLabel?: string | null;
+  bulkPricing?: ApiBulkPricingTier[];
   minOrder: number;
   maxOrder?: number | null;
+  incrementStep?: number;
+  defaultQuantity?: number;
   hasVariants: boolean;
   defaultVariantId?: string | null;
+  variantCount?: number;
   perPiecePrice?: number | null;
   isFeatured: boolean;
   isBestSelling: boolean;
+  isBestseller?: boolean;
+  isNewArrival?: boolean;
+  deliveryEligible?: boolean;
+  averageRating?: number;
+  reviewCount?: number;
+  rating?: number;
   specs?: Record<string, string> | null;
   images?: ApiProductImage[];
   variants?: ApiProductVariant[];
+  variantList?: ApiProductVariant[];
+  hubInventory?: ApiHubInventorySummary[];
   relatedProducts?: ApiProduct[];
   stockLeft?: number;
+  availableStock?: number;
   deliveryETA?: string;
+  deliveryMessage?: string;
+  estimatedDeliveryMinutes?: number | null;
   membershipPrice?: number | null;
   isBulkAvailable?: boolean;
 }
@@ -134,6 +173,13 @@ export interface ApiHomeResponse {
   membership?: unknown | null;
   loyalty?: unknown | null;
   lastOrders?: unknown[];
+}
+
+export interface ApiHomeProductsResponse {
+  featured: ApiProduct[];
+  popular: ApiProduct[];
+  offers: ApiProduct[];
+  recentlyAdded: ApiProduct[];
 }
 
 export interface ApiSearchProduct {
@@ -201,10 +247,12 @@ export interface ProductQueryParams {
   search?: string;
   featured?: boolean;
   bestSelling?: boolean;
+  offers?: boolean;
   listingType?: 'FEATURED' | 'BEST_SELLING' | 'NEW_ARRIVAL' | 'STANDARD';
   brand?: string;
   grade?: string;
   status?: string;
   minPrice?: number;
   maxPrice?: number;
+  hubId?: string;
 }

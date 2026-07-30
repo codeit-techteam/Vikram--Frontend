@@ -13,6 +13,7 @@ import { theme } from '@constants/theme';
 import { useSites } from '@hooks/useSites';
 import { formatSiteType, type DeliverySite } from '@services/sites.api';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useServiceabilityStore } from '@store/serviceabilityStore';
 
 interface SitesPickerSheetProps {
   onClose: () => void;
@@ -40,6 +41,11 @@ export const SitesPickerSheet = forwardRef<BottomSheetModal, SitesPickerSheetPro
 
     const pick = (site: DeliverySite) => {
       setSelectedSite(site.id);
+      if (site.latitude != null && site.longitude != null) {
+        void useServiceabilityStore
+          .getState()
+          .check(site.latitude, site.longitude, site.pincode);
+      }
       onSelect?.(site);
       onClose();
     };

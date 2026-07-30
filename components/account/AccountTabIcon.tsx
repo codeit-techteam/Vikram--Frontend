@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { View } from 'react-native';
 
 import { InitialsAvatar } from '@components/InitialsAvatar';
+import { theme } from '@constants/theme';
 import { useUserStore } from '@store/userStore';
 
 export function AccountTabIcon({ focused }: { focused: boolean; color: string }) {
@@ -16,7 +17,7 @@ export function AccountTabIcon({ focused }: { focused: boolean; color: string })
           height: 24,
           borderRadius: 12,
           borderWidth: focused ? 2 : 0,
-          borderColor: '#FEB623',
+          borderColor: theme.primary,
         }}
         contentFit="cover"
       />
@@ -27,7 +28,7 @@ export function AccountTabIcon({ focused }: { focused: boolean; color: string })
     <View
       style={{
         borderWidth: focused ? 2 : 0,
-        borderColor: '#FEB623',
+        borderColor: theme.primary,
         borderRadius: 14,
       }}>
       <InitialsAvatar name={user.name} size={24} />

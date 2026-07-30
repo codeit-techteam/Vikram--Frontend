@@ -338,20 +338,36 @@ function mapApiProducts(raw: Record<string, unknown>): OrderProduct[] {
       ? (raw.products as Record<string, unknown>[])
       : [];
 
-  return source.map((p) => ({
-    id: String(p.id ?? ''),
-    productId: String(p.productId ?? p.id ?? ''),
-    name: String(p.name ?? ''),
-    brand: p.brand ? String(p.brand) : undefined,
-    variant: p.variant ? String(p.variant) : undefined,
-    quantity: Number(p.quantity ?? 1),
-    unit: String(p.unit ?? ''),
-    unitPrice: Number(p.unitPrice ?? 0),
-    totalPrice: Number(p.totalPrice ?? p.subtotal ?? p.unitPrice ?? 0),
-    image: p.image ? String(p.image) : undefined,
-    imageSearch: p.imageSearch ? String(p.imageSearch) : undefined,
-    delivered: Boolean(p.delivered),
-  }));
+  return source.map((p) => {
+    const name = String(p.productName ?? p.name ?? '');
+    const image =
+      (p.productImage ? String(p.productImage) : undefined) ??
+      (p.image ? String(p.image) : undefined) ??
+      (p.thumbnailUrl ? String(p.thumbnailUrl) : undefined) ??
+      (p.imageUrl ? String(p.imageUrl) : undefined);
+
+    return {
+      id: String(p.id ?? p.productId ?? ''),
+      productId: String(p.productId ?? p.id ?? ''),
+      name,
+      brand: p.brand ? String(p.brand) : undefined,
+      sku: p.sku ? String(p.sku) : undefined,
+      category: p.category ? String(p.category) : undefined,
+      variant: p.variant
+        ? String(p.variant)
+        : p.variantLabel
+          ? String(p.variantLabel)
+          : undefined,
+      quantity: Number(p.quantity ?? 1),
+      unit: String(p.unit ?? ''),
+      unitPrice: Number(p.unitPrice ?? p.price ?? p.sellingPrice ?? 0),
+      totalPrice: Number(p.totalPrice ?? p.subtotal ?? p.unitPrice ?? p.price ?? 0),
+      gst: p.gst != null ? Number(p.gst) : undefined,
+      image,
+      imageSearch: p.imageSearch ? String(p.imageSearch) : image,
+      delivered: Boolean(p.delivered),
+    };
+  });
 }
 
 function mapApiDriver(raw: Record<string, unknown>): OrderDriver | undefined {
@@ -397,7 +413,7 @@ function mapApiTimeline(
 ): TimelineStep[] {
   const lastIndex = rawTimeline.length - 1;
   return rawTimeline.map((entry, index) => ({
-    key: String(entry.key ?? entry.status ?? `step-${index}`).toLowerCase(),
+    key: String(entry.id ?? `timeline-${index}`),
     label: String(
       entry.message ??
         entry.statusLabel ??
@@ -421,6 +437,22 @@ function mapApiTimeline(
   }));
 }
 
+function mapPaymentStatus(raw: unknown): Order['paymentStatus'] {
+  const normalized = String(raw ?? 'pending').toLowerCase();
+  switch (normalized) {
+    case 'paid':
+    case 'collected':
+      return 'paid';
+    case 'failed':
+      return 'failed';
+    case 'refunded':
+      return 'refunded';
+    case 'pending':
+    default:
+      return 'pending';
+  }
+}
+
 export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const status = mapBackendStatus(raw.status ?? raw.orderStatus);
   const statusLabel =
@@ -433,7 +465,10 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     {}) as Record<string, unknown>;
   const customer = (raw.customer ?? {}) as Record<string, unknown>;
   const hub = (raw.hub ?? {}) as Record<string, unknown>;
-  const products = mapApiProducts(raw);
+  const products = mapApiProducts(raw).map((product) => ({
+    ...product,
+    delivered: status === 'delivered' ? true : product.delivered,
+  }));
   const driver = mapApiDriver(raw);
   const rawTimeline = Array.isArray(raw.timeline)
     ? (raw.timeline as Record<string, unknown>[])
@@ -448,7 +483,7 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const paymentMethod = String(payment.method ?? raw.paymentMethod ?? 'CASH').toUpperCase();
   const paymentStatusRaw = String(
     payment.status ?? raw.paymentStatus ?? 'PENDING',
-  ).toLowerCase();
+  );
   const expectedDelivery = formatEta(
     raw.expectedDeliveryAt ?? raw.expectedDelivery,
   );
@@ -470,7 +505,7 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     platformFee: Number(raw.platformFee ?? 0),
     grandTotal: Number(raw.grandTotal ?? raw.total ?? 0),
     savings: raw.savings ? Number(raw.savings) : undefined,
-    paymentStatus: (paymentStatusRaw as Order['paymentStatus']) || 'pending',
+    paymentStatus: mapPaymentStatus(paymentStatusRaw),
     paymentMethod,
     paymentMethodLabel:
       paymentMethod === 'CASH'
@@ -492,7 +527,6 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
           steps: timeline,
           estimatedArrival: expectedDelivery,
           driver,
-          warehouse: hub.name ? String(hub.name) : undefined,
         }
       : undefined,
     refund: raw.refund as Order['refund'],

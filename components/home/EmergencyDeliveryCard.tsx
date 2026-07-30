@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 
 import type { CmsPromotion } from '@/types/cms';
 import { images } from '@constants/images';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
 
 interface EmergencyDeliveryCardProps {
   onOrderNow: () => void;
@@ -13,13 +14,19 @@ export function EmergencyDeliveryCard({
   onOrderNow,
   promotion,
 }: EmergencyDeliveryCardProps) {
+  const { estimatedMinutes, deliveryMessage } = useDeliveryEta({ autoFetch: false });
+
   const handlePress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     onOrderNow();
   };
 
   const imageUri = promotion?.imageUrl || images.emergencyBanner;
-  const eta = promotion?.badge ?? '30–90 Minutes';
+  const eta =
+    promotion?.badge ||
+    deliveryMessage ||
+    (estimatedMinutes ? `Delivery in ${estimatedMinutes} mins` : null) ||
+    'Fast delivery';
   const title = promotion?.title ?? 'Emergency Delivery';
   const subtitle =
     promotion?.subtitle ??

@@ -1,12 +1,13 @@
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountTabIcon } from '@components/account/AccountTabIcon';
+import { BottomTabIcon, TAB_BAR_THEME, TabIcons } from '@components/BottomNavigation';
+import { layout } from '@constants/spacing';
+import { typography } from '@constants/typography';
 import { useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
-
-const TAB_BAR_CONTENT_HEIGHT = 52;
 
 export default function TabLayout() {
   const { t } = useTranslation();
@@ -21,13 +22,13 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         animation: 'fade',
-        tabBarActiveTintColor: '#FEB623',
-        tabBarInactiveTintColor: '#999999',
+        tabBarActiveTintColor: TAB_BAR_THEME.active,
+        tabBarInactiveTintColor: TAB_BAR_THEME.inactive,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 0.5,
-          borderTopColor: '#E5E5E5',
-          height: TAB_BAR_CONTENT_HEIGHT + tabBarBottomInset,
+          backgroundColor: TAB_BAR_THEME.background,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: TAB_BAR_THEME.border,
+          height: layout.tabBarContent + tabBarBottomInset,
           paddingBottom: tabBarBottomInset,
           paddingTop: 8,
           elevation: 12,
@@ -37,12 +38,11 @@ export default function TabLayout() {
           shadowRadius: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          ...typography.tabLabel,
           marginTop: 2,
         },
         tabBarBadgeStyle: {
-          backgroundColor: '#FEB623',
+          backgroundColor: TAB_BAR_THEME.active,
           fontSize: 9,
         },
       }}>
@@ -50,8 +50,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t('tabHome'),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <BottomTabIcon name={TabIcons.home} color={color} />
           ),
         }}
       />
@@ -59,8 +59,8 @@ export default function TabLayout() {
         name="catalog"
         options={{
           title: t('tabCatalog'),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'cube' : 'cube-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <BottomTabIcon name={TabIcons.catalog} color={color} />
           ),
         }}
       />
@@ -75,8 +75,8 @@ export default function TabLayout() {
         options={{
           title: t('tabOrders'),
           tabBarBadge: activeOrders > 0 ? activeOrders : undefined,
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'car' : 'car-outline'} size={22} color={color} />
+          tabBarIcon: ({ color }) => (
+            <BottomTabIcon name={TabIcons.orders} color={color} />
           ),
         }}
       />

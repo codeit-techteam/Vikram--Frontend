@@ -1,7 +1,14 @@
-import { useEffect } from 'react';
-import { Image, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { memo, useEffect, type ReactNode } from 'react';
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,47 +16,70 @@ import Animated, {
   withSpring,
   type AnimatedStyle,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppIcon } from '@components/ui/AppIcon';
+import { IconButton } from '@components/ui/IconButton';
+import { CountBadge } from '@components/ui/CountBadge';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
+import { ICON_SIZE } from '@constants/icons';
+import { layout } from '@constants/spacing';
+import { typography } from '@constants/typography';
 import { Logo, theme } from '@constants/theme';
 import { useCartStore } from '@store/cartStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { safeGoBack } from '@utils/navigation';
 
-interface AppHeaderProps {
+export interface AppHeaderProps {
   showBack?: boolean;
   title?: string;
+  showLogo?: boolean;
   showCart?: boolean;
   showBell?: boolean;
+  showVoice?: boolean;
   onBackPress?: () => void;
   onMenuPress?: () => void;
   isDrawerOpen?: boolean;
   menuIconStyle?: AnimatedStyle<ViewStyle>;
+  /** Apply safe-area top inset (default true). */
+  safeTop?: boolean;
+  /** Address / search / extra rows inside the elevated header shell. */
+  footer?: ReactNode;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function AppHeader({
+/**
+ * Canonical app header for every main screen.
+ * Layout: ☰ · Logo · Bajriwala  |  Mic · Bell · Cart
+ */
+function AppHeaderComponent({
   showBack = false,
   title,
+  showLogo = true,
   showCart = true,
   showBell = true,
+  showVoice = true,
   onBackPress,
   onMenuPress,
   isDrawerOpen = false,
   menuIconStyle,
+  safeTop = true,
+  footer,
+  style,
 }: AppHeaderProps) {
+  const insets = useSafeAreaInsets();
   const cartCount = useCartStore((s) =>
     s.items.reduce((sum, item) => sum + item.quantity, 0),
   );
   const cartBumpVersion = useCartStore((s) => s.cartBumpVersion);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
-
   const cartScale = useSharedValue(1);
 
   useEffect(() => {
     if (cartBumpVersion === 0) return;
     cartScale.value = withSequence(
-      withSpring(1.35, { damping: 6, stiffness: 300 }),
-      withSpring(1, { damping: 10, stiffness: 200 }),
+      withSpring(1.28, { damping: 6, stiffness: 320 }),
+      withSpring(1, { damping: 10, stiffness: 220 }),
     );
   }, [cartBumpVersion, cartScale]);
 
@@ -62,155 +92,151 @@ export function AppHeader({
     else safeGoBack();
   };
 
-  const leftIcon = showBack ? 'arrow-back' : isDrawerOpen ? 'close' : 'menu';
+  const menuName = isDrawerOpen ? 'close' : 'menu';
 
   return (
-    <View style={styles.header}>
-      {showBack ? (
-        <Pressable
-          onPress={handleBack}
-          style={styles.hamburger}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color={theme.black} />
-        </Pressable>
-      ) : (
-        <Pressable
-          onPress={onMenuPress}
-          style={styles.hamburger}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Animated.View style={menuIconStyle}>
-            <Ionicons name={leftIcon} size={24} color={theme.black} />
-          </Animated.View>
-        </Pressable>
-      )}
+    <View
+      collapsable={false}
+      style={[
+        styles.shell,
+        {
+          paddingTop: safeTop ? Math.max(insets.top, 8) : 8,
+          ...(Platform.OS === 'android' ? { elevation: 6 } : null),
+        },
+        style,
+      ]}>
+      <View style={styles.toolbar}>
+        <View style={styles.left}>
+          {showBack ? (
+            <IconButton icon="back" accessibilityLabel="Go back" onPress={handleBack} />
+          ) : (
+            <IconButton
+              accessibilityLabel={isDrawerOpen ? 'Close menu' : 'Open menu'}
+              onPress={() => onMenuPress?.()}>
+              <Animated.View style={menuIconStyle ?? undefined}>
+                <AppIcon name={menuName} size={ICON_SIZE.header} color={theme.textPrimary} />
+              </Animated.View>
+            </IconButton>
+          )}
 
-      <View style={styles.logoContainer}>
-        {title ? (
-          <Text style={styles.titleText} numberOfLines={1}>
-            {title}
-          </Text>
-        ) : (
-          <>
-            <Image
-              source={Logo}
-              style={styles.logoImage}
-              resizeMode="contain"
+          <View style={styles.brand} pointerEvents="none">
+            {title ? (
+              <Text style={styles.titleText} numberOfLines={1}>
+                {title}
+              </Text>
+            ) : showLogo ? (
+              <>
+                <Image source={Logo} style={styles.logoImage} resizeMode="contain" />
+                <Text style={styles.logoText} numberOfLines={1}>
+                  {theme.appName}
+                </Text>
+              </>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.right}>
+          {showVoice ? (
+            <IconButton
+              icon="voice"
+              color={theme.primary}
+              accessibilityLabel="Voice search"
+              onPress={openVoiceAssistant}
             />
-            <Text style={styles.logoText}>{theme.appName}</Text>
-          </>
-        )}
+          ) : null}
+
+          {showBell ? (
+            <IconButton
+              accessibilityLabel="Notifications"
+              onPress={() => router.push('/notifications')}>
+              <AppIcon
+                name="notification"
+                size={ICON_SIZE.header}
+                color={theme.textPrimary}
+              />
+              <CountBadge count={unreadCount} />
+            </IconButton>
+          ) : null}
+
+          {showCart ? (
+            <IconButton
+              accessibilityLabel="Cart"
+              onPress={() => router.push('/cart')}>
+              <Animated.View style={cartIconStyle}>
+                <AppIcon name="cart" size={ICON_SIZE.header} color={theme.textPrimary} />
+              </Animated.View>
+              <CountBadge count={cartCount} />
+            </IconButton>
+          ) : null}
+        </View>
       </View>
 
-      <View style={styles.rightIcons}>
-        <Pressable
-          onPress={openVoiceAssistant}
-          style={styles.iconBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
-          <Ionicons name="mic-outline" size={22} color={theme.primary} />
-        </Pressable>
-
-        {showBell && (
-          <Pressable
-            onPress={() => router.push('/notifications')}
-            style={styles.iconBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
-            <Ionicons name="notifications-outline" size={22} color={theme.black} />
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-              </View>
-            )}
-          </Pressable>
-        )}
-
-        {showCart && (
-          <Pressable
-            onPress={() => router.push('/cart')}
-            style={styles.iconBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
-            <Animated.View style={cartIconStyle}>
-              <Ionicons name="cart-outline" size={22} color={theme.black} />
-            </Animated.View>
-            {cartCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text>
-              </View>
-            )}
-          </Pressable>
-        )}
-      </View>
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </View>
   );
 }
 
+export const AppHeader = memo(AppHeaderComponent);
+
 const styles = StyleSheet.create({
-  header: {
+  shell: {
+    backgroundColor: theme.white,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ECECEC',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    zIndex: 100,
+    elevation: Platform.OS === 'android' ? 8 : undefined,
+  },
+  toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 16,
-    backgroundColor: theme.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'space-between',
+    minHeight: layout.headerIconHit,
   },
-  hamburger: {
-    padding: 4,
-    marginRight: 8,
-  },
-  logoContainer: {
+  left: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    minWidth: 0,
+    gap: 2,
+  },
+  brand: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+    marginLeft: 2,
   },
   logoImage: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 6,
   },
   logoText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.black,
-    letterSpacing: -0.3,
+    ...typography.headerBrand,
+    color: theme.textPrimary,
   },
   titleText: {
     fontSize: 17,
     fontWeight: '700',
-    color: theme.black,
+    color: theme.textPrimary,
     letterSpacing: -0.3,
   },
-  rightIcons: {
+  right: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 0,
   },
-  iconBtn: {
-    padding: 6,
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: theme.primary,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: theme.white,
-  },
-  badgeText: {
-    color: theme.textOnPrimary,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 11,
+  footer: {
+    marginTop: 4,
+    gap: 8,
   },
 });

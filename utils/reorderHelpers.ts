@@ -1,8 +1,5 @@
 import { getProductById } from '@constants/catalogData';
-import {
-  getVariantById,
-  productHasStructuredVariants,
-} from '@constants/catalogVariantHelpers';
+import { productHasStructuredVariants } from '@constants/catalogVariantHelpers';
 import type { OrderProduct } from '@/types/order';
 import type { CartItem } from '@store/cartStore';
 import { useCartStore } from '@store/cartStore';
@@ -13,6 +10,13 @@ export interface ReorderApplyResult {
   unavailableCount: number;
   allUnavailable: boolean;
   message: string;
+}
+
+function isUuid(value?: string): value is string {
+  return !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
 }
 
 function findVariantIdForLabel(
@@ -33,6 +37,31 @@ function findVariantIdForLabel(
   return variant?.id;
 }
 
+function snapshotToCartItem(product: OrderProduct): CartItem | null {
+  const productId = product.productId || product.id;
+  if (!productId || (!isUuid(productId) && !getProductById(productId))) {
+    return null;
+  }
+
+  return {
+    id: productId,
+    productId,
+    name: product.name,
+    productName: product.name,
+    brand: product.brand,
+    category: product.category,
+    description: product.variant ?? '',
+    image: product.image ?? product.imageSearch ?? '',
+    imageSearch: product.imageSearch ?? product.image,
+    unitPrice: product.unitPrice,
+    bulkPrice: product.unitPrice,
+    bulkThreshold: 9999,
+    quantity: Math.max(1, product.quantity || 1),
+    unit: product.unit,
+    variantLabel: product.variant,
+  };
+}
+
 export function orderProductToCartItem(product: OrderProduct): CartItem | null {
   const resolvedProductId = resolveCartProductId({
     id: product.id,
@@ -48,20 +77,25 @@ export function orderProductToCartItem(product: OrderProduct): CartItem | null {
   });
 
   const catalogProduct = getProductById(resolvedProductId);
-  if (!catalogProduct) return null;
+  if (catalogProduct) {
+    const variantId =
+      product.id.includes('_') && product.id.startsWith(`${resolvedProductId}_`)
+        ? product.id.slice(resolvedProductId.length + 1)
+        : findVariantIdForLabel(resolvedProductId, product.variant);
 
-  const variantId =
-    product.id.includes('_') && product.id.startsWith(`${resolvedProductId}_`)
-      ? product.id.slice(resolvedProductId.length + 1)
-      : findVariantIdForLabel(resolvedProductId, product.variant);
+    const cartItem = productToCartItem(catalogProduct, product.quantity, {
+      variantId,
+    });
 
-  const cartItem = productToCartItem(catalogProduct, product.quantity, { variantId });
+    if (product.id.includes('_')) {
+      return { ...cartItem, id: product.id };
+    }
 
-  if (product.id.includes('_')) {
-    return { ...cartItem, id: product.id };
+    return cartItem;
   }
 
-  return cartItem;
+  // Backend / API products: use order item snapshot (productId + quantity)
+  return snapshotToCartItem(product);
 }
 
 export function buildReorderMessage(addedCount: number, unavailableCount: number): string {

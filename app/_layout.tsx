@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VoiceAssistantSheet } from '@components/VoiceAssistantSheet';
 import { LoginRequiredSheet } from '@components/auth/LoginRequiredSheet';
 import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
+import { VariantBottomSheet } from '@components/product/VariantBottomSheet';
 import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
@@ -114,8 +115,10 @@ export default function RootLayout() {
                 options={{ headerShown: false, gestureEnabled: false }}
               />
               <Stack.Screen name="bulk-procurement/my-enquiries" options={{ headerShown: false }} />
+              <Stack.Screen name="membership" options={{ headerShown: false }} />
             </Stack>
             <VoiceAssistantSheet />
+            <VariantBottomSheet />
             <AddToCartSuccessToast />
             <ReorderToast />
             <ReorderUnavailableSheet />

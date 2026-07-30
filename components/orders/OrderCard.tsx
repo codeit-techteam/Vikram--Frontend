@@ -81,11 +81,11 @@ export const ActiveOrderCard = memo(function ActiveOrderCard(props: OrderCardBas
   const { order } = props;
   const eta =
     order.tracking?.estimatedMinutes != null
-      ? `Delivering in ${order.tracking.estimatedMinutes} mins`
+      ? `Delivery in ${order.tracking.estimatedMinutes} mins`
       : order.tracking?.estimatedArrival
-        ? `Arriving by ${order.tracking.estimatedArrival}`
+        ? `Delivery by ${order.tracking.estimatedArrival}`
         : order.expectedDelivery
-          ? `Arriving by ${order.expectedDelivery}`
+          ? `Delivery by ${order.expectedDelivery}`
           : null;
 
   const progressIndex = STATUS_PROGRESS_INDEX[order.status] ?? 0;

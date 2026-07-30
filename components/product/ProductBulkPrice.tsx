@@ -24,9 +24,8 @@ export function ProductBulkPrice({
   if (variant === 'inline') {
     return (
       <View style={styles.inline}>
-        <Text style={styles.inlineLabel}>{t('bulkPricingTitle')}</Text>
-        <Text style={styles.inlineValue} numberOfLines={1}>
-          {pricing.bulkThreshold}+ · {formatINR(pricing.bulkPrice, false)}/{pricing.unit}
+        <Text style={styles.inlineLabel} numberOfLines={1}>
+          {pricing.bulkLabel || t('bulkPricingTitle')}
         </Text>
       </View>
     );
@@ -35,12 +34,15 @@ export function ProductBulkPrice({
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
       <Text style={[styles.title, compact && styles.titleCompact]}>{t('bulkPricingTitle')}</Text>
-      <Text style={[styles.threshold, compact && styles.thresholdCompact]}>
-        {pricing.bulkThreshold}+ {pricing.unit}
-      </Text>
-      <Text style={[styles.price, compact && styles.priceCompact]}>
-        {formatINR(pricing.bulkPrice, false)} / {pricing.unit}
-      </Text>
+      {(pricing.bulkTiers.length > 0 ? pricing.bulkTiers : [
+        { minQty: pricing.bulkThreshold, price: pricing.bulkPrice, label: pricing.bulkLabel },
+      ]).map((tier) => (
+        <Text
+          key={`${tier.minQty}-${tier.price}`}
+          style={[styles.threshold, compact && styles.thresholdCompact]}>
+          {tier.label || `Buy ${tier.minQty}+`} · {formatINR(tier.price, false)}/{pricing.unit}
+        </Text>
+      ))}
     </View>
   );
 }

@@ -15,37 +15,24 @@ import {
   type DeliverySite,
   type UpdateSitePayload,
 } from '@services/sites.api';
-import { findHubForLocation } from '@services/coverage.api';
 import { useAuthStore } from '@store/useAuthStore';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useServiceabilityStore } from '@store/serviceabilityStore';
 
 export const SITES_QUERY_KEY = 'customer-sites';
 export const CURRENT_SITE_QUERY_KEY = 'customer-current-site';
 export const SITES_STALE_TIME = 1000 * 60 * 10;
 
-async function resolveAssignedHub(site?: DeliverySite | null) {
-  if (!site) {
-    useDeliveryStore.getState().setAssignedHub(null);
+async function resolveServiceability(site?: DeliverySite | null) {
+  if (!site?.latitude || !site?.longitude) {
+    useServiceabilityStore.getState().clear();
     return;
   }
-  try {
-    const hub = await findHubForLocation({
-      lat: site.latitude,
-      lng: site.longitude,
-      pincode: site.pincode,
-    });
-    if (hub?.inCoverage) {
-      useDeliveryStore.getState().setAssignedHub({
-        id: hub.id,
-        name: hub.name,
-        code: hub.code,
-      });
-    } else {
-      useDeliveryStore.getState().setAssignedHub(null);
-    }
-  } catch {
-    useDeliveryStore.getState().setAssignedHub(null);
-  }
+  await useServiceabilityStore.getState().check(
+    site.latitude,
+    site.longitude,
+    site.pincode,
+  );
 }
 
 function syncDeliveryStore(sites: DeliverySite[]) {
@@ -60,7 +47,7 @@ function syncDeliveryStore(sites: DeliverySite[]) {
     useDeliveryStore.getState().setSelectedSite(primary.id);
   }
   useDeliveryStore.getState().setProfileSitesFromDeliverySites(sites);
-  void resolveAssignedHub(primary);
+  void resolveServiceability(primary);
 }
 
 export function useSites(enabled = true) {

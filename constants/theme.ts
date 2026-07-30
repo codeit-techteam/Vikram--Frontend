@@ -53,14 +53,14 @@ export const theme = {
   bgPrimary: '#FFF4D1',
 
   // ── TEXT ──
-  textPrimary: '#1A1A1A',
-  textSecondary: '#666666',
+  textPrimary: '#1C1C1C',
+  textSecondary: '#757575',
   textMuted: '#999999',
   textOnPrimary: '#1A1A1A',
   textLink: '#FEB623',
 
   // ── BORDER ──
-  border: '#E0E0E0',
+  border: '#ECECEC',
   borderFocus: '#FEB623',
 
   // ── BRAND NAME ──
@@ -73,3 +73,8 @@ export const Logo = require('../assets/images/logo.png');
 export const LogoSmall = require('../assets/images/logo.png');
 
 export type Theme = typeof theme;
+
+/** Design-system re-exports for a single import surface. */
+export { AppIcons, ICON_SIZE, TOUCH_TARGET } from './icons';
+export { spacing as space, layout } from './spacing';
+export { typography } from './typography';

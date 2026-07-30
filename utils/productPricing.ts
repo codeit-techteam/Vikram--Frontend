@@ -4,7 +4,7 @@ import { getStartingPrice, productHasStructuredVariants } from '@constants/catal
 export interface ProductPricing {
   /** Primary selling price shown to the user (never bulk). */
   sellingPrice: number;
-  /** Struck-through original / MRP. */
+  /** Struck-through original / MRP from API (no fabricated markup). */
   originalPrice: number;
   discountPercent: number;
   unit: string;
@@ -12,6 +12,7 @@ export interface ProductPricing {
   bulkThreshold: number;
   bulkPrice: number;
   bulkLabel: string;
+  bulkTiers: Array<{ minQty: number; price: number; label?: string | null }>;
 }
 
 export function getDiscountPercent(original: number, selling: number): number {
@@ -31,15 +32,33 @@ export function getProductPricing(
       ? getStartingPrice(product)
       : product.retailPriceValue;
 
-  const originalPrice =
-    sellingPrice > 0 ? Math.round(sellingPrice * 1.06) : sellingPrice;
-  const discountPercent = getDiscountPercent(originalPrice, sellingPrice);
+  const mrp = variant?.mrp ?? product.mrp ?? null;
+  const originalPrice = mrp && mrp > sellingPrice ? mrp : sellingPrice;
+  const discountPercent =
+    variant?.discountPercent ??
+    product.discountPercent ??
+    getDiscountPercent(originalPrice, sellingPrice);
 
-  const bulkPrice = variant?.bulkPrice ?? product.bulkPriceValue;
+  const bulkTiers =
+    product.bulkPricing?.length
+      ? product.bulkPricing
+      : product.bulkThreshold > 0 && product.bulkPriceValue > 0
+        ? [
+            {
+              minQty: product.bulkThreshold,
+              price: product.bulkPriceValue,
+              label: product.bulkLabel,
+            },
+          ]
+        : [];
+
+  const variantBulk = variant?.bulkPrice;
+  const primaryBulk = variantBulk ?? bulkTiers[0]?.price ?? product.bulkPriceValue;
+  const bulkThreshold = bulkTiers[0]?.minQty ?? product.bulkThreshold;
   const hasBulk =
-    product.bulkThreshold > 0 &&
-    bulkPrice > 0 &&
-    bulkPrice < sellingPrice;
+    bulkThreshold > 0 &&
+    primaryBulk > 0 &&
+    primaryBulk < sellingPrice;
 
   return {
     sellingPrice,
@@ -47,29 +66,57 @@ export function getProductPricing(
     discountPercent,
     unit: variant?.displayUnit || product.unit,
     hasBulk,
-    bulkThreshold: product.bulkThreshold,
-    bulkPrice: hasBulk ? bulkPrice : 0,
-    bulkLabel: product.bulkLabel || `Buy ${product.bulkThreshold}+`,
+    bulkThreshold,
+    bulkPrice: hasBulk ? primaryBulk : 0,
+    bulkLabel:
+      product.bulkLabel ||
+      bulkTiers[0]?.label ||
+      (bulkThreshold > 0 ? `Unlock ₹${Math.round(primaryBulk)} Bulk Price` : ''),
+    bulkTiers,
   };
 }
 
 export function getStockLeft(product: Product): number | null {
+  if (product.availableStock != null) return product.availableStock;
   if (product.stockLeft != null) return product.stockLeft;
-  // No fabricated stock — availability must come from hub inventory / catalog API.
   if (product.status === 'OUT OF STOCK') return 0;
   return null;
 }
 
-export function getDeliveryEta(product: Product): string {
-  if (product.deliveryETA) return product.deliveryETA;
-  if (product.badge?.includes('90')) return '30–90 mins';
-  if (product.badge?.toLowerCase().includes('bulk')) return 'Same day';
-  if (product.badge?.toLowerCase().includes('same')) return 'Same day';
-  return '2–4 hrs';
+/**
+ * Prefer API/ETA-store values. Never invent static ETAs.
+ */
+export function getDeliveryEta(
+  product: Product,
+  dynamicEtaMinutes?: number | null,
+  dynamicEtaLabel?: string | null,
+): string {
+  if (dynamicEtaLabel) return dynamicEtaLabel;
+  if (product.deliveryMessage) return product.deliveryMessage;
+  if (dynamicEtaMinutes != null && dynamicEtaMinutes > 0) {
+    return `Delivery in ${dynamicEtaMinutes} mins`;
+  }
+  if (product.estimatedDeliveryMinutes != null && product.estimatedDeliveryMinutes > 0) {
+    return `Delivery in ${product.estimatedDeliveryMinutes} mins`;
+  }
+  if (product.deliveryETA) {
+    return product.deliveryETA.startsWith('Delivery')
+      ? product.deliveryETA
+      : `Delivery in ${product.deliveryETA}`;
+  }
+  return '';
 }
 
 export function getOfferLabel(product: Product): string | null {
   if (product.badge?.includes('⚡')) return product.badge.replace('⚡', '').trim();
   if (product.badge) return product.badge;
   return null;
+}
+
+export function getBulkUnlockLabel(pricing: ProductPricing): string | null {
+  if (!pricing.hasBulk) return null;
+  return (
+    pricing.bulkLabel ||
+    `Unlock ₹${Math.round(pricing.bulkPrice)} Bulk Price`
+  );
 }

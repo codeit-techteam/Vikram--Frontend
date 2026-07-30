@@ -88,9 +88,6 @@ export const OrderCardActions = memo(function OrderCardActions({
       {actions.includes('invoice') ? (
         <ActionButton label="Invoice" onPress={handleDetails} icon="document-outline" />
       ) : null}
-      {actions.includes('rate') ? (
-        <ActionButton label="Rate Order" onPress={handleDetails} icon="star-outline" />
-      ) : null}
       {actions.includes('cancel') && CANCELLABLE_STATUSES.includes(order.status) ? (
         <ActionButton
           label={isCancelling ? 'Cancelling…' : 'Cancel Order'}
@@ -111,7 +108,7 @@ function getActionsForStatus(status: Order['status']): string[] {
       return ['track', 'contact'];
     case 'delivered':
     case 'refunded':
-      return ['details', 'reorder', 'invoice', 'rate'];
+      return ['details', 'reorder', 'invoice'];
     case 'cancelled':
     case 'payment_failed':
       return ['details', 'reorder'];

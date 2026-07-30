@@ -19,6 +19,7 @@ export interface SearchBarRef {
 interface SearchBarProps {
   query: string;
   isActive?: boolean;
+  embedded?: boolean;
   onChangeText: (text: string) => void;
   onFocus?: () => void;
   onSubmit: () => void;
@@ -32,6 +33,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
   {
     query,
     isActive = false,
+    embedded = false,
     onChangeText,
     onFocus,
     onSubmit,
@@ -68,9 +70,15 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
     style: styles.input,
   };
 
+  const containerStyle = [
+    styles.container,
+    embedded && styles.containerEmbedded,
+    isActive && styles.containerActive,
+  ];
+
   if (!isActive) {
     return (
-      <View style={styles.container}>
+      <View style={containerStyle}>
         <Pressable style={styles.idlePressable} onPress={handlePress}>
           <Ionicons name="search-outline" size={18} color="#FEB623" />
           <Text style={styles.placeholder}>{t('searchPlaceholder')}</Text>
@@ -89,7 +97,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
   }
 
   return (
-    <View style={[styles.container, styles.containerActive]}>
+    <View style={containerStyle}>
       <Ionicons name="search-outline" size={18} color="#FEB623" />
       <TextInput ref={inputRef} {...inputProps} />
       {query.length > 0 ? (
@@ -120,9 +128,14 @@ const styles = StyleSheet.create({
     borderColor: '#E8E8E8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  containerEmbedded: {
+    marginHorizontal: 0,
+    marginTop: 0,
+    width: '100%',
   },
   containerActive: {
     marginHorizontal: 0,

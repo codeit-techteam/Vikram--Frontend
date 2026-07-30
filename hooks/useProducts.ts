@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-query';
 
 import {
+  fetchCategoryProducts,
   fetchProductBySlug,
   fetchProducts,
   fetchRelatedProducts,
@@ -12,6 +13,7 @@ import {
 import type { ProductQueryParams } from '@/types/api-catalog';
 import type { Product } from '@/types/catalog';
 import { useCatalogStore } from '@store/catalogStore';
+import { useProductStore } from '@store/productStore';
 
 export const PRODUCTS_QUERY_KEY = 'products';
 export const PRODUCT_DETAIL_QUERY_KEY = 'product';
@@ -22,15 +24,31 @@ export function useProducts(
   options?: { enabled?: boolean; pageSize?: number },
 ) {
   const pageSize = options?.pageSize ?? 20;
+  const mergedParams = useMemo(() => ({ ...params }), [params]);
 
   const query = useInfiniteQuery({
-    queryKey: [PRODUCTS_QUERY_KEY, params, pageSize],
-    queryFn: ({ pageParam }) =>
-      fetchProducts({
-        ...params,
-        page: pageParam,
-        limit: pageSize,
-      }),
+    queryKey: [PRODUCTS_QUERY_KEY, mergedParams, pageSize],
+    queryFn: async ({ pageParam }) => {
+      const page =
+        mergedParams.category
+          ? await fetchCategoryProducts(mergedParams.category, {
+              ...mergedParams,
+              page: pageParam,
+              limit: pageSize,
+            })
+          : await fetchProducts({
+              ...mergedParams,
+              page: pageParam,
+              limit: pageSize,
+            });
+
+      if (pageParam === 1) {
+        useProductStore.getState().setProducts(page.items, JSON.stringify(mergedParams));
+      } else {
+        useProductStore.getState().appendProducts(page.items);
+      }
+      return page;
+    },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,

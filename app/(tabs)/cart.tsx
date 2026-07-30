@@ -19,6 +19,7 @@ import { useCartStore } from '@store/cartStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { requireAuthOr } from '@utils/requireAuth';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
 
 function SummaryRow({
   label,
@@ -119,6 +120,14 @@ function OrderSummaryCard({
 
 function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
   const { t } = useTranslation();
+  const { label, deliveringBy, isLoading } = useDeliveryEta({ autoFetch: true });
+  const etaText = deliveringBy
+    ? `${t('etaLabel')}: ${deliveringBy}`
+    : label
+      ? `${t('etaLabel')}: ${label}`
+      : isLoading
+        ? `${t('etaLabel')}: …`
+        : `${t('etaLabel')}: —`;
 
   return (
     <View style={styles.siteCard}>
@@ -129,10 +138,10 @@ function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
         <Text style={styles.siteName}>
           {site?.name ?? 'Select a delivery site'}
         </Text>
-        <Text style={styles.siteAddress}>{site?.address ?? 'Plot 42, Goregaon West'}</Text>
+        <Text style={styles.siteAddress}>{site?.address ?? 'Add delivery address'}</Text>
         <View style={styles.siteEtaRow}>
           <Ionicons name="time-outline" size={12} color="#888" />
-          <Text style={styles.siteEta}>{t('etaLabel')}: Today, 5:00 PM</Text>
+          <Text style={styles.siteEta}>{etaText}</Text>
         </View>
       </View>
       <Pressable onPress={() => router.push('/delivery-location')} hitSlop={8}>

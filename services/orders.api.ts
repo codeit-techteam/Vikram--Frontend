@@ -101,10 +101,28 @@ export async function fetchOrderTracking(orderId: string): Promise<OrderTracking
 }
 
 export async function reorderItems(orderId: string): Promise<ReorderResponse> {
-  const { data } = await api.post<ApiResponse<ReorderResponse>>(
-    `${ORDERS_BASE}/${orderId}/reorder`,
-  );
-  return data.data;
+  const { data } = await api.post<
+    ApiResponse<{
+      cartItemCount?: number;
+      message?: string;
+      products?: Record<string, unknown>[];
+      addedCount?: number;
+      unavailableCount?: number;
+    }>
+  >(`${ORDERS_BASE}/${orderId}/reorder`);
+
+  const payload = data.data ?? {};
+  const products = Array.isArray(payload.products)
+    ? payload.products.map((p) => normalizeApiOrder({ items: [p] }).products[0])
+    : undefined;
+
+  return {
+    cartItemCount: Number(payload.cartItemCount ?? products?.length ?? 0),
+    message: String(payload.message ?? 'Reorder items ready'),
+    products: products?.filter(Boolean),
+    addedCount: Number(payload.addedCount ?? products?.length ?? 0),
+    unavailableCount: Number(payload.unavailableCount ?? 0),
+  };
 }
 
 export async function cancelOrder(

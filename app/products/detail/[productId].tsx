@@ -40,6 +40,7 @@ import {
 import { useSearchStore } from '@store/searchStore';
 import { useProductDetail, useRelatedProducts } from '@hooks/useProducts';
 import { useAddToCart } from '@hooks/useAddToCart';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
@@ -55,6 +56,7 @@ import type { FrequentlyBoughtItem } from '@/types/catalog';
 export default function ProductDetailScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
+  const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: true });
   const { productId, categoryName, productName, categoryId } = useLocalSearchParams<{
     productId: string;
     categoryName?: string;
@@ -85,7 +87,6 @@ export default function ProductDetailScreen() {
   const sites = useDeliveryStore((s) => s.sites);
   const selectedSiteId = useDeliveryStore((s) => s.selectedSiteId);
   const setSelectedSite = useDeliveryStore((s) => s.setSelectedSite);
-  const assignedHubName = useDeliveryStore((s) => s.assignedHubName);
 
   const btnScale = useSharedValue(1);
   const subtotalScale = useSharedValue(1);
@@ -144,7 +145,9 @@ export default function ProductDetailScreen() {
     : product?.unit ?? '';
 
   const stockLeft = product ? getStockLeft(product) : null;
-  const deliveryEta = product ? getDeliveryEta(product) : '2–4 hrs';
+  const deliveryEta = product
+    ? getDeliveryEta(product, estimatedMinutes, etaLabel)
+    : etaLabel || '';
   const mode = getAddToCartMode(localQty, cartQty);
 
   const carouselImages = useMemo(
@@ -436,7 +439,7 @@ export default function ProductDetailScreen() {
           selected={deliveryType}
           onSelect={setDeliveryType}
           siteName={selectedSite?.name ?? 'your site'}
-          hubName={assignedHubName ?? undefined}
+          deliveryMessage={deliveryEta || etaLabel || undefined}
         />
 
         {relatedItems.length > 0 ? <FrequentlyBoughtTogether items={relatedItems} /> : null}

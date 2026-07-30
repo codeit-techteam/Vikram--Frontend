@@ -162,11 +162,14 @@ export default function AccountScreen() {
     <DrawerShell
       isOpen={drawerOpen}
       onOpen={() => setDrawerOpen(true)}
-      onClose={() => setDrawerOpen(false)}>
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      onClose={() => setDrawerOpen(false)}
+      header={
+        <AppHeader
+          onMenuPress={() => setDrawerOpen((open) => !open)}
+          isDrawerOpen={drawerOpen}
+        />
+      }>
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
-        <AppHeader onMenuPress={() => setDrawerOpen(true)} />
-
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
           {/* Personal Information */}
           <Text className="mb-2 text-[10px] font-bold tracking-widest text-text-secondary">
@@ -432,7 +435,6 @@ export default function AccountScreen() {
             </View>
           )}
         </ScrollView>
-      </Animated.View>
 
       {!showGuestState ? (
         <ProfileSiteSheet
@@ -447,7 +449,7 @@ export default function AccountScreen() {
           }}
         />
       ) : null}
-    </SafeAreaView>
+      </Animated.View>
     </DrawerShell>
   );
 }

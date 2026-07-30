@@ -57,9 +57,15 @@ export async function fetchSearchSuggestions(q: string): Promise<{
   const payload = data.data;
 
   const suggestions: Suggestion[] = [];
+  const seen = new Set<string>();
+
   const push = (text: string, type: Suggestion['type'], category?: string, id?: string) => {
+    const baseId = id ?? text;
+    const uniqueId = `${type}-${baseId}`;
+    if (seen.has(uniqueId)) return;
+    seen.add(uniqueId);
     suggestions.push({
-      id: id ?? `${type}-${text}`,
+      id: uniqueId,
       text,
       type,
       category,

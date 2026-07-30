@@ -1,4 +1,4 @@
-import { useMemo, useState, Fragment } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import { Alert, ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -26,12 +26,15 @@ import { GstVerifiedCard } from '@components/gst/GstVerifiedCard';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { getLineTotal, useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useEtaStore } from '@store/etaStore';
 import { useGstStore } from '@store/gstStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { normalizeApiOrder } from '@utils/orderAdapters';
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
+import { useServiceability } from '@hooks/useServiceability';
 import { placeOrder } from '@services/orders.api';
 import { syncLocalCartToServer } from '@services/cart.api';
 import { safeGoBack } from '@utils/navigation';
@@ -56,6 +59,52 @@ type ActiveSheet =
   | { type: 'payment'; title: string; message: string }
   | null;
 
+function CheckoutEtaInline() {
+  const { deliveringBy, deliveryMessage, estimatedMinutes, isLoading } = useDeliveryEta({
+    autoFetch: true,
+  });
+  const text = deliveringBy
+    ? deliveringBy
+    : estimatedMinutes
+      ? `${estimatedMinutes} mins`
+      : deliveryMessage || (isLoading ? '…' : '—');
+  return <Text className="font-bold text-primary">{text}</Text>;
+}
+
+function CheckoutEtaCard() {
+  const { t } = useTranslation();
+  const {
+    deliveryMessage,
+    deliveringBy,
+    estimatedMinutes,
+    isLoading,
+  } = useDeliveryEta({ autoFetch: true });
+  const { serviceable } = useServiceability({ autoCheck: false });
+
+  const headline = deliveringBy
+    ? `Estimated Delivery · Today, ${deliveringBy}`
+    : deliveryMessage || t('scheduledDelivery');
+
+  return (
+    <View className="mb-3 rounded-card border border-border bg-surface p-4">
+      <View className="flex-row items-center gap-2">
+        <Ionicons name="time-outline" size={18} color="#FEB623" />
+        <Text className="flex-1 text-sm font-bold text-text">
+          {isLoading ? 'Calculating delivery…' : headline}
+        </Text>
+      </View>
+      {estimatedMinutes ? (
+        <Text className="mt-1 text-xs text-text-secondary">
+          {deliveryMessage || `Delivery in ${estimatedMinutes} mins`}
+        </Text>
+      ) : null}
+      {!serviceable && !isLoading ? (
+        <Text className="mt-1 text-xs text-error">Delivery may be unavailable at this location</Text>
+      ) : null}
+    </View>
+  );
+}
+
 export default function CheckoutScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
@@ -79,9 +128,38 @@ export default function CheckoutScreen() {
       ? { id: primary.id, name: primary.name, address: primary.address }
       : undefined;
   });
-  const assignedHubName = useDeliveryStore((s) => s.assignedHubName);
-  const assignedHubCode = useDeliveryStore((s) => s.assignedHubCode);
   useSites(true);
+
+  const profileSite = useDeliveryStore((s) => {
+    return s.profileSites.find((x) => x.isPrimary) ?? s.profileSites[0];
+  });
+
+  const {
+    deliveryMessage: etaLabel,
+    estimatedMinutes,
+    deliveringBy,
+    refresh: refreshEta,
+  } = useDeliveryEta({ autoFetch: true });
+  const {
+    serviceable,
+    refresh: refreshServiceability,
+  } = useServiceability({
+    latitude: profileSite?.latitude,
+    longitude: profileSite?.longitude,
+    autoCheck: true,
+  });
+
+  // Seed ETA location from primary site coords when available
+  useEffect(() => {
+    if (profileSite?.latitude != null && profileSite?.longitude != null) {
+      useEtaStore.getState().setLocation(
+        profileSite.latitude,
+        profileSite.longitude,
+      );
+      void refreshEta();
+      void refreshServiceability();
+    }
+  }, [profileSite?.latitude, profileSite?.longitude, refreshEta, refreshServiceability]);
 
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>(DEFAULT_PAYMENT_METHOD);
@@ -97,7 +175,9 @@ export default function CheckoutScreen() {
     () => items.reduce((sum, i) => sum + getLineTotal(i), 0),
     [items],
   );
-  const deliveryCharge = bikeDelivery ? 0 : 150;
+  const deliveryCharge = bikeDelivery
+    ? 0
+    : (useEtaStore.getState().eta?.deliveryCharge ?? 150);
   const loadingCharges = 200;
   const unloadingCharges = 150;
   const loyaltyRedemption = loyaltyPoints / 10;
@@ -179,6 +259,23 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (profileSite?.latitude != null && profileSite?.longitude != null) {
+      const latest = await refreshServiceability();
+      if (latest && !latest.serviceable) {
+        Alert.alert(
+          'Not serviceable',
+          'No active hub covers your delivery location. Please choose a different site or notify us when we expand coverage.',
+        );
+        return;
+      }
+    } else if (!serviceable) {
+      Alert.alert(
+        'Location required',
+        'We could not verify delivery coverage for your site. Please update your delivery location.',
+      );
+      return;
+    }
+
     setPaying(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -197,10 +294,12 @@ export default function CheckoutScreen() {
 
       const apiOrder = normalizeApiOrder(placed as Record<string, unknown>);
       const orderId = apiOrder.id || apiOrder.orderNumber;
-      const warehouseLabel =
-        assignedHubName
-          ? `${assignedHubName}${assignedHubCode ? ` (${assignedHubCode})` : ''}`
-          : apiOrder.tracking?.warehouse || 'Assigned Hub';
+      const deliveryEtaLabel =
+        apiOrder.expectedDelivery ||
+        etaLabel ||
+        (estimatedMinutes ? `Delivery in ${estimatedMinutes} mins` : '') ||
+        deliveringBy ||
+        'Calculating…';
 
       // Seed React Query so Track/Details bind to API order immediately.
       if (orderId) {
@@ -219,8 +318,7 @@ export default function CheckoutScreen() {
           total: checkoutTotal,
           site: selectedSite,
           paymentMethod,
-          deliveryETA: apiOrder.expectedDelivery ?? (bikeDelivery ? '30–90 mins' : 'Today, 5:00 PM'),
-          warehouse: warehouseLabel,
+          deliveryETA: deliveryEtaLabel,
         }),
       );
 
@@ -374,12 +472,14 @@ export default function CheckoutScreen() {
 
         <DeliveryDestinationCard site={selectedSite} />
 
+        <CheckoutEtaCard />
+
         <View className="mb-3 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center gap-2">
             <Ionicons name="bus-outline" size={18} color="#FEB623" />
             <Text className="text-sm text-text">
               {t('scheduledDelivery')}:{' '}
-              <Text className="font-bold text-primary">Today, 5:00 PM</Text>
+              <CheckoutEtaInline />
             </Text>
           </View>
           <View className="mt-3 flex-row items-center justify-between px-2">
@@ -493,9 +593,9 @@ export default function CheckoutScreen() {
 
         <ScaledPressable
           onPress={handlePay}
-          disabled={paying || items.length === 0}
+          disabled={paying || items.length === 0 || !serviceable}
           className={`mt-3 flex-row items-center justify-center rounded-pill py-4 ${
-            paySuccess ? 'bg-success' : 'bg-primary'
+            paySuccess ? 'bg-success' : serviceable ? 'bg-primary' : 'bg-border'
           }`}>
           {paying ? (
             <ActivityIndicator color="#FFFFFF" />

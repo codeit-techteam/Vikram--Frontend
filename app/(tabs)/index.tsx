@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   BackHandler,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -19,28 +17,27 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@components/AppHeader';
-import { HomeHeaderCard } from '@components/home/HomeHeaderCard';
-import { SearchBar } from '@components/SearchBar';
+import { HomeCollapsibleHeader } from '@components/home/HomeCollapsibleHeader';
 import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
-import { MembershipCard } from '@components/home/MembershipCard';
+import { MembershipBanner } from '@components/membership';
 import { EmergencyCard } from '@components/home/EmergencyCard';
 import { LoyaltyCard } from '@components/home/LoyaltyCard';
-import { MaterialCategoryCard } from '@components/home/MaterialCategoryCard';
+import { MaterialCategoriesGrid } from '@components/home/MaterialCategoriesGrid';
 import { BulkProcurementCard } from '@components/home/BulkProcurementCard';
 import { BrandAdsSection } from '@components/home/BrandAdsSection';
-import { HomeRecommendedSection } from '@components/home/HomeRecommendedSection';
+import { HomeProductDiscovery } from '@components/home/HomeProductDiscovery';
 import { TestimonialCarousel } from '@components/home/TestimonialSection';
 import { VideoBanner } from '@components/home/VideoBanner';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
+import { useCategories } from '@hooks/useCategories';
 import { useCmsHome } from '@hooks/useCmsHome';
 import { useHomeCatalog } from '@hooks/useHome';
+import { useHomeProducts } from '@hooks/useHomeProducts';
 import { useSites } from '@hooks/useSites';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
@@ -60,14 +57,6 @@ import {
 
 const SECTION_GAP = 24;
 const H_PAD = 16;
-
-function pickHomeCategories(
-  top: CatalogCategory[],
-  featured: CatalogCategory[],
-): CatalogCategory[] {
-  const source = top.length > 0 ? top : featured;
-  return source.slice(0, 8);
-}
 
 export default function HomeScreen() {
   const { t, language } = useTranslation();
@@ -93,14 +82,16 @@ export default function HomeScreen() {
   const screenOpacity = useSharedValue(1);
   const prevLang = useRef(language);
 
+  const { isRefreshing: catalogRefreshing, refresh: refreshCatalog } =
+    useHomeCatalog();
+
   const {
-    topCategories,
-    featuredCategories,
-    isLoading: homeLoading,
-    isRefreshing: catalogRefreshing,
-    error: homeError,
-    refresh: refreshCatalog,
-  } = useHomeCatalog();
+    categories: homeCategories,
+    isLoading: categoriesLoading,
+    isRefreshing: categoriesRefreshing,
+    error: categoriesError,
+    refresh: refreshCategories,
+  } = useCategories();
 
   const {
     sections,
@@ -110,12 +101,12 @@ export default function HomeScreen() {
     testimonials,
     emergencyDelivery,
     bulkProcurement,
-    membership,
     isRefreshing: cmsRefreshing,
     refresh: refreshCms,
   } = useCmsHome();
 
-  const homeCategories = pickHomeCategories(topCategories, featuredCategories);
+  const { isRefreshing: productsRefreshing, refresh: refreshHomeProducts } =
+    useHomeProducts();
 
   const heroSlides = useMemo(() => adaptHeroSlides(banners), [banners]);
   const testimonialVideos = useMemo(
@@ -201,7 +192,11 @@ export default function HomeScreen() {
         language === 'hi' && category.nameHi ? category.nameHi : category.name;
       router.push({
         pathname: '/products/[categoryId]',
-        params: { categoryId: category.slug, categoryName: name },
+        params: {
+          categoryId: category.id,
+          categorySlug: category.slug,
+          categoryName: name,
+        },
       } as Href);
     },
     [language],
@@ -228,14 +223,10 @@ export default function HomeScreen() {
     router.push('/emergency-order' as Href);
   }, [emergencyDelivery]);
 
-  const onJoinMembership = useCallback(async () => {
-    if (!requireAuth('Please log in to join membership.')) return;
-    if (membership?.redirectId) {
-      navigatePromotion(membership);
-      return;
-    }
-    Alert.alert(membership?.title ?? t('membershipTitle'), t('membershipJoinMock'));
-  }, [membership, t]);
+  const onOpenMembership = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/membership' as Href);
+  }, []);
 
   const onBulkProcurement = useCallback(async () => {
     await Haptics.selectionAsync();
@@ -256,8 +247,13 @@ export default function HomeScreen() {
   }, [videoBanner]);
 
   const onRefresh = useCallback(async () => {
-    await Promise.all([refreshCatalog(), refreshCms()]);
-  }, [refreshCatalog, refreshCms]);
+    await Promise.all([
+      refreshCatalog(),
+      refreshCategories(),
+      refreshCms(),
+      refreshHomeProducts(),
+    ]);
+  }, [refreshCatalog, refreshCategories, refreshCms, refreshHomeProducts]);
 
   const sectionMeta = (type: string) =>
     enabledSections.find((s) => s.sectionType === type);
@@ -294,7 +290,45 @@ export default function HomeScreen() {
           </View>
         );
 
-      case 'MATERIAL_CATEGORIES':
+      case 'MATERIAL_CATEGORIES': {
+        if (categoriesLoading && homeCategories.length === 0) {
+          return (
+            <View key={sectionType} style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>
+                  {sectionMeta(sectionType)?.title ?? t('materialCategories')}
+                </Text>
+                <Pressable onPress={onViewAllCategories} hitSlop={12}>
+                  <Text style={styles.sectionLink}>{t('viewCat')} ›</Text>
+                </Pressable>
+              </View>
+              <HomeCategoriesSkeleton />
+            </View>
+          );
+        }
+
+        if (categoriesError && homeCategories.length === 0) {
+          return (
+            <View key={sectionType} style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>
+                  {sectionMeta(sectionType)?.title ?? t('materialCategories')}
+                </Text>
+                <Pressable onPress={onViewAllCategories} hitSlop={12}>
+                  <Text style={styles.sectionLink}>{t('viewCat')} ›</Text>
+                </Pressable>
+              </View>
+              <CatalogErrorState
+                message={t('unableToLoadCategories')}
+                onRetry={() => void refreshCategories()}
+              />
+            </View>
+          );
+        }
+
+        // Empty state: hide the entire section
+        if (homeCategories.length === 0) return null;
+
         return (
           <View key={sectionType} style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -302,37 +336,17 @@ export default function HomeScreen() {
                 {sectionMeta(sectionType)?.title ?? t('materialCategories')}
               </Text>
               <Pressable onPress={onViewAllCategories} hitSlop={12}>
-                <Text style={styles.sectionLink}>{t('viewCat')}</Text>
+                <Text style={styles.sectionLink}>{t('viewCat')} ›</Text>
               </Pressable>
             </View>
-            {homeLoading && homeCategories.length === 0 ? (
-              <HomeCategoriesSkeleton />
-            ) : homeError && homeCategories.length === 0 ? (
-              <CatalogErrorState
-                message={t('unableToLoadCategories')}
-                onRetry={() => void refreshCatalog()}
-              />
-            ) : homeCategories.length === 0 ? (
-              <Text style={styles.emptyCategories}>{t('unableToLoadCategories')}</Text>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.categoriesRow}>
-                {homeCategories.map((cat) => (
-                  <MaterialCategoryCard
-                    key={cat.id}
-                    label={
-                      language === 'hi' && cat.nameHi ? cat.nameHi : cat.name
-                    }
-                    image={cat.image as number | { uri: string }}
-                    onPress={() => void onCategoryPress(cat)}
-                  />
-                ))}
-              </ScrollView>
-            )}
+            <MaterialCategoriesGrid
+              categories={homeCategories}
+              language={language}
+              onCategoryPress={(cat) => void onCategoryPress(cat)}
+            />
           </View>
         );
+      }
 
       case 'EMERGENCY_DELIVERY':
         return (
@@ -375,11 +389,8 @@ export default function HomeScreen() {
         );
 
       case 'MEMBERSHIP':
-        return (
-          <View key={sectionType} style={styles.section}>
-            <MembershipCard onJoin={onJoinMembership} promotion={membership} />
-          </View>
-        );
+        // Compact MembershipBanner is fixed below Search; skip CMS card to avoid duplicate.
+        return null;
 
       case 'BULK_PROCUREMENT':
         return (
@@ -391,13 +402,12 @@ export default function HomeScreen() {
           </View>
         );
 
+      case 'PRODUCT_DISCOVERY':
+        return <HomeProductDiscovery key={sectionType} />;
+
       case 'RECOMMENDED':
-        return (
-          <HomeRecommendedSection
-            key={sectionType}
-            onHorizontalInteractionChange={handleTestimonialScrollInteraction}
-          />
-        );
+        // Replaced by PRODUCT_DISCOVERY (Featured / Popular / New / Deals)
+        return null;
 
       case 'PRIORITY_EXPRESS':
         return null;
@@ -408,86 +418,121 @@ export default function HomeScreen() {
   };
 
   // Fallback order when CMS sections are empty (before seed/migration)
-  const sectionOrder =
-    enabledSections.length > 0
-      ? enabledSections.map((s) => s.sectionType)
-      : [
-          'HERO_BANNER',
-          'LOYALTY',
-          'MATERIAL_CATEGORIES',
-          'EMERGENCY_DELIVERY',
-          'VIDEO_BANNER',
-          'ADVERTISEMENTS',
-          'TESTIMONIALS',
-          'MEMBERSHIP',
-          'BULK_PROCUREMENT',
-          'RECOMMENDED',
-        ];
+  // Desired flow: Hero → Loyalty → Categories → Product Discovery → Ads → Testimonials
+  const sectionOrder = useMemo(() => {
+    const base =
+      enabledSections.length > 0
+        ? enabledSections
+            .map((s) => s.sectionType)
+            .filter((type) => type !== 'RECOMMENDED')
+        : [
+            'HERO_BANNER',
+            'LOYALTY',
+            'MATERIAL_CATEGORIES',
+            'EMERGENCY_DELIVERY',
+            'VIDEO_BANNER',
+            'ADVERTISEMENTS',
+            'TESTIMONIALS',
+            'MEMBERSHIP',
+            'BULK_PROCUREMENT',
+          ];
+
+    if (base.includes('PRODUCT_DISCOVERY')) return base;
+
+    const withDiscovery: string[] = [];
+    let inserted = false;
+    for (const type of base) {
+      withDiscovery.push(type);
+      if (type === 'MATERIAL_CATEGORIES') {
+        withDiscovery.push('PRODUCT_DISCOVERY');
+        inserted = true;
+      }
+    }
+    if (!inserted) {
+      const adsIdx = withDiscovery.indexOf('ADVERTISEMENTS');
+      const testimonialsIdx = withDiscovery.indexOf('TESTIMONIALS');
+      const insertAt =
+        adsIdx >= 0
+          ? adsIdx
+          : testimonialsIdx >= 0
+            ? testimonialsIdx
+            : withDiscovery.length;
+      withDiscovery.splice(insertAt, 0, 'PRODUCT_DISCOVERY');
+    }
+    return withDiscovery;
+  }, [enabledSections]);
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <View style={styles.root}>
-        <Animated.View
-          style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
-          pointerEvents={drawerOpen ? 'auto' : 'none'}>
+    <View style={styles.root}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
+        pointerEvents={drawerOpen ? 'auto' : 'none'}
+        collapsable={false}>
+        {drawerOpen ? (
           <Pressable style={StyleSheet.absoluteFill} onPress={closeDrawer} />
-        </Animated.View>
+        ) : null}
+      </Animated.View>
 
-        <Animated.View style={[styles.content, contentStyle, fadeStyle]}>
-          <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+      <Animated.View style={[styles.content, contentStyle, fadeStyle]}>
+        <View style={styles.screen}>
+          <HomeCollapsibleHeader
+            scrollY={homeScrollY}
+            onMenuPress={toggleDrawer}
+            isDrawerOpen={drawerOpen}
+            menuIconStyle={iconStyle}
+            searchQuery={search.query}
+            onSearchChange={search.setQuery}
+            onSearchFocus={search.activateSearch}
+            onSearchSubmit={() => search.submitSearch()}
+            onSearchClear={search.clearQuery}
+            onVoicePress={() => {
+              search.deactivateSearch();
+              openVoiceAssistant();
+            }}
+          />
+
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.scrollGestureWrap}>
             <Animated.ScrollView
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
-              className="flex-1"
+              style={styles.scroll}
               contentContainerStyle={styles.scrollContent}
               onScroll={onHomeScroll}
               scrollEventThrottle={16}
+              keyboardShouldPersistTaps="handled"
               refreshControl={
                 <RefreshControl
-                  refreshing={catalogRefreshing || cmsRefreshing}
+                  refreshing={
+                    catalogRefreshing ||
+                    categoriesRefreshing ||
+                    cmsRefreshing ||
+                    productsRefreshing
+                  }
                   onRefresh={() => void onRefresh()}
                 />
               }>
-              <AppHeader
-                onMenuPress={toggleDrawer}
-                isDrawerOpen={drawerOpen}
-                menuIconStyle={iconStyle}
-              />
-              <HomeHeaderCard scrollY={homeScrollY} />
-
-              <View style={styles.searchWrap}>
-                <SearchBar
-                  query={search.query}
-                  isActive={false}
-                  onChangeText={search.setQuery}
-                  onFocus={search.activateSearch}
-                  onSubmit={() => search.submitSearch()}
-                  onClear={search.clearQuery}
-                  onVoicePress={() => {
-                    search.deactivateSearch();
-                    openVoiceAssistant();
-                  }}
-                />
-              </View>
+              <MembershipBanner onPress={onOpenMembership} />
 
               {sectionOrder.map((type) => renderSection(type))}
 
               <View style={styles.bottomSpacer} />
             </Animated.ScrollView>
-          </SafeAreaView>
-        </Animated.View>
+            </View>
+          </GestureDetector>
+        </View>
+      </Animated.View>
 
-        <Animated.View
-          style={[drawerPanelStyle.drawer, drawerStyle]}
-          pointerEvents={drawerOpen ? 'auto' : 'none'}>
-          <DrawerMenu isOpen={drawerOpen} onClose={closeDrawer} />
-        </Animated.View>
+      <Animated.View
+        style={[drawerPanelStyle.drawer, drawerStyle]}
+        pointerEvents={drawerOpen ? 'auto' : 'none'}>
+        <DrawerMenu isOpen={drawerOpen} onClose={closeDrawer} />
+      </Animated.View>
 
-        {search.isActive ? (
-          <SearchOverlay {...search} onClose={search.deactivateSearch} />
-        ) : null}
-      </View>
-    </GestureDetector>
+      {search.isActive ? (
+        <SearchOverlay {...search} onClose={search.deactivateSearch} />
+      ) : null}
+    </View>
   );
 }
 
@@ -503,11 +548,19 @@ const styles = StyleSheet.create({
     flex: 1,
     zIndex: 1,
   },
+  screen: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollGestureWrap: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: 8,
-  },
-  searchWrap: {
-    marginBottom: 0,
+    paddingTop: 8,
   },
   section: {
     marginTop: SECTION_GAP,
@@ -528,16 +581,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FEB623',
-  },
-  categoriesRow: {
-    paddingHorizontal: H_PAD,
-    gap: 12,
-    paddingBottom: 4,
-  },
-  emptyCategories: {
-    paddingHorizontal: H_PAD,
-    color: '#888888',
-    fontSize: 13,
   },
   bottomSpacer: {
     height: 32,

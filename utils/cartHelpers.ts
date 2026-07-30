@@ -2,12 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 import { useCatalogStore } from '@store/catalogStore';
-import {
-  getAllProducts,
-  getProductById,
-  getProductImageSource,
-  getProductImageUrl,
-} from '@constants/catalogData';
+import { useProductStore } from '@store/productStore';
 import {
   getProductSkuUnit,
   getVariantById,
@@ -21,12 +16,17 @@ import type { CartItem } from '@store/cartStore';
 export interface CartItemOptions {
   variantId?: string;
   quantity?: number;
+  hubId?: string;
+  etaMinutes?: number;
 }
 
-/** Resolve catalog product id from cart line id (handles ids like `bricks_grey_flash_gb_500`). */
+/** Resolve catalog product id from cart line id (handles ids like `uuid_variantUuid`). */
 export function resolveCartProductId(item: CartItem): string {
   if (item.productId) return item.productId;
   if (!item.id.includes('_')) return item.id;
+
+  const fromProductStore = useProductStore.getState().getProduct(item.id.split('_')[0]);
+  if (fromProductStore) return fromProductStore.id;
 
   const cached = Object.values(useCatalogStore.getState().productCache);
   const fromCache = cached
@@ -34,11 +34,7 @@ export function resolveCartProductId(item: CartItem): string {
     .sort((a, b) => b.id.length - a.id.length)[0];
   if (fromCache) return fromCache.id;
 
-  const all = getAllProducts();
-  const match = all
-    .filter((p) => item.id === p.id || item.id.startsWith(`${p.id}_`))
-    .sort((a, b) => b.id.length - a.id.length)[0];
-  return match?.id ?? item.id;
+  return item.id.split('_')[0] ?? item.id;
 }
 
 export function productToCartItem(
@@ -78,6 +74,8 @@ export function productToCartItem(
     unit,
     variantId: hasVariant ? variantId : undefined,
     variantLabel: hasVariant ? variant.label : undefined,
+    hubId: options?.hubId,
+    etaMinutes: options?.etaMinutes,
   };
 }
 
@@ -101,25 +99,34 @@ export function frequentItemToCartItem(item: FrequentlyBoughtItem): CartItem {
 /** Returns the same image source used in catalog/detail — never a random category fallback. */
 export function getCartItemImageSource(item: CartItem): ImageSourcePropType | null {
   const productId = resolveCartProductId(item);
-  const cached = useCatalogStore.getState().getCachedProduct(productId);
-  if (cached) return getProductImageSource(cached);
+  const fromStore = useProductStore.getState().getProduct(productId);
+  if (fromStore?.imageUrl) {
+    return resolveProductImageSource({
+      imageUrl: fromStore.imageUrl,
+      productSlug: fromStore.slug,
+      categorySlug: fromStore.categorySlug,
+    });
+  }
 
-  const product = getProductById(productId);
-  if (product) return getProductImageSource(product);
+  const cached = useCatalogStore.getState().getCachedProduct(productId);
+  if (cached?.imageUrl) {
+    return resolveProductImageSource({
+      imageUrl: cached.imageUrl,
+      productSlug: cached.slug,
+      categorySlug: cached.categorySlug,
+    });
+  }
 
   const imageSearch = item.image ?? item.imageSearch;
   if (!imageSearch) return null;
 
   return resolveProductImageSource({
-    imageUrl: imageSearch,
+    imageUrl:
+      imageSearch.startsWith('http://') || imageSearch.startsWith('https://')
+        ? imageSearch
+        : null,
     productSlug: productId,
     categorySlug: item.category,
-    fallbackImage:
-      imageSearch.startsWith('http://') || imageSearch.startsWith('https://')
-        ? { uri: imageSearch }
-        : imageSearch.startsWith('/assets/')
-          ? undefined
-          : { uri: getProductImageUrl(imageSearch) },
   });
 }
 

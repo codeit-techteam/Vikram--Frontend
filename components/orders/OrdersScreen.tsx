@@ -1,17 +1,21 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@components/AppHeader';
+import { AppIcon } from '@components/ui/AppIcon';
+import { IconButton } from '@components/ui/IconButton';
+import { DrawerShell } from '@components/DrawerShell';
 import { EmptyOrdersState } from '@components/orders/EmptyOrdersState';
 import { OrderCard } from '@components/orders/OrderCard';
 import { OrderCardSkeleton, OrdersListSkeleton } from '@components/orders/OrderSkeleton';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { ORDER_FILTERS } from '@constants/orderStatus';
+import { ICON_SIZE } from '@constants/icons';
 import { useOrders } from '@hooks/useOrders';
 import { useReorder } from '@hooks/useReorder';
 import { useAuthStore } from '@store/useAuthStore';
@@ -78,6 +82,7 @@ function FilterChips({
 }
 
 export const OrdersScreen = memo(function OrdersScreen() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<OrderFilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -153,28 +158,44 @@ export const OrdersScreen = memo(function OrdersScreen() {
   }, [isFetchingNextPage]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: theme.white,
-          borderBottomWidth: 1,
-          borderBottomColor: '#F0F0F0',
-        }}>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: theme.textPrimary }}>My Orders</Text>
-        <ScaledPressable
-          onPress={() => {
-            setShowSearch((v) => !v);
-            Haptics.selectionAsync();
-          }}
-          hitSlop={10}>
-          <Ionicons name={showSearch ? 'close-outline' : 'search-outline'} size={22} color={theme.textPrimary} />
-        </ScaledPressable>
-      </View>
+    <DrawerShell
+      isOpen={drawerOpen}
+      onOpen={() => setDrawerOpen(true)}
+      onClose={() => setDrawerOpen(false)}
+      header={
+        <AppHeader
+          showLogo
+          onMenuPress={() => setDrawerOpen((open) => !open)}
+          isDrawerOpen={drawerOpen}
+          footer={
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 4,
+              }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary }}>
+                My Orders
+              </Text>
+              <IconButton
+                accessibilityLabel={showSearch ? 'Close search' : 'Search orders'}
+                surface={false}
+                onPress={() => {
+                  setShowSearch((v) => !v);
+                  void Haptics.selectionAsync();
+                }}>
+                <AppIcon
+                  name={showSearch ? 'close' : 'search'}
+                  size={ICON_SIZE.header}
+                  color={theme.textPrimary}
+                />
+              </IconButton>
+            </View>
+          }
+        />
+      }>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={[]}>
 
       {showSearch ? (
         <Animated.View
@@ -189,7 +210,7 @@ export const OrdersScreen = memo(function OrdersScreen() {
             borderBottomWidth: 1,
             borderBottomColor: '#F0F0F0',
           }}>
-          <Ionicons name="search" size={18} color={theme.textMuted} />
+          <AppIcon name="search" size={ICON_SIZE.action} color={theme.textMuted} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -205,7 +226,7 @@ export const OrdersScreen = memo(function OrdersScreen() {
           />
           {searchQuery.length > 0 ? (
             <ScaledPressable onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+              <AppIcon name="close" size={ICON_SIZE.action} color={theme.textMuted} />
             </ScaledPressable>
           ) : null}
         </Animated.View>
@@ -239,6 +260,7 @@ export const OrdersScreen = memo(function OrdersScreen() {
         </>
       )}
     </SafeAreaView>
+    </DrawerShell>
   );
 });
 

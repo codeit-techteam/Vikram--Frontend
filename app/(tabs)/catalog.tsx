@@ -3,7 +3,6 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { type Href, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
@@ -49,7 +48,11 @@ export default function CatalogScreen() {
     const name = categoryDisplayName(cat, t, language);
     router.push({
       pathname: '/products/[categoryId]',
-      params: { categoryId: cat.slug, categoryName: name },
+      params: {
+        categoryId: cat.id,
+        categorySlug: cat.slug,
+        categoryName: name,
+      },
     } as Href);
   };
 
@@ -62,16 +65,21 @@ export default function CatalogScreen() {
     <DrawerShell
       isOpen={drawerOpen}
       onOpen={() => setDrawerOpen(true)}
-      onClose={() => setDrawerOpen(false)}>
-      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-        <AppHeader onMenuPress={() => setDrawerOpen(true)} />
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          className="flex-1"
-          refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
-          }>
-          <View className="px-5 pb-2">
+      onClose={() => setDrawerOpen(false)}
+      header={
+        <AppHeader
+          onMenuPress={() => setDrawerOpen((open) => !open)}
+          isDrawerOpen={drawerOpen}
+        />
+      }>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        className="flex-1 bg-background"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
+        }>
+          <View className="px-5 pb-2 pt-3">
             <Text className="text-2xl font-bold text-text">{t('catalogTitle')}</Text>
             <Text className="mt-2 text-sm leading-5 text-text-secondary">
               {t('catalogSubtitle')}
@@ -136,7 +144,6 @@ export default function CatalogScreen() {
             </Text>
           </View>
         </ScrollView>
-      </SafeAreaView>
     </DrawerShell>
   );
 }

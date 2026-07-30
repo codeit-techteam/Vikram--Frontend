@@ -89,13 +89,15 @@ export const OrderTimeline = memo(function OrderTimeline({
 
         if (animated) {
           return (
-            <Animated.View key={step.key} entering={FadeInLeft.delay(index * 120).duration(300)}>
+            <Animated.View
+              key={`${step.key}-${index}`}
+              entering={FadeInLeft.delay(index * 120).duration(300)}>
               {content}
             </Animated.View>
           );
         }
 
-        return <View key={step.key}>{content}</View>;
+        return <View key={`${step.key}-${index}`}>{content}</View>;
       })}
     </View>
   );
