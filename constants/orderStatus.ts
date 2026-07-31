@@ -10,7 +10,7 @@ export const ORDER_STATUS_BADGES: Record<OrderStatus, StatusBadgeConfig> = {
   pending: { label: 'Pending', color: '#B8860B', backgroundColor: '#FFF8E1' },
   confirmed: { label: 'Confirmed', color: '#1A73E8', backgroundColor: '#E3F2FD' },
   // Prefer order.statusLabel from API when available (Accepted by Hub / Picking / Hub Assigned).
-  processing: { label: 'Accepted by Hub', color: '#1A73E8', backgroundColor: '#E3F2FD' },
+  processing: { label: 'Preparing Order', color: '#1A73E8', backgroundColor: '#E3F2FD' },
   packed: { label: 'Packed', color: '#7B1FA2', backgroundColor: '#F3E5F5' },
   ready_for_dispatch: { label: 'Driver Assigned', color: '#7B1FA2', backgroundColor: '#F3E5F5' },
   out_for_delivery: { label: 'Out For Delivery', color: '#E65100', backgroundColor: '#FFF3E0' },

@@ -153,7 +153,12 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             Placed on {formatDateKey(order.createdAt)}
             {customerName ? ` · Placed by ${customerName}` : ''}
           </Text>
-          {order.expectedDelivery && order.status !== 'delivered' ? (
+          {order.status === 'delivered' || order.status === 'refunded' ? (
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.success, marginTop: 8 }}>
+              Delivered
+              {order.deliveredAt ? ` on ${formatDateKey(order.deliveredAt)}` : ''}
+            </Text>
+          ) : order.expectedDelivery ? (
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.primary, marginTop: 8 }}>
               Expected delivery: {order.expectedDelivery}
             </Text>

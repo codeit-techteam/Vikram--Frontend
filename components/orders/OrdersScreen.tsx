@@ -18,6 +18,7 @@ import { ORDER_FILTERS } from '@constants/orderStatus';
 import { ICON_SIZE } from '@constants/icons';
 import { useOrders } from '@hooks/useOrders';
 import { useReorder } from '@hooks/useReorder';
+import { realtimeSocket } from '@services/realtime.socket';
 import { useAuthStore } from '@store/useAuthStore';
 import type { Order, OrderFilterStatus } from '@/types/order';
 import { theme } from '@constants/theme';
@@ -106,6 +107,14 @@ export const OrdersScreen = memo(function OrdersScreen() {
     isCancelling,
     prefetchOrder,
   } = useOrders(activeFilter, searchQuery);
+
+  useEffect(() => {
+    if (!isFocused || !isLoggedIn) return;
+    // Catch any updates missed while another tab was open / socket briefly down.
+    if (!realtimeSocket.isConnected()) {
+      void refresh();
+    }
+  }, [isFocused, isLoggedIn, refresh]);
 
   const { reorder, isReordering, reorderingOrderId } = useReorder();
 

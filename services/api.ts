@@ -73,14 +73,28 @@ async function performTokenRefresh(): Promise<string | null> {
     const newAccessToken: string | undefined = data?.accessToken;
     const newRefreshToken: string | undefined = data?.refreshToken;
 
-    if (!newAccessToken) return null;
+    if (newAccessToken) {
+      await storage.setItem(AUTH_TOKEN_KEY, newAccessToken);
+      if (newRefreshToken) {
+        await storage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+      }
 
-    await storage.setItem(AUTH_TOKEN_KEY, newAccessToken);
-    if (newRefreshToken) {
-      await storage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+      try {
+        const { useAuthStore } = require('@store/useAuthStore') as typeof import('@store/useAuthStore');
+        useAuthStore.setState({
+          token: newAccessToken,
+          refreshToken: newRefreshToken ?? useAuthStore.getState().refreshToken,
+        });
+        const { realtimeSocket } = require('@services/realtime.socket') as typeof import('@services/realtime.socket');
+        realtimeSocket.updateToken(newAccessToken);
+      } catch {
+        // Stores may not be ready; storage already has the fresh token.
+      }
+
+      return newAccessToken;
     }
 
-    return newAccessToken;
+    return null;
   } catch {
     return null;
   }

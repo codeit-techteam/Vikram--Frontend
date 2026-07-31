@@ -3,6 +3,7 @@ import { useDeliveryStore } from '@store/deliveryStore';
 import { useGstStore } from '@store/gstStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { useOrderStore } from '@store/orderStore';
+import { useOrdersSyncStore } from '@store/ordersSyncStore';
 import { useUserStore } from '@store/userStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { useSiteStore } from '@store/useSiteStore';
@@ -25,6 +26,7 @@ export async function resetAppStores() {
     lastOrderId: null,
     proTipDismissed: false,
   });
+  useOrdersSyncStore.getState().clear();
   useNotificationStore.getState().reset();
   useSiteStore.setState({ sites: [] });
   useGstStore.getState().reset();

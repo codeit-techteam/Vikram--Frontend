@@ -79,6 +79,10 @@ export interface Order {
   /** Backend display label (SSOT) — prefer over badge map when present */
   statusLabel?: string;
   createdAt: string;
+  /** ISO timestamp from backend — used for realtime version checks */
+  updatedAt?: string;
+  /** Monotonic version (usually Date.parse(updatedAt)) for cache freshness */
+  version?: number;
   expectedDelivery?: string;
   deliveredAt?: string;
   products: OrderProduct[];

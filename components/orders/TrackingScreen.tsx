@@ -79,6 +79,8 @@ export const TrackingScreen = memo(function TrackingScreen() {
   const driver = order.driver ?? order.tracking?.driver;
   const statusConfig = ORDER_STATUS_BADGES[order.status];
   const statusLabel = order.statusLabel?.trim() || statusConfig.label;
+  const isDelivered = order.status === 'delivered' || order.status === 'refunded';
+  const isCancelled = order.status === 'cancelled' || order.status === 'payment_failed';
   const etaSource =
     order.expectedDelivery ??
     order.tracking?.estimatedArrival ??
@@ -88,11 +90,14 @@ export const TrackingScreen = memo(function TrackingScreen() {
   const { day: etaDay, time: etaTime } = parseEstimatedArrival(etaSource);
   const timelineSteps =
     order.timeline?.length > 0 ? order.timeline : buildTimelineFromStatus(order.status);
-  const canCallDriver = Boolean(driver?.phone);
+  const canCallDriver = Boolean(driver?.phone) && !isDelivered && !isCancelled;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
-      <BackHeader title="Track Order" onBack={() => safeGoBack('/(tabs)/orders')} />
+      <BackHeader
+        title={isDelivered ? 'Order Delivered' : 'Track Order'}
+        onBack={() => safeGoBack('/(tabs)/orders')}
+      />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 16 }}>
         <View
           style={{
@@ -105,13 +110,20 @@ export const TrackingScreen = memo(function TrackingScreen() {
           <View
             style={{
               alignSelf: 'flex-start',
-              backgroundColor: '#E8F5E9',
+              backgroundColor: isDelivered ? '#E8F5E9' : isCancelled ? '#FFEBEE' : '#E8F5E9',
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: borderRadius.full,
               marginBottom: 12,
             }}>
-            <Text style={{ fontSize: 10, fontWeight: '700', color: '#2E7D32' }}>ACTIVE DELIVERY</Text>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                color: isDelivered ? '#2E7D32' : isCancelled ? '#C62828' : '#2E7D32',
+              }}>
+              {isDelivered ? 'DELIVERED SUCCESSFULLY' : isCancelled ? 'CANCELLED' : 'ACTIVE DELIVERY'}
+            </Text>
           </View>
           <Text style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Order Number</Text>
           <Text style={{ fontSize: 20, fontWeight: '800', color: theme.textPrimary, marginBottom: 12 }}>
@@ -123,10 +135,15 @@ export const TrackingScreen = memo(function TrackingScreen() {
               <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
                 {statusLabel}
               </Text>
+              {isDelivered && order.deliveredAt ? (
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+                  On {formatDateKey(order.deliveredAt)}
+                </Text>
+              ) : null}
             </View>
             <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
           </View>
-          {etaDay || etaTime ? (
+          {!isDelivered && !isCancelled && (etaDay || etaTime) ? (
             <View
               style={{
                 marginTop: 16,
@@ -147,9 +164,24 @@ export const TrackingScreen = memo(function TrackingScreen() {
               ) : null}
             </View>
           ) : null}
+          {isDelivered ? (
+            <ScaledPressable
+              onPress={handleViewInvoice}
+              style={{
+                marginTop: 16,
+                backgroundColor: theme.primary,
+                borderRadius: borderRadius.md,
+                paddingVertical: 12,
+                alignItems: 'center',
+              }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary }}>
+                View Order Details
+              </Text>
+            </ScaledPressable>
+          ) : null}
         </View>
 
-        {driver ? (
+        {driver && !isDelivered ? (
           <View
             style={{
               borderRadius: borderRadius.lg,

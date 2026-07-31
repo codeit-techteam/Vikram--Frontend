@@ -16,6 +16,7 @@ import { VariantBottomSheet } from '@components/product/VariantBottomSheet';
 import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
+import { RealtimeProvider } from '@providers/RealtimeProvider';
 import { useAuthStore } from '@store/useAuthStore';
 import { useGstStore } from '@store/gstStore';
 
@@ -59,6 +60,7 @@ export default function RootLayout() {
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
         <QueryProvider>
+          <RealtimeProvider>
           <BottomSheetModalProvider>
             <StatusBar style="auto" />
             <Stack
@@ -124,6 +126,7 @@ export default function RootLayout() {
             <ReorderUnavailableSheet />
             <LoginRequiredSheet />
           </BottomSheetModalProvider>
+          </RealtimeProvider>
         </QueryProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

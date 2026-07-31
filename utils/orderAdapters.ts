@@ -63,12 +63,12 @@ const BACKEND_STATUS_LABELS: Record<string, string> = {
   CONFIRMED: 'Confirmed',
   HUB_ASSIGNED: 'Hub Assigned',
   AWAITING_HUB_ALLOCATION: 'Awaiting Hub Allocation',
-  ACCEPTED_BY_HUB: 'Accepted by Hub',
-  PICKING: 'Picking',
-  PROCESSING: 'Accepted by Hub',
+  ACCEPTED_BY_HUB: 'Preparing Order',
+  PICKING: 'Preparing Order',
+  PROCESSING: 'Preparing Order',
   PACKED: 'Packed',
   READY_FOR_DISPATCH: 'Packed',
-  DRIVER_ASSIGNED: 'Driver Assigned',
+  DRIVER_ASSIGNED: 'Out for Delivery',
   OUT_FOR_DELIVERY: 'Out For Delivery',
   DISPATCHED: 'Out For Delivery',
   DELIVERED: 'Delivered',
@@ -410,8 +410,13 @@ function formatEta(value: unknown): string | undefined {
 
 function mapApiTimeline(
   rawTimeline: Record<string, unknown>[],
+  orderStatus?: OrderStatus,
 ): TimelineStep[] {
   const lastIndex = rawTimeline.length - 1;
+  const terminal =
+    orderStatus === 'delivered' ||
+    orderStatus === 'cancelled' ||
+    orderStatus === 'refunded';
   return rawTimeline.map((entry, index) => ({
     key: String(entry.id ?? `timeline-${index}`),
     label: String(
@@ -432,8 +437,8 @@ function mapApiTimeline(
             minute: '2-digit',
           })
         : undefined,
-    done: index < lastIndex,
-    active: index === lastIndex,
+    done: terminal || index < lastIndex,
+    active: !terminal && index === lastIndex,
   }));
 }
 
@@ -474,7 +479,9 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     ? (raw.timeline as Record<string, unknown>[])
     : [];
   const timeline =
-    rawTimeline.length > 0 ? mapApiTimeline(rawTimeline) : buildDefaultTimeline(status);
+    rawTimeline.length > 0
+      ? mapApiTimeline(rawTimeline, status)
+      : buildDefaultTimeline(status);
 
   const line1 = String(addressRaw.line1 ?? addressRaw.address ?? '');
   const line2 = addressRaw.line2 ? String(addressRaw.line2) : '';
@@ -484,9 +491,22 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const paymentStatusRaw = String(
     payment.status ?? raw.paymentStatus ?? 'PENDING',
   );
-  const expectedDelivery = formatEta(
-    raw.expectedDeliveryAt ?? raw.expectedDelivery,
-  );
+  const isTerminal =
+    status === 'delivered' || status === 'cancelled' || status === 'refunded';
+  const expectedDelivery = isTerminal
+    ? undefined
+    : formatEta(raw.expectedDeliveryAt ?? raw.expectedDelivery);
+
+  const updatedAt = raw.updatedAt ? String(raw.updatedAt) : undefined;
+  const explicitVersion =
+    typeof raw.version === 'number'
+      ? raw.version
+      : raw.version
+        ? Number(raw.version)
+        : undefined;
+  const version =
+    (Number.isFinite(explicitVersion) ? explicitVersion : undefined) ??
+    (updatedAt ? Date.parse(updatedAt) || undefined : undefined);
 
   return {
     id: String(raw.id ?? ''),
@@ -494,8 +514,14 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     status,
     statusLabel,
     createdAt: String(raw.createdAt ?? new Date().toISOString()),
+    updatedAt,
+    version,
     expectedDelivery,
-    deliveredAt: raw.deliveredAt ? String(raw.deliveredAt) : undefined,
+    deliveredAt: raw.deliveredAt
+      ? String(raw.deliveredAt)
+      : raw.deliveryCompletedAt
+        ? String(raw.deliveryCompletedAt)
+        : undefined,
     products,
     subtotal: Number(raw.subtotal ?? 0),
     discount: Number(raw.discountAmount ?? raw.discount ?? 0),
