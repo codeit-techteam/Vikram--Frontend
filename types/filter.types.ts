@@ -1,9 +1,29 @@
 import type { Product } from '@/types/catalog';
 
-export type FilterKey = 'grade' | 'eta' | 'brand' | 'priceRange' | 'availability';
+export type FilterKey =
+  | 'grade'
+  | 'eta'
+  | 'brand'
+  | 'priceRange'
+  | 'availability'
+  | 'discount'
+  | 'bulkPricing'
+  | 'sort';
+
+export type QuickFilterKey = 'grade' | 'eta' | 'brand' | 'priceRange' | 'availability';
+
+export type SortOption =
+  | 'popularity'
+  | 'recommended'
+  | 'price_low'
+  | 'price_high'
+  | 'discount'
+  | 'newest'
+  | 'fastest_delivery'
+  | 'rating';
 
 export interface FilterChip {
-  key: FilterKey;
+  key: QuickFilterKey;
   label: string;
   icon?: string;
 }
@@ -20,19 +40,21 @@ export interface CategoryFilterConfig {
   brands: BrandOption[];
   priceBounds: [number, number];
   etaOptions: string[];
+  availabilityOptions: string[];
+  visibleChips: QuickFilterKey[];
+  advancedSections: FilterKey[];
 }
 
 export interface ActiveFilters {
+  search: string;
   grade: string[];
   eta: string | null;
-  brand: string | null;
+  brand: string[];
   priceRange: [number, number];
   availability: string[];
-}
-
-export interface FilterStateSnapshot {
-  activeFilters: ActiveFilters;
-  draftFilters: ActiveFilters;
+  discount: number | null;
+  bulkPricing: boolean | null;
+  sort: SortOption;
 }
 
 export type FilterSectionProps = {

@@ -16,6 +16,7 @@ interface FilterFooterProps {
   onReset: () => void;
   onApply: () => void;
   applyLabel?: string;
+  showCount?: boolean;
   /** When false, sheet-level bottomInset handles safe area */
   safeAreaBottom?: boolean;
 }
@@ -23,7 +24,6 @@ interface FilterFooterProps {
 function AnimatedResultCount({ count }: { count: number }) {
   const opacity = useSharedValue(1);
   const translateY = useSharedValue(0);
-  const displayCount = useSharedValue(count);
 
   useEffect(() => {
     opacity.value = withSequence(
@@ -34,8 +34,7 @@ function AnimatedResultCount({ count }: { count: number }) {
       withTiming(-8, { duration: 100 }),
       withTiming(0, { duration: 100 }),
     );
-    displayCount.value = count;
-  }, [count, opacity, translateY, displayCount]);
+  }, [count, opacity, translateY]);
 
   const animStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -43,7 +42,7 @@ function AnimatedResultCount({ count }: { count: number }) {
   }));
 
   return (
-    <Animated.Text style={[{ fontWeight: '700' }, animStyle]}>
+    <Animated.Text style={[{ fontWeight: '700', color: '#FFFFFF', fontSize: 15 }, animStyle]}>
       {count}
     </Animated.Text>
   );
@@ -53,7 +52,8 @@ export function FilterFooter({
   resultCount,
   onReset,
   onApply,
-  applyLabel,
+  applyLabel = 'Show Results',
+  showCount = true,
   safeAreaBottom = true,
 }: FilterFooterProps) {
   const insets = useSafeAreaInsets();
@@ -104,14 +104,15 @@ export function FilterFooter({
           flexDirection: 'row',
         }}>
         <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
-          {applyLabel ?? 'Show Results ('}
+          {applyLabel}
+          {showCount ? ' (' : ''}
         </Text>
-        {!applyLabel && (
+        {showCount ? (
           <>
             <AnimatedResultCount count={resultCount} />
             <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>)</Text>
           </>
-        )}
+        ) : null}
       </ScaledPressable>
     </View>
   );

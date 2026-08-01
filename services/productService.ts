@@ -37,6 +37,7 @@ function buildQuery(params: ProductQueryParams = {}): string {
   if (params.featured === true) query.set('featured', 'true');
   if (params.bestSelling === true) query.set('bestSelling', 'true');
   if (params.offers === true) query.set('offers', 'true');
+  if (params.newArrivals === true) query.set('newArrivals', 'true');
   if (params.listingType) query.set('listingType', params.listingType);
   if (params.brand) query.set('brand', params.brand);
   if (params.grade) query.set('grade', params.grade);
@@ -141,6 +142,11 @@ export async function fetchCategoryProducts(
   if (params.sortOrder) query.set('sortOrder', params.sortOrder);
   if (params.search) query.set('search', params.search);
   if (params.brand) query.set('brand', params.brand);
+  if (params.grade) query.set('grade', params.grade);
+  if (params.status) query.set('status', params.status);
+  if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
+  if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
+  if (params.hubId) query.set('hubId', params.hubId);
   const qs = query.toString();
   const { data } = await api.get<ApiResponse<ApiProductList>>(
     `/categories/${encodeURIComponent(categoryIdOrSlug)}/products${qs ? `?${qs}` : ''}`,

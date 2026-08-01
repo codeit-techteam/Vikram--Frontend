@@ -248,6 +248,7 @@ export interface ProductQueryParams {
   featured?: boolean;
   bestSelling?: boolean;
   offers?: boolean;
+  newArrivals?: boolean;
   listingType?: 'FEATURED' | 'BEST_SELLING' | 'NEW_ARRIVAL' | 'STANDARD';
   brand?: string;
   grade?: string;

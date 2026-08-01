@@ -10,6 +10,7 @@ import Animated, {
 
 const GOLD = '#FEB623';
 const DARK = '#1A1A1A';
+const GREEN = '#2E7D32';
 
 interface QuantityControlsProps {
   quantity: number;
@@ -115,12 +116,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: GOLD,
-    backgroundColor: '#FFF8E8',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
   },
   addBtnSm: {
-    minWidth: 56,
-    paddingHorizontal: 12,
+    minWidth: 52,
+    paddingHorizontal: 10,
     paddingVertical: 6,
   },
   addBtnDisabled: {
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     fontSize: 13,
     fontWeight: '800',
-    color: DARK,
+    color: GREEN,
   },
   addBtnTextSm: {
     fontSize: 11,
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: GOLD,
     borderRadius: 8,
-    backgroundColor: '#FFF8E8',
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
   stepperSm: {

@@ -9,7 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import {
-  CATEGORY_GRID_GAP,
+  CATEGORY_GRID_GAP_H,
+  CATEGORY_GRID_GAP_V,
   CATEGORY_GRID_PADDING,
   getCategoryGridColumns,
 } from '@components/home/categoryGridLayout';
@@ -44,7 +45,6 @@ export function CategoryCardSkeleton({ delay = 0 }: { delay?: number }) {
     <View style={styles.categoryCard}>
       <SkeletonBlock style={styles.categoryImage} delay={delay} />
       <SkeletonBlock style={styles.categoryTitle} delay={delay + 40} />
-      <SkeletonBlock style={styles.categoryMeta} delay={delay + 80} />
     </View>
   );
 }
@@ -126,7 +126,6 @@ export function HomeCategoriesSkeleton({ rows = 3 }: { rows?: number }) {
             <View key={i} style={styles.homeCatCard}>
               <SkeletonBlock style={styles.homeCatImage} delay={i * 40} />
               <SkeletonBlock style={styles.homeCatLabel} delay={i * 40 + 40} />
-              <SkeletonBlock style={styles.homeCatLabelShort} delay={i * 40 + 70} />
             </View>
           ))}
         </View>
@@ -154,18 +153,13 @@ const styles = StyleSheet.create({
   },
   categoryImage: {
     width: '100%',
-    aspectRatio: 1.1,
-    borderRadius: 16,
+    aspectRatio: 1,
+    borderRadius: 12,
   },
   categoryTitle: {
     marginTop: 10,
     height: 14,
     width: '70%',
-  },
-  categoryMeta: {
-    marginTop: 6,
-    height: 10,
-    width: '40%',
   },
   list: {
     padding: 16,
@@ -237,36 +231,30 @@ const styles = StyleSheet.create({
   },
   homeCatsGrid: {
     paddingHorizontal: CATEGORY_GRID_PADDING,
-    gap: CATEGORY_GRID_GAP,
+    gap: CATEGORY_GRID_GAP_V,
   },
   homeCatsRow: {
     flexDirection: 'row',
-    gap: CATEGORY_GRID_GAP,
+    gap: CATEGORY_GRID_GAP_H,
   },
   homeCatCard: {
     flex: 1,
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingTop: 12,
+    borderRadius: 16,
+    paddingTop: 10,
     paddingBottom: 10,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
   },
   homeCatImage: {
-    width: 68,
-    height: 68,
-    borderRadius: 14,
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 12,
   },
   homeCatLabel: {
     marginTop: 8,
-    height: 10,
+    height: 14,
     width: '70%',
-    borderRadius: 4,
-  },
-  homeCatLabelShort: {
-    marginTop: 6,
-    height: 10,
-    width: '45%',
     borderRadius: 4,
   },
 });

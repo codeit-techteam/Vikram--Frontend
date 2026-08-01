@@ -23,7 +23,7 @@ function toCartItem(product: OrderProduct): CartItem {
     brand: product.brand,
     category: product.category,
     description: product.variant ?? '',
-    image: product.image ?? product.imageSearch ?? 'construction materials',
+    image: product.image ?? product.imageSearch ?? '',
     imageSearch: product.imageSearch ?? product.image,
     unitPrice: product.unitPrice,
     bulkPrice: product.unitPrice,

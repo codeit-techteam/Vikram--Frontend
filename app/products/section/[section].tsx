@@ -38,7 +38,7 @@ function sectionToQuery(
     case 'offers':
       return { offers: true };
     case 'new':
-      return { sortBy: 'createdAt', sortOrder: 'desc' };
+      return { newArrivals: true, sortBy: 'createdAt', sortOrder: 'desc' };
     case 'brand':
       return brand ? { brand } : {};
     default:

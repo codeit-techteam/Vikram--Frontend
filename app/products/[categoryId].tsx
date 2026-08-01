@@ -1,13 +1,14 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
@@ -15,7 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
 import { CartIcon, NotificationBell } from '@components/HeaderIcons';
-import { ActiveFilterSummaryBar } from '@components/ActiveFilterSummaryBar';
+import {
+  ActiveFilterSummaryBar,
+  type RemovableFilterKey,
+} from '@components/ActiveFilterSummaryBar';
 import {
   FilterBottomSheet,
   type FilterBottomSheetRef,
@@ -39,8 +43,9 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { useProducts } from '@hooks/useProducts';
 import { useFilterState } from '@hooks/useFilterState';
 import { useTranslation } from '@store/languageStore';
-import type { FilterKey } from '@/types/filter.types';
+import type { QuickFilterKey } from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
+import { normalizeCategoryDisplayName } from '@utils/categoryDisplay';
 
 export default function ProductListingScreen() {
   const { t } = useTranslation();
@@ -54,13 +59,14 @@ export default function ProductListingScreen() {
   const quickSheetRef = useRef<QuickFilterSheetRef>(null);
   const expertSheetRef = useRef<BottomSheet>(null);
 
-  // Prefer slug when provided; fall back to categoryId (legacy deep links used slug as id)
-  const slug = (Array.isArray(categorySlug) ? categorySlug[0] : categorySlug)
-    || (Array.isArray(categoryId) ? categoryId[0] : categoryId)
-    || '';
-  const title =
+  const slug =
+    (Array.isArray(categorySlug) ? categorySlug[0] : categorySlug) ||
+    (Array.isArray(categoryId) ? categoryId[0] : categoryId) ||
+    '';
+  const rawTitle =
     (Array.isArray(categoryName) ? categoryName[0] : categoryName) ??
     t('catalogLabel');
+  const title = normalizeCategoryDisplayName(rawTitle);
 
   const {
     products,
@@ -71,7 +77,10 @@ export default function ProductListingScreen() {
     error,
     refresh,
     loadMore,
-  } = useProducts({ category: slug || undefined }, { enabled: Boolean(slug) });
+  } = useProducts(
+    { category: slug || undefined },
+    { enabled: Boolean(slug), pageSize: 50 },
+  );
 
   const {
     config,
@@ -80,6 +89,7 @@ export default function ProductListingScreen() {
     filteredProducts,
     draftFilteredCount,
     activeCount,
+    setSearch,
     clearFilter,
     clearAll,
     applyDraft,
@@ -89,7 +99,14 @@ export default function ProductListingScreen() {
     updateFilters,
   } = useFilterState({ products, categoryId: slug || 'cement' });
 
-  const openQuickFilterSheet = (key: FilterKey) => {
+  // Prefetch remaining pages so client-side filters cover the full catalog
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isLoading) {
+      loadMore();
+    }
+  }, [hasNextPage, isFetchingNextPage, isLoading, loadMore, products.length]);
+
+  const openQuickFilterSheet = (key: QuickFilterKey) => {
     syncDraft();
     quickSheetRef.current?.open(key);
   };
@@ -99,11 +116,22 @@ export default function ProductListingScreen() {
     fullSheetRef.current?.open();
   };
 
-  const handleRemoveTag = (key: FilterKey, value?: string) => {
+  const handleRemoveTag = (key: RemovableFilterKey, value?: string) => {
+    if (key === 'search') {
+      clearFilter('search');
+      return;
+    }
     if (key === 'grade' && value) {
       updateFilters({
         ...activeFilters,
         grade: activeFilters.grade.filter((g) => g !== value),
+      });
+      return;
+    }
+    if (key === 'brand' && value) {
+      updateFilters({
+        ...activeFilters,
+        brand: activeFilters.brand.filter((b) => b !== value),
       });
       return;
     }
@@ -122,14 +150,29 @@ export default function ProductListingScreen() {
       <>
         <View className="mx-5 mt-4 flex-row items-center rounded-input border border-border bg-surface px-4 py-3">
           <Ionicons name="search" size={20} color="#FEB623" />
-          <ScaledPressable
-            onPress={() => router.push('/search')}
-            className="ml-3 flex-1">
-            <Text className="text-sm text-text-secondary">{t('searchCatalog')}</Text>
-          </ScaledPressable>
-          <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
-            <Ionicons name="mic-outline" size={20} color="#FEB623" />
-          </ScaledPressable>
+          <TextInput
+            value={activeFilters.search}
+            onChangeText={setSearch}
+            placeholder={t('searchCatalog')}
+            placeholderTextColor="#AAAAAA"
+            returnKeyType="search"
+            style={{
+              flex: 1,
+              marginLeft: 12,
+              fontSize: 14,
+              color: '#1A1A1A',
+              paddingVertical: 0,
+            }}
+          />
+          {activeFilters.search.length > 0 ? (
+            <ScaledPressable onPress={() => clearFilter('search')} hitSlop={10}>
+              <Ionicons name="close-circle" size={20} color="#999" />
+            </ScaledPressable>
+          ) : (
+            <ScaledPressable onPress={openVoiceAssistant} hitSlop={10}>
+              <Ionicons name="mic-outline" size={20} color="#FEB623" />
+            </ScaledPressable>
+          )}
         </View>
 
         <FilterBar
@@ -140,11 +183,17 @@ export default function ProductListingScreen() {
           onClearChip={clearFilter}
         />
 
+        <View className="mx-5 mt-3">
+          <Text className="text-sm font-semibold text-text-secondary">
+            {filteredProducts.length}{' '}
+            {filteredProducts.length === 1 ? 'Product Found' : 'Products Found'}
+          </Text>
+        </View>
+
         {activeCount > 0 ? (
           <ActiveFilterSummaryBar
             activeFilters={activeFilters}
             config={config}
-            resultCount={filteredProducts.length}
             onClearAll={clearAll}
             onRemoveTag={handleRemoveTag}
           />
@@ -158,6 +207,7 @@ export default function ProductListingScreen() {
       clearFilter,
       config,
       filteredProducts.length,
+      setSearch,
       t,
     ],
   );
@@ -178,14 +228,20 @@ export default function ProductListingScreen() {
       <BackHeader
         title={title}
         rightElement={
-          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <TouchableOpacity
-              onPress={() => router.push('/search')}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="mic-outline" size={21} color="#FEB623" />
+              onPress={openVoiceAssistant}
+              hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+              style={{
+                width: 36,
+                height: 36,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Ionicons name="mic-outline" size={22} color="#FEB623" />
             </TouchableOpacity>
-            <NotificationBell color="#FEB623" size={21} />
-            <CartIcon color="#FEB623" size={21} />
+            <NotificationBell color="#FEB623" size={22} compact />
+            <CartIcon color="#FEB623" size={22} compact />
           </View>
         }
       />
@@ -228,12 +284,18 @@ export default function ProductListingScreen() {
                 <ProductGridCard product={item} categoryId={slug} categoryName={title} />
               </Animated.View>
             )}
-            ListEmptyComponent={<ProductsEmptyState />}
+            ListEmptyComponent={
+              <ProductsEmptyState
+                hasActiveFilters={activeCount > 0 || Boolean(activeFilters.search.trim())}
+                onResetFilters={clearAll}
+              />
+            }
             ListFooterComponent={renderFooter}
             removeClippedSubviews
             maxToRenderPerBatch={8}
             windowSize={7}
             initialNumToRender={6}
+            keyboardShouldPersistTaps="handled"
           />
         </Animated.View>
       )}

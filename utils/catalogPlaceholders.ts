@@ -133,7 +133,6 @@ const PRODUCT_SLUG_MAP: Record<string, ImageSourcePropType> = {
 };
 
 const DEFAULT_CATEGORY_PLACEHOLDER = images.categoryAggregates;
-const DEFAULT_PRODUCT_PLACEHOLDER = images.productUltratech;
 
 function isRemoteUrl(value?: string | null): value is string {
   if (!value) return false;
@@ -184,6 +183,7 @@ export function resolveProductImageSource(opts: {
   imageUrl?: string | null;
   productSlug?: string | null;
   categorySlug?: string | null;
+  productName?: string | null;
   fallbackImage?: ImageSourcePropType;
 }): ImageSourcePropType {
   if (isRemoteUrl(opts.imageUrl)) return { uri: opts.imageUrl };
@@ -191,9 +191,42 @@ export function resolveProductImageSource(opts: {
   if (fromPath) return fromPath;
   const fromSlug = resolveByProductSlug(opts.productSlug);
   if (fromSlug) return fromSlug;
+  const fromName = resolveByProductName(opts.productName);
+  if (fromName) return fromName;
   if (opts.fallbackImage) return opts.fallbackImage;
-  const slug = opts.categorySlug ?? 'default';
-  return PRODUCT_BY_CATEGORY_PLACEHOLDER[slug] ?? DEFAULT_PRODUCT_PLACEHOLDER;
+  const slug = normalizeCategoryKey(opts.categorySlug);
+  if (slug && PRODUCT_BY_CATEGORY_PLACEHOLDER[slug]) {
+    return PRODUCT_BY_CATEGORY_PLACEHOLDER[slug];
+  }
+  // Prefer a neutral category tile over the wrong UltraTech product bag.
+  return opts.fallbackImage ?? DEFAULT_CATEGORY_PLACEHOLDER;
+}
+
+function normalizeCategoryKey(category?: string | null): string | null {
+  if (!category) return null;
+  return category.trim().toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+}
+
+/** Best-effort slug from a display name like "Fevicol SH" → "fevicol-sh". */
+function resolveByProductName(name?: string | null): ImageSourcePropType | null {
+  if (!name) return null;
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  if (!normalized) return null;
+  const direct = PRODUCT_SLUG_MAP[normalized];
+  if (direct) return direct;
+
+  // Partial match: "fevicol-sh-250-ml" → "fevicol-sh"
+  const entries = Object.keys(PRODUCT_SLUG_MAP).sort((a, b) => b.length - a.length);
+  for (const slug of entries) {
+    if (normalized === slug || normalized.startsWith(`${slug}-`) || normalized.includes(slug)) {
+      return PRODUCT_SLUG_MAP[slug];
+    }
+  }
+  return null;
 }
 
 export function resolveProductCarouselSources(opts: {

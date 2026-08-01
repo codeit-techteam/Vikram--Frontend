@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native'
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
-import { useIsFocused } from '@react-navigation/native';
+import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@components/AppHeader';
@@ -88,7 +88,7 @@ export const OrdersScreen = memo(function OrdersScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-  const isFocused = useIsFocused();
+  const isFocused = useSafeIsFocused();
 
   useEffect(() => {
     if (!isFocused || isLoggedIn) return;

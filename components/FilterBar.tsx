@@ -8,16 +8,25 @@ import Animated, {
 import { useEffect } from 'react';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { getChipLabel, countActiveFilters, FILTER_CHIPS } from '@constants/filterOptions';
+import {
+  getChipLabel,
+  countActiveFilters,
+  FILTER_CHIPS,
+  isDefaultAvailability,
+} from '@constants/filterOptions';
 import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
-import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
+import type {
+  ActiveFilters,
+  CategoryFilterConfig,
+  QuickFilterKey,
+} from '@/types/filter.types';
 
 interface FilterBarProps {
   activeFilters: ActiveFilters;
   config: CategoryFilterConfig;
-  onChipPress: (key: FilterKey) => void;
+  onChipPress: (key: QuickFilterKey) => void;
   onOpenAll: () => void;
-  onClearChip: (key: FilterKey) => void;
+  onClearChip: (key: QuickFilterKey) => void;
 }
 
 function ChipBadge({ count }: { count: number }) {
@@ -53,18 +62,26 @@ function ChipBadge({ count }: { count: number }) {
   );
 }
 
-function getChipSelectionCount(key: FilterKey, filters: ActiveFilters, bounds: [number, number]) {
+function getChipSelectionCount(
+  key: QuickFilterKey,
+  filters: ActiveFilters,
+  bounds: [number, number],
+) {
   switch (key) {
     case 'grade':
       return filters.grade.length;
     case 'eta':
       return filters.eta ? 1 : 0;
     case 'brand':
-      return filters.brand ? 1 : 0;
+      return filters.brand.length;
     case 'priceRange':
-      return filters.priceRange[0] > bounds[0] || filters.priceRange[1] < bounds[1] ? 1 : 0;
+      return filters.priceRange[0] > bounds[0] || filters.priceRange[1] < bounds[1]
+        ? 1
+        : 0;
     case 'availability':
-      return filters.availability.length;
+      return isDefaultAvailability(filters.availability)
+        ? 0
+        : filters.availability.length;
     default:
       return 0;
   }
@@ -138,6 +155,9 @@ export function FilterBar({
   onClearChip,
 }: FilterBarProps) {
   const totalActive = countActiveFilters(activeFilters, config.priceBounds);
+  const visibleChips = FILTER_CHIPS.filter((chip) =>
+    config.visibleChips.includes(chip.key),
+  );
 
   return (
     <ScrollView
@@ -149,8 +169,12 @@ export function FilterBar({
         alignItems: 'center',
       }}
       style={{ flexGrow: 0, marginTop: FILTER_SPACING.lg }}>
-      {FILTER_CHIPS.map((chip) => {
-        const count = getChipSelectionCount(chip.key, activeFilters, config.priceBounds);
+      {visibleChips.map((chip) => {
+        const count = getChipSelectionCount(
+          chip.key,
+          activeFilters,
+          config.priceBounds,
+        );
         const isActive = count > 0;
         const label = getChipLabel(chip.key, activeFilters, config);
 

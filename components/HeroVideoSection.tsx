@@ -9,7 +9,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useIsFocused } from '@react-navigation/native';
+import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
 import type { VideoSource } from 'expo-video';
 
 import { ExpoVideoPlayer } from '@components/video/ExpoVideoPlayer';
@@ -26,7 +26,7 @@ interface VideoBannerProps {
 
 export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
   const [isMuted, setIsMuted] = useState(true);
-  const isFocused = useIsFocused();
+  const isFocused = useSafeIsFocused();
   const [paused, setPaused] = useState(!isFocused);
 
   useEffect(() => {

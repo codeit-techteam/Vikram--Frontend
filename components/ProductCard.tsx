@@ -1,27 +1,26 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 
-import { AddToCartButton, getAddToCartMode } from '@components/product/AddToCartButton';
+import { QuantityControls } from '@components/QuantityControls';
 import { ProductBulkPrice } from '@components/product/ProductBulkPrice';
 import { ProductPrice } from '@components/product/ProductPrice';
-import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
 import { ProductStockInfo } from '@components/product/ProductStockInfo';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { HighlightedText } from '@components/search/HighlightedText';
 import { ProductUnit } from '@components/product/ProductUnit';
 import {
   allowsDirectAddToCart,
+  getMinOrderQuantity,
   getVariantCount,
-  productHasStructuredVariants,
+  shouldOpenAddToCartSheet,
   shouldOpenVariantSheet,
 } from '@constants/catalogVariantHelpers';
 import type { Product } from '@/types/catalog';
-import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { useLanguageStore } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
 import { useVariantStore } from '@store/variantStore';
-import { useAddToCart } from '@hooks/useAddToCart';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import {
   getDeliveryEta,
@@ -30,6 +29,7 @@ import {
   getStockLeft,
 } from '@utils/productPricing';
 import { resolveProductImageSource } from '@utils/catalogPlaceholders';
+import { isVisibleProductBrand } from '@utils/categoryDisplay';
 
 const GOLD = '#FEB623';
 const DARK = '#1A1A1A';
@@ -44,29 +44,17 @@ interface ProductCardProps {
 
 function ProductCardComponent({ product, categoryId, categoryName, highlightQuery }: ProductCardProps) {
   const language = useLanguageStore((s) => s.language);
-  const { t } = useTranslation();
-  const hasVariants = productHasStructuredVariants(product);
+  const multiVariant = shouldOpenVariantSheet(product);
   const variantCount = getVariantCount(product);
-  const directAdd = allowsDirectAddToCart(product);
-  const openVariantSheet = useVariantStore((s) => s.open);
-  const { addToCart, buttonState } = useAddToCart();
+  const canInlineAdjust = allowsDirectAddToCart(product);
+  const openSheet = useVariantStore((s) => s.open);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const getLineIdForProduct = useCartStore((s) => s.getLineIdForProduct);
   const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: false });
 
-  const cartQty = useCartStore(
-    (s) =>
-      s.items.reduce(
-        (sum, i) => ((i.productId ?? i.id) === product.id ? sum + i.quantity : sum),
-        0,
-      ),
-  );
-
-  const [localQty, setLocalQty] = useState(() =>
-    Math.max(1, cartQty || product.defaultQuantity || 1),
-  );
-
-  useEffect(() => {
-    if (cartQty > 0) setLocalQty(cartQty);
-  }, [cartQty, product.id]);
+  const cartQty = useCartStore((s) => s.getProductQuantity(product.id));
+  const minOrder = getMinOrderQuantity(product);
+  const step = product.incrementStep ?? 1;
 
   const displayName =
     language === 'hi' && product.nameHi ? product.nameHi : product.name;
@@ -79,13 +67,13 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
   const stockLeft = getStockLeft(product);
   const deliveryEta = getDeliveryEta(product, estimatedMinutes, etaLabel);
   const offer = getOfferLabel(product);
-  const mode = getAddToCartMode(localQty, cartQty);
 
   const imageSource = resolveProductImageSource({
     imageUrl: product.imageUrl,
     productSlug: product.slug,
     categorySlug: product.categorySlug,
   });
+  const showBrand = isVisibleProductBrand(product.brand);
 
   const openDetail = () => {
     router.push({
@@ -99,28 +87,64 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
     } as Href);
   };
 
-  const handleAddToCart = async () => {
-    if (shouldOpenVariantSheet(product)) {
-      openVariantSheet(product);
-      return;
+  const resolveLineId = useCallback(() => {
+    if (variantCount === 1) {
+      return getLineIdForProduct(product.id, product.productVariants?.[0]?.id);
     }
-    if (hasVariants && variantCount === 1) {
-      await addToCart(product, localQty, {
-        variantId: product.productVariants?.[0]?.id,
-      });
-      return;
-    }
-    if (!directAdd) {
-      openDetail();
-      return;
-    }
-    await addToCart(product, localQty);
-  };
+    return getLineIdForProduct(product.id);
+  }, [getLineIdForProduct, product, variantCount]);
 
-  const addLabel =
-    shouldOpenVariantSheet(product)
-      ? `${variantCount} Options`
-      : undefined;
+  const handleAdd = useCallback(() => {
+    if (shouldOpenAddToCartSheet(product)) {
+      openSheet(product);
+      return;
+    }
+    openDetail();
+  }, [openSheet, product]);
+
+  const handleIncrement = useCallback(() => {
+    if (multiVariant || !canInlineAdjust) {
+      openSheet(product);
+      return;
+    }
+    const lineId = resolveLineId();
+    if (!lineId) {
+      openSheet(product);
+      return;
+    }
+    const next = cartQty + step;
+    const capped =
+      typeof product.maxOrder === 'number' ? Math.min(product.maxOrder, next) : next;
+    updateQuantity(lineId, capped);
+  }, [
+    canInlineAdjust,
+    cartQty,
+    multiVariant,
+    openSheet,
+    product,
+    resolveLineId,
+    step,
+    updateQuantity,
+  ]);
+
+  const handleDecrement = useCallback(() => {
+    if (multiVariant) {
+      const line = useCartStore
+        .getState()
+        .items.find((i) => (i.productId ?? i.id) === product.id || i.id.startsWith(`${product.id}_`));
+      if (!line) return;
+      const next = line.quantity - step;
+      updateQuantity(line.id, next < minOrder ? 0 : next);
+      return;
+    }
+
+    const lineId = resolveLineId();
+    if (!lineId) return;
+    const next = cartQty - step;
+    updateQuantity(lineId, next < minOrder ? 0 : next);
+  }, [cartQty, minOrder, multiVariant, product.id, resolveLineId, step, updateQuantity]);
+
+  const addLabel = multiVariant ? `${variantCount} Options` : 'ADD';
 
   return (
     <View style={styles.card}>
@@ -154,7 +178,7 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
 
         <Text style={styles.unit} numberOfLines={1}>
           <ProductUnit unit={product.unit} variant="label" />
-          {product.brand ? ` · ${product.brand}` : ''}
+          {showBrand ? ` · ${product.brand}` : ''}
         </Text>
 
         <ProductPrice pricing={pricing} size="sm" />
@@ -165,34 +189,21 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
         />
         <ProductBulkPrice pricing={pricing} variant="inline" />
 
+        {minOrder > 1 ? (
+          <Text style={styles.minOrder}>
+            Minimum {minOrder} {product.unit}
+          </Text>
+        ) : null}
+
         <View style={styles.actions}>
-          {directAdd ? (
-            <>
-              <ProductQuantitySelector
-                quantity={localQty}
-                onChange={setLocalQty}
-                min={product.minOrder ?? 1}
-                max={product.maxOrder}
-                step={product.incrementStep ?? 1}
-                size="sm"
-              />
-              <AddToCartButton
-                mode={mode}
-                onPress={() => void handleAddToCart()}
-                loading={buttonState === 'loading'}
-                compact
-                fullWidth={false}
-              />
-            </>
-          ) : (
-            <AddToCartButton
-              mode="add"
-              onPress={() => void handleAddToCart()}
-              compact
-              fullWidth={false}
-              labelOverride={addLabel ?? t('addToCart')}
-            />
-          )}
+          <QuantityControls
+            quantity={cartQty}
+            onAdd={handleAdd}
+            onIncrement={handleIncrement}
+            onDecrement={handleDecrement}
+            addLabel={addLabel}
+            size="sm"
+          />
         </View>
       </View>
     </View>
@@ -260,11 +271,17 @@ const styles = StyleSheet.create({
     color: '#888',
     fontWeight: '500',
   },
+  minOrder: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B6914',
+  },
   actions: {
     marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'flex-end',
   },
 });
 

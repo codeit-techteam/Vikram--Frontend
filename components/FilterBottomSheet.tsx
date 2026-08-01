@@ -130,6 +130,7 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
             resultCount={resultCount}
             onReset={onReset}
             onApply={handleApply}
+            applyLabel="Apply Filters"
             safeAreaBottom={false}
           />
         </View>

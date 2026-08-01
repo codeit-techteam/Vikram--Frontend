@@ -63,6 +63,7 @@ export interface BulkPricingTier {
 export interface Product {
   id: string;
   slug?: string;
+  sku?: string | null;
   badge: string;
   badgeColor?: string;
   image?: ImageSourcePropType;

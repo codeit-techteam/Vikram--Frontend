@@ -1,5 +1,11 @@
 import { type ReactNode } from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -21,6 +27,7 @@ export function ScaledPressable({
   disabled,
   onPressIn,
   onPressOut,
+  android_ripple,
   ...props
 }: ScaledPressableProps) {
   const scale = useSharedValue(1);
@@ -33,6 +40,12 @@ export function ScaledPressable({
     <AnimatedPressable
       {...props}
       disabled={disabled}
+      android_ripple={
+        android_ripple ??
+        (Platform.OS === 'android'
+          ? { color: 'rgba(0,0,0,0.08)', borderless: false }
+          : undefined)
+      }
       style={[animatedStyle, style]}
       onPressIn={(e) => {
         if (!disabled) scale.value = withSpring(scaleTo, { damping: 15, stiffness: 300 });

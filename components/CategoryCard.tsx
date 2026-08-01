@@ -1,46 +1,91 @@
-import { Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { ImageSourcePropType } from 'react-native';
 
 import { ScaledPressable } from '@components/ScaledPressable';
+import { colors } from '@constants/colors';
 
 interface CategoryCardProps {
   name: string;
   image: ImageSourcePropType;
+  /** @deprecated Counts are no longer shown on marketplace category cards. */
   productCount?: number;
+  /** @deprecated Counts are no longer shown on marketplace category cards. */
   productCountLabel?: string;
   onPress: () => void;
 }
 
-export function CategoryCard({
-  name,
-  image,
-  productCount,
-  productCountLabel,
-  onPress,
-}: CategoryCardProps) {
+/** Premium marketplace category card — matches Home MaterialCategoryCard. */
+export function CategoryCard({ name, image, onPress }: CategoryCardProps) {
   return (
-    <ScaledPressable onPress={onPress} className="mb-3 flex-1 overflow-hidden rounded-card shadow-sm">
-      <View style={{ aspectRatio: 1.1 }}>
-        <Image source={image} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.75)']}
-          style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '45%' }}
+    <ScaledPressable
+      onPress={onPress}
+      scaleTo={0.97}
+      style={styles.card}
+      accessibilityRole="button"
+      accessibilityLabel={name}
+      android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: false }}>
+      <View style={styles.imageWrap}>
+        <Image
+          source={image}
+          style={styles.image}
+          contentFit="cover"
+          recyclingKey={name}
+          cachePolicy="memory-disk"
+          priority="low"
+          transition={200}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
         />
-        <View className="absolute bottom-0 left-0 right-0 p-3">
-          <Text className="text-sm font-bold text-text-inverse">{name}</Text>
-          {productCountLabel ? (
-            <Text className="mt-0.5 text-xs font-medium text-text-inverse/80">
-              {productCountLabel}
-            </Text>
-          ) : productCount !== undefined ? (
-            <Text className="mt-0.5 text-xs font-medium text-text-inverse/80">
-              {productCount} {productCount === 1 ? 'Product' : 'Products'}
-            </Text>
-          ) : null}
-        </View>
       </View>
+      <Text
+        style={styles.label}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+        {...(Platform.OS === 'android'
+          ? { textBreakStrategy: 'highQuality' as const }
+          : {})}>
+        {name}
+      </Text>
     </ScaledPressable>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    elevation: 3,
+    flex: 1,
+    marginBottom: 4,
+    paddingBottom: 10,
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  image: {
+    height: '100%',
+    width: '100%',
+  },
+  imageWrap: {
+    aspectRatio: 1,
+    backgroundColor: colors.inputBg,
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  label: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 18,
+    marginTop: 8,
+    minHeight: 36,
+    paddingHorizontal: 2,
+    textAlign: 'center',
+    width: '100%',
+  },
+});

@@ -16,10 +16,15 @@ const AVAILABILITY_META: Record<
     color: FILTER_COLORS.success,
     bg: FILTER_COLORS.successLight,
   },
-  'Ready for Dispatch': {
-    icon: 'cube-outline',
-    color: FILTER_COLORS.info,
-    bg: FILTER_COLORS.infoLight,
+  'Limited Stock': {
+    icon: 'alert-circle-outline',
+    color: '#F59E0B',
+    bg: '#FFFBEB',
+  },
+  'Out of Stock': {
+    icon: 'close-circle-outline',
+    color: '#EF4444',
+    bg: '#FEF2F2',
   },
 };
 
@@ -36,7 +41,7 @@ export function AvailabilitySection({ draft, onChange }: FilterSectionProps) {
   };
 
   return (
-    <View className="flex-row" style={{ gap: 12 }}>
+    <View style={{ gap: 10 }}>
       {AVAILABILITY_OPTIONS.map((option) => {
         const selected = draft.availability.includes(option);
         const meta = AVAILABILITY_META[option];
@@ -44,33 +49,43 @@ export function AvailabilitySection({ draft, onChange }: FilterSectionProps) {
           <ScaledPressable
             key={option}
             onPress={() => toggle(option)}
-            scaleTo={0.96}
+            scaleTo={0.98}
             style={{
-              flex: 1,
-              padding: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 14,
+              paddingHorizontal: 14,
               borderRadius: FILTER_RADIUS.card,
               backgroundColor: selected ? meta.bg : FILTER_COLORS.surfaceMuted,
               borderWidth: selected ? 1.5 : 1,
               borderColor: selected ? meta.color : FILTER_COLORS.border,
             }}>
-            {selected && (
-              <Ionicons
-                name="checkmark"
-                size={16}
-                color={meta.color}
-                style={{ position: 'absolute', top: 10, right: 10 }}
-              />
-            )}
-            <Ionicons name={meta.icon} size={24} color={meta.color} />
+            <Ionicons name={meta.icon} size={22} color={meta.color} />
             <Text
               style={{
-                marginTop: 8,
-                fontSize: 13,
+                flex: 1,
+                marginLeft: 12,
+                fontSize: 14,
                 fontWeight: '600',
                 color: FILTER_COLORS.text,
               }}>
               {option}
             </Text>
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: selected ? meta.color : FILTER_COLORS.border,
+                backgroundColor: selected ? meta.color : FILTER_COLORS.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              {selected ? (
+                <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+              ) : null}
+            </View>
           </ScaledPressable>
         );
       })}

@@ -18,6 +18,10 @@ import { ProductPrice } from '@components/product/ProductPrice';
 import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
 import { ProductStockInfo } from '@components/product/ProductStockInfo';
 import { safeGoBack } from '@utils/navigation';
+import {
+  isVisibleProductBrand,
+  normalizeCategoryDisplayName,
+} from '@utils/categoryDisplay';
 import { DeliveryOptions, type DeliveryType } from '@components/DeliveryOptions';
 import { FrequentlyBoughtTogether } from '@components/FrequentlyBoughtTogether';
 import { PricingSummary } from '@components/PricingSummary';
@@ -33,6 +37,7 @@ import { ProductDetailSkeleton } from '@components/catalog/CatalogSkeletons';
 import { getCarouselImages } from '@constants/catalogData';
 import {
   getProductSkuUnit,
+  getMinOrderQuantity,
   getVariantById,
   getVariantDisplayUnit,
   productHasStructuredVariants,
@@ -124,9 +129,11 @@ export default function ProductDetailScreen() {
     setLocalQty(
       lineQty > 0
         ? lineQty
-        : Math.max(product.minOrder ?? 1, product.defaultQuantity || 1),
+        : Math.max(1, product.minOrder ?? 1),
     );
   }, [product?.id, selectedVariantId, hasVariants, product]);
+
+  const minOrder = product ? getMinOrderQuantity(product) : 1;
 
   const pricing = useMemo(
     () => (product ? getProductPricing(product, selectedVariant) : null),
@@ -253,8 +260,11 @@ export default function ProductDetailScreen() {
       : (product.detailName ?? product.name);
   const localizedDescription =
     language === 'hi' && product.descriptionHi ? product.descriptionHi : product.description;
-  const displayCategory = categoryName ?? product.category;
+  const displayCategory = normalizeCategoryDisplayName(
+    categoryName ?? product.category ?? '',
+  );
   const displayName = productName ?? localizedName;
+  const showBrand = isVisibleProductBrand(product.brand);
 
   const navigateBreadcrumb = (segment: 'catalog' | 'category' | 'product') => {
     if (segment === 'catalog') {
@@ -292,7 +302,7 @@ export default function ProductDetailScreen() {
           </View>
 
           <Text className="mt-3 text-2xl font-bold text-text">{localizedName}</Text>
-          {product.brand ? (
+          {showBrand ? (
             <Text className="mt-1 text-sm font-semibold text-primary">{product.brand}</Text>
           ) : null}
           <Text className="mt-2 text-sm leading-5 text-text-secondary">{localizedDescription}</Text>
@@ -380,7 +390,7 @@ export default function ProductDetailScreen() {
                 <ProductQuantitySelector
                   quantity={localQty}
                   onChange={setLocalQty}
-                  min={product.minOrder ?? 1}
+                  min={minOrder}
                   max={product.maxOrder}
                   step={product.incrementStep ?? 1}
                   size="lg"

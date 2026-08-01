@@ -3,24 +3,24 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { MaterialCategoryCard } from '@components/home/MaterialCategoryCard';
 import {
-  CATEGORY_GRID_GAP,
+  CATEGORY_GRID_GAP_H,
+  CATEGORY_GRID_GAP_V,
   CATEGORY_GRID_PADDING,
   getCategoryGridColumns,
 } from '@components/home/categoryGridLayout';
 import type { CatalogCategory } from '@/types/catalog';
+import { getCategoryDisplayName } from '@utils/categoryDisplay';
 
 interface MaterialCategoriesGridProps {
   categories: CatalogCategory[];
   language: string;
   onCategoryPress: (category: CatalogCategory) => void;
-}
-
-function categoryLabel(cat: CatalogCategory, language: string): string {
-  return language === 'hi' && cat.nameHi ? cat.nameHi : cat.name;
+  /** Optional outer horizontal padding override (default shared token). */
+  paddingHorizontal?: number;
 }
 
 /**
- * Responsive vertical category grid for Home.
+ * Responsive vertical category grid for Home + Catalog.
  * Uses row Views (not FlatList) so it can sit inside the parent ScrollView
  * without nested VirtualizedList warnings.
  */
@@ -28,6 +28,7 @@ function MaterialCategoriesGridComponent({
   categories,
   language,
   onCategoryPress,
+  paddingHorizontal = CATEGORY_GRID_PADDING,
 }: MaterialCategoriesGridProps) {
   const { width } = useWindowDimensions();
   const numColumns = useMemo(() => getCategoryGridColumns(width), [width]);
@@ -41,7 +42,7 @@ function MaterialCategoriesGridComponent({
   }, [categories, numColumns]);
 
   return (
-    <View style={styles.grid}>
+    <View style={[styles.grid, { paddingHorizontal }]}>
       {rows.map((row, rowIndex) => (
         <View key={`row-${rowIndex}`} style={styles.row}>
           {row.map((cat, colIndex) => {
@@ -49,10 +50,9 @@ function MaterialCategoriesGridComponent({
             return (
               <MaterialCategoryCard
                 key={cat.id}
-                label={categoryLabel(cat, language)}
+                label={getCategoryDisplayName(cat, language)}
                 image={cat.image as number | { uri: string }}
-                productCount={cat.productCount}
-                fadeDelay={Math.min(index * 35, 280)}
+                fadeDelay={Math.min(index * 30, 240)}
                 onPress={() => onCategoryPress(cat)}
               />
             );
@@ -73,12 +73,12 @@ export const MaterialCategoriesGrid = memo(MaterialCategoriesGridComponent);
 
 const styles = StyleSheet.create({
   grid: {
-    paddingHorizontal: CATEGORY_GRID_PADDING,
-    gap: CATEGORY_GRID_GAP,
+    gap: CATEGORY_GRID_GAP_V,
   },
   row: {
+    alignItems: 'stretch',
     flexDirection: 'row',
-    gap: CATEGORY_GRID_GAP,
+    gap: CATEGORY_GRID_GAP_H,
   },
   spacer: {
     flex: 1,

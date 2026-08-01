@@ -6,46 +6,30 @@ import * as Haptics from 'expo-haptics';
 
 import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
-import { CategoryCard } from '@components/CategoryCard';
+import { MaterialCategoriesGrid } from '@components/home/MaterialCategoriesGrid';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
-import { CategoriesGridSkeleton } from '@components/catalog/CatalogSkeletons';
+import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useCategories } from '@hooks/useCategories';
 import { useTranslation } from '@store/languageStore';
 import type { CatalogCategory } from '@/types/catalog';
-import type { StringKey } from '@constants/strings';
-
-function categoryDisplayName(
-  cat: CatalogCategory,
-  t: (key: StringKey) => string,
-  language: string,
-): string {
-  if (language === 'hi' && cat.nameHi) return cat.nameHi;
-  if (cat.labelKey) {
-    try {
-      return t(cat.labelKey);
-    } catch {
-      return cat.name;
-    }
-  }
-  return cat.name;
-}
+import {
+  filterMarketplaceCategories,
+  getCategoryDisplayName,
+} from '@utils/categoryDisplay';
 
 export default function CatalogScreen() {
   const { t, language } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { categories, isLoading, isRefreshing, error, refresh } = useCategories();
 
-  const rows = useMemo(() => {
-    const result: CatalogCategory[][] = [];
-    for (let i = 0; i < categories.length; i += 2) {
-      result.push(categories.slice(i, i + 2));
-    }
-    return result;
-  }, [categories]);
+  const marketplaceCategories = useMemo(
+    () => filterMarketplaceCategories(categories),
+    [categories],
+  );
 
   const navigateToCategory = (cat: CatalogCategory) => {
-    const name = categoryDisplayName(cat, t, language);
+    const name = getCategoryDisplayName(cat, language, t);
     router.push({
       pathname: '/products/[categoryId]',
       params: {
@@ -88,37 +72,25 @@ export default function CatalogScreen() {
 
           {isLoading ? (
             <View className="mt-4">
-              <CategoriesGridSkeleton />
+              <HomeCategoriesSkeleton rows={4} />
             </View>
-          ) : error && categories.length === 0 ? (
+          ) : error && marketplaceCategories.length === 0 ? (
             <CatalogErrorState
               message={t('unableToLoadCategories')}
               onRetry={() => void refresh()}
             />
-          ) : categories.length === 0 ? (
+          ) : marketplaceCategories.length === 0 ? (
             <CatalogErrorState
               message={t('unableToLoadCategories')}
               onRetry={() => void refresh()}
             />
           ) : (
-            <View className="mt-4 px-5">
-              {rows.map((row, rowIndex) => (
-                <View key={rowIndex} className="flex-row gap-3">
-                  {row.map((cat) => (
-                    <CategoryCard
-                      key={cat.id}
-                      name={categoryDisplayName(cat, t, language)}
-                      image={cat.image}
-                      productCountLabel={t('productsCount').replace(
-                        '{count}',
-                        String(cat.productCount ?? 0),
-                      )}
-                      onPress={() => navigateToCategory(cat)}
-                    />
-                  ))}
-                  {row.length === 1 && <View className="flex-1" />}
-                </View>
-              ))}
+            <View className="mt-4">
+              <MaterialCategoriesGrid
+                categories={marketplaceCategories}
+                language={language}
+                onCategoryPress={navigateToCategory}
+              />
             </View>
           )}
 

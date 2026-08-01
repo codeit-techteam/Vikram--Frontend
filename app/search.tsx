@@ -46,6 +46,7 @@ import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 import { ProductCard } from '@components/ProductCard';
 import { useCartStore } from '@store/cartStore';
 import { useSearchStore } from '@store/searchStore';
+import { useVariantStore } from '@store/variantStore';
 import { useTranslation } from '@store/languageStore';
 import { safeGoBack } from '@utils/navigation';
 
@@ -107,8 +108,7 @@ function CategoryPill({
 }
 
 function AddButton({ product }: { product: SearchProduct }) {
-  const [added, setAdded] = useState(false);
-  const addItem = useCartStore((s) => s.addItem);
+  const openSheet = useVariantStore((s) => s.open);
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -122,22 +122,13 @@ function AddButton({ product }: { product: SearchProduct }) {
       withSpring(1.0, { damping: 8 }),
     );
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addItem(searchProductToCartItem(product));
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    openSheet(searchProductToProduct(product));
   };
 
   return (
     <Animated.View style={animStyle}>
-      <Pressable
-        onPress={() => handleAdd()}
-        hitSlop={8}
-        style={[styles.addButton, added && styles.addButtonAdded]}>
-        <Ionicons
-          name={added ? 'checkmark' : 'add'}
-          size={18}
-          color={added ? '#2E7D32' : '#FEB623'}
-        />
+      <Pressable onPress={() => void handleAdd()} hitSlop={8} style={styles.addButton}>
+        <Ionicons name="add" size={18} color="#FEB623" />
       </Pressable>
     </Animated.View>
   );

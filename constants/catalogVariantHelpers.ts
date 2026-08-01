@@ -169,6 +169,20 @@ export function getVariantLabels(product: Product): string[] {
   return product.variants ?? [];
 }
 
+/** Backend min order, or 1 when unset. Never invent 10/20/50 defaults. */
+export function getMinOrderQuantity(product: Pick<Product, 'minOrder'>): number {
+  const min = product.minOrder;
+  if (typeof min === 'number' && Number.isFinite(min) && min >= 1) {
+    return Math.floor(min);
+  }
+  return 1;
+}
+
+/** Initial quantity in sheets / steppers — always minOrder (else 1). */
+export function getDefaultOrderQuantity(product: Pick<Product, 'minOrder'>): number {
+  return getMinOrderQuantity(product);
+}
+
 /** Listing cards: stepper only for free-quantity products */
 export function usesQuantityStepperOnListing(product: Product): boolean {
   return !productHasStructuredVariants(product);
@@ -179,7 +193,10 @@ export function usesQuantityStepperOnDetail(_product: Product): boolean {
   return true;
 }
 
-/** Direct add-to-cart when zero or one variant SKU. Multi-variant opens sheet. */
+/**
+ * True when listing can adjust cart qty in-place after the first add
+ * (single SKU). Multi-variant products reopen the sheet on +.
+ */
 export function allowsDirectAddToCart(product: Product): boolean {
   const count = getVariantCount(product);
   if (count > 1) return false;
@@ -187,7 +204,22 @@ export function allowsDirectAddToCart(product: Product): boolean {
   return true;
 }
 
+/** Multi-variant products need a picker; used for labels like "N Options". */
 export function shouldOpenVariantSheet(product: Product): boolean {
+  return getVariantCount(product) > 1;
+}
+
+/**
+ * Every listing ADD opens the add-to-cart sheet so the customer
+ * always chooses quantity (and variant when applicable) first.
+ */
+export function shouldOpenAddToCartSheet(product: Product): boolean {
+  if (product.variantsPlaceholder) return false;
+  return true;
+}
+
+/** True when the sheet should show variant chips. */
+export function sheetShowsVariantPicker(product: Product): boolean {
   return getVariantCount(product) > 1;
 }
 

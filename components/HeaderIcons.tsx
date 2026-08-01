@@ -20,12 +20,14 @@ import Animated, {
 interface HeaderIconProps {
   color?: string;
   size?: number;
+  compact?: boolean;
 }
 
 /** @deprecated Prefer AppHeader action cluster. Kept for legacy screens. */
 export function NotificationBell({
   color = theme.textPrimary,
   size = ICON_SIZE.header,
+  compact = false,
 }: HeaderIconProps) {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 
@@ -33,7 +35,8 @@ export function NotificationBell({
     <IconButton
       accessibilityLabel="Notifications"
       onPress={() => router.push('/notifications')}
-      surface={false}>
+      surface={false}
+      compact={compact}>
       <AppIcon name="notification" size={size} color={color} />
       <CountBadge count={unreadCount} />
     </IconButton>
@@ -44,6 +47,7 @@ export function NotificationBell({
 export function CartIcon({
   color = theme.textPrimary,
   size = ICON_SIZE.header,
+  compact = false,
 }: HeaderIconProps) {
   const cartCount = useCartStore((s) =>
     s.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -67,7 +71,8 @@ export function CartIcon({
     <IconButton
       accessibilityLabel="Cart"
       onPress={() => router.push('/cart')}
-      surface={false}>
+      surface={false}
+      compact={compact}>
       <Animated.View style={cartAnimStyle}>
         <AppIcon name="cart" size={size} color={color} />
         <CountBadge count={cartCount} />

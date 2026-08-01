@@ -96,11 +96,11 @@ export const CATALOG_CATEGORIES: CatalogCategory[] = [
     productCount: 0,
   },
   {
-    id: 'hardware',
-    slug: 'hardware',
-    name: 'Hardware',
-    labelKey: 'hardware',
-    image: images.categoryAggregates,
+    id: 'steel',
+    slug: 'steel',
+    name: 'Steel',
+    labelKey: 'steel',
+    image: images.categorySteel,
     displayOrder: 2,
     isFeatured: true,
     isActive: true,
@@ -239,8 +239,8 @@ const cementProducts: Product[] = [
     bulkPrice: '₹398.50',
     bulkPriceValue: 398.5,
     unit: 'Bag',
-    defaultQuantity: 10,
-    minOrder: 10,
+    defaultQuantity: 20,
+    minOrder: 20,
     bulkThreshold: 50,
     categoryType: 'cement',
     description:
@@ -423,7 +423,7 @@ const stoneChipProducts: Product[] = [
 export const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
   cement: mergeCategoryProducts(cementProducts, 'cement'),
   steel: mergeCategoryProducts(steelProducts, 'steel'),
-  /** Placeholder category replacing TMT/Steel in catalog UI */
+  /** Legacy empty bucket — Hardware is hidden from marketplace grids */
   hardware: [],
   sand: mergeCategoryProducts(sandProducts, 'sand'),
   bricks: mergeCategoryProducts(bricksProducts, 'bricks'),

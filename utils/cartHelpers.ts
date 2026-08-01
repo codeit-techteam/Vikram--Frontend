@@ -100,34 +100,72 @@ export function frequentItemToCartItem(item: FrequentlyBoughtItem): CartItem {
 export function getCartItemImageSource(item: CartItem): ImageSourcePropType | null {
   const productId = resolveCartProductId(item);
   const fromStore = useProductStore.getState().getProduct(productId);
-  if (fromStore?.imageUrl) {
+  if (fromStore?.imageUrl || fromStore?.slug) {
     return resolveProductImageSource({
-      imageUrl: fromStore.imageUrl,
+      imageUrl: fromStore.imageUrl ?? fromStore.imageSearch,
       productSlug: fromStore.slug,
-      categorySlug: fromStore.categorySlug,
+      categorySlug: fromStore.categorySlug ?? normalizeCategorySlug(item.category),
+      productName: fromStore.detailName ?? fromStore.name ?? item.productName ?? item.name,
     });
   }
 
   const cached = useCatalogStore.getState().getCachedProduct(productId);
-  if (cached?.imageUrl) {
+  if (cached?.imageUrl || cached?.slug) {
     return resolveProductImageSource({
-      imageUrl: cached.imageUrl,
+      imageUrl: cached.imageUrl ?? cached.imageSearch,
       productSlug: cached.slug,
-      categorySlug: cached.categorySlug,
+      categorySlug: cached.categorySlug ?? normalizeCategorySlug(item.category),
+      productName: cached.detailName ?? cached.name ?? item.productName ?? item.name,
     });
   }
 
-  const imageSearch = item.image ?? item.imageSearch;
-  if (!imageSearch) return null;
+  const imageRef = item.image ?? item.imageSearch;
+  const usableImage =
+    imageRef && !isPlaceholderImageLabel(imageRef) ? imageRef : null;
 
   return resolveProductImageSource({
-    imageUrl:
-      imageSearch.startsWith('http://') || imageSearch.startsWith('https://')
-        ? imageSearch
-        : null,
-    productSlug: productId,
-    categorySlug: item.category,
+    // Pass /assets/... paths through — not only remote http(s) URLs.
+    imageUrl: usableImage,
+    productSlug: looksLikeSlug(productId) ? productId : null,
+    categorySlug: normalizeCategorySlug(item.category),
+    productName: item.productName ?? item.name,
   });
+}
+
+function isPlaceholderImageLabel(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return (
+    v === 'construction materials' ||
+    v === 'product' ||
+    v === 'placeholder' ||
+    (!v.includes('/') && !v.includes('.') && !v.startsWith('http'))
+  );
+}
+
+function looksLikeSlug(value: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)+$/i.test(value.trim());
+}
+
+function normalizeCategorySlug(category?: string | null): string | null {
+  if (!category) return null;
+  const raw = category.trim().toLowerCase();
+  if (!raw) return null;
+  // Display names → catalog slugs
+  const aliases: Record<string, string> = {
+    adhesives: 'adhesives',
+    adhesive: 'adhesives',
+    cement: 'cement',
+    steel: 'steel',
+    sand: 'sand',
+    bricks: 'bricks',
+    aggregates: 'aggregates',
+    putty: 'putty',
+    'wall repair': 'wall-repair',
+    waterproofing: 'waterproofing',
+    'quick repair': 'quick-repair',
+  };
+  if (aliases[raw]) return aliases[raw];
+  return raw.replace(/\s+/g, '-').replace(/_/g, '-');
 }
 
 export function getCartItemLineTotal(item: CartItem): number {

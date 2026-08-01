@@ -15,7 +15,7 @@ const LOADING_MS = 180;
 
 /**
  * Optimistic local cart update + best-effort server sync.
- * Opens variant sheet is handled by callers when variants.length > 1.
+ * Listing screens open VariantBottomSheet first so quantity is always chosen.
  */
 export function useAddToCart() {
   const upsertItem = useCartStore((s) => s.upsertItem);
@@ -27,11 +27,17 @@ export function useAddToCart() {
     async (product: Product, quantity: number, options?: CartItemOptions) => {
       if (buttonState === 'loading') return null;
 
+      const minOrder =
+        typeof product.minOrder === 'number' && product.minOrder >= 1
+          ? Math.floor(product.minOrder)
+          : 1;
+      const clampedQty = Math.max(minOrder, Math.floor(quantity) || minOrder);
+
       const runAdd = async () => {
         setButtonState('loading');
         await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
 
-        const cartItem = productToCartItem(product, quantity, {
+        const cartItem = productToCartItem(product, clampedQty, {
           ...options,
           etaMinutes: options?.etaMinutes ?? eta?.deliveryETA,
         });
@@ -39,7 +45,7 @@ export function useAddToCart() {
 
         void addCartItemApi({
           productId: product.id,
-          quantity,
+          quantity: clampedQty,
           variantId: options?.variantId ?? cartItem.variantId,
           etaMinutes: cartItem.etaMinutes,
         }).catch(() => {

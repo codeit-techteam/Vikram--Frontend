@@ -226,6 +226,7 @@ export function searchProductToProduct(sp: SearchProduct): Product {
     bulkPriceValue: sp.price,
     unit: sp.unit,
     defaultQuantity: 1,
+    minOrder: 1,
     bulkThreshold: 50,
     description: `${sp.brand} ${sp.name} — premium construction material.`,
     categoryType: sp.category,

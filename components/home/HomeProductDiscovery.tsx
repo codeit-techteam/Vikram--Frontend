@@ -16,7 +16,6 @@ function HomeProductDiscoveryComponent({
   const { t } = useTranslation();
   const {
     featured,
-    popular,
     offers,
     recentlyAdded,
     isLoading,
@@ -48,18 +47,12 @@ function HomeProductDiscoveryComponent({
       {showSecondary ? (
         <>
           <HomeProductSection
-            section="popular"
-            title={t('popularNearYou')}
-            subtitle={t('popularNearYouSubtitle')}
-            products={popular}
-            isLoading={isLoading}
-          />
-          <HomeProductSection
             section="new"
             title={t('recentlyAdded')}
             subtitle={t('recentlyAddedSubtitle')}
             products={recentlyAdded}
             isLoading={isLoading}
+            maxItems={6}
           />
           <HomeProductSection
             section="offers"

@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 
-import { AddToCartButton, getAddToCartMode } from '@components/product/AddToCartButton';
+import { QuantityControls } from '@components/QuantityControls';
 import { ProductBulkPrice } from '@components/product/ProductBulkPrice';
 import { ProductPrice } from '@components/product/ProductPrice';
-import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
 import { ProductRating } from '@components/product/ProductRating';
 import { ProductStock } from '@components/product/ProductStock';
 import { ProductUnit } from '@components/product/ProductUnit';
@@ -19,12 +18,15 @@ import {
 } from '@constants/recommendedData';
 import {
   allowsDirectAddToCart,
-  productHasStructuredVariants,
+  getMinOrderQuantity,
+  getVariantCount,
+  shouldOpenAddToCartSheet,
+  shouldOpenVariantSheet,
 } from '@constants/catalogVariantHelpers';
 import type { StringKey } from '@constants/strings';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
-import { useAddToCart } from '@hooks/useAddToCart';
+import { useVariantStore } from '@store/variantStore';
 import {
   getDeliveryEta,
   getProductPricing,
@@ -59,25 +61,16 @@ function getReasonLabel(
 export function RecommendedProductCard({ product, width }: RecommendedProductCardProps) {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
-  const hasVariants = productHasStructuredVariants(product);
-  const directAdd = allowsDirectAddToCart(product);
-  const { addToCart, buttonState } = useAddToCart();
+  const multiVariant = shouldOpenVariantSheet(product);
+  const variantCount = getVariantCount(product);
+  const canInlineAdjust = allowsDirectAddToCart(product);
+  const openSheet = useVariantStore((s) => s.open);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const getLineIdForProduct = useCartStore((s) => s.getLineIdForProduct);
 
-  const cartQty = useCartStore(
-    (s) =>
-      s.items.reduce(
-        (sum, i) => ((i.productId ?? i.id) === product.id ? sum + i.quantity : sum),
-        0,
-      ),
-  );
-
-  const [localQty, setLocalQty] = useState(() =>
-    Math.max(product.minOrder ?? 1, cartQty || product.defaultQuantity || 1),
-  );
-
-  useEffect(() => {
-    if (cartQty > 0) setLocalQty(cartQty);
-  }, [cartQty, product.id]);
+  const cartQty = useCartStore((s) => s.getProductQuantity(product.id));
+  const minOrder = getMinOrderQuantity(product);
+  const step = product.incrementStep ?? 1;
 
   const displayName =
     language === 'hi' && product.nameHi ? product.nameHi : (product.detailName ?? product.name);
@@ -85,7 +78,6 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
   const pricing = getProductPricing(product);
   const stockLeft = getStockLeft(product);
   const deliveryEta = getDeliveryEta(product);
-  const mode = getAddToCartMode(localQty, cartQty);
   const reasonLabel = getReasonLabel(product.meta.reason, t);
 
   const openDetail = () => {
@@ -100,13 +92,64 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
     } as Href);
   };
 
-  const handleAddToCart = async () => {
-    if (!directAdd || hasVariants) {
-      openDetail();
+  const resolveLineId = useCallback(() => {
+    if (variantCount === 1) {
+      return getLineIdForProduct(product.id, product.productVariants?.[0]?.id);
+    }
+    return getLineIdForProduct(product.id);
+  }, [getLineIdForProduct, product, variantCount]);
+
+  const handleAdd = useCallback(() => {
+    if (shouldOpenAddToCartSheet(product)) {
+      openSheet(product);
       return;
     }
-    await addToCart(product, localQty);
-  };
+    openDetail();
+  }, [openSheet, product]);
+
+  const handleIncrement = useCallback(() => {
+    if (multiVariant || !canInlineAdjust) {
+      openSheet(product);
+      return;
+    }
+    const lineId = resolveLineId();
+    if (!lineId) {
+      openSheet(product);
+      return;
+    }
+    const next = cartQty + step;
+    const capped =
+      typeof product.maxOrder === 'number' ? Math.min(product.maxOrder, next) : next;
+    updateQuantity(lineId, capped);
+  }, [
+    canInlineAdjust,
+    cartQty,
+    multiVariant,
+    openSheet,
+    product,
+    resolveLineId,
+    step,
+    updateQuantity,
+  ]);
+
+  const handleDecrement = useCallback(() => {
+    if (multiVariant) {
+      const line = useCartStore
+        .getState()
+        .items.find((i) => (i.productId ?? i.id) === product.id || i.id.startsWith(`${product.id}_`));
+      if (!line) return;
+      const next = line.quantity - step;
+      updateQuantity(line.id, next < minOrder ? 0 : next);
+      return;
+    }
+
+    const lineId = resolveLineId();
+    if (!lineId) return;
+    const next = cartQty - step;
+    updateQuantity(lineId, next < minOrder ? 0 : next);
+  }, [cartQty, minOrder, multiVariant, product.id, resolveLineId, step, updateQuantity]);
+
+  const addLabel = multiVariant ? `${variantCount} Options` : 'ADD';
 
   return (
     <View style={[styles.card, { width }]}>
@@ -166,34 +209,21 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
           <ProductBulkPrice pricing={pricing} variant="box" compact />
         </ScaledPressable>
 
+        {minOrder > 1 ? (
+          <Text style={styles.minOrder}>
+            Minimum {minOrder} {product.unit}
+          </Text>
+        ) : null}
+
         <View style={styles.actions}>
-          {directAdd ? (
-            <>
-              <ProductQuantitySelector
-                quantity={localQty}
-                onChange={setLocalQty}
-                min={product.minOrder ?? 1}
-                max={product.maxOrder}
-                step={product.incrementStep ?? 1}
-                variant="capsule"
-                fullWidth
-                size="md"
-              />
-              <AddToCartButton
-                mode={mode}
-                onPress={() => void handleAddToCart()}
-                loading={buttonState === 'loading'}
-                fullWidth
-              />
-            </>
-          ) : (
-            <AddToCartButton
-              mode="add"
-              onPress={openDetail}
-              fullWidth
-              labelOverride={t('addToCart')}
-            />
-          )}
+          <QuantityControls
+            quantity={cartQty}
+            onAdd={handleAdd}
+            onIncrement={handleIncrement}
+            onDecrement={handleDecrement}
+            addLabel={addLabel}
+            size="md"
+          />
         </View>
       </View>
     </View>
@@ -297,8 +327,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  minOrder: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B6914',
+  },
   actions: {
     marginTop: 12,
-    gap: 10,
+    alignItems: 'stretch',
   },
 });

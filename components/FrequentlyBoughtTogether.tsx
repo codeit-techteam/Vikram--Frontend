@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { Dimensions, FlatList, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-import { AddToCartButton, getAddToCartMode } from '@components/product/AddToCartButton';
-import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
+import { QuantityControls } from '@components/QuantityControls';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { getProductById } from '@constants/catalogData';
+import { getMinOrderQuantity } from '@constants/catalogVariantHelpers';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 import { useCartFeedbackStore } from '@store/cartFeedbackStore';
 import { useCartStore } from '@store/cartStore';
 import { useTranslation } from '@store/languageStore';
+import { useVariantStore } from '@store/variantStore';
 import { frequentItemToCartItem } from '@utils/cartHelpers';
 import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 
@@ -22,27 +23,41 @@ interface FrequentlyBoughtTogetherProps {
 }
 
 function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
+  const openSheet = useVariantStore((s) => s.open);
   const upsertItem = useCartStore((s) => s.upsertItem);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
   const showFeedback = useCartFeedbackStore((s) => s.showFeedback);
+  const catalogProduct = getProductById(item.id);
+  const minOrder = catalogProduct ? getMinOrderQuantity(catalogProduct) : 1;
+
   const cartQty = useCartStore(
     (s) => s.items.find((i) => i.id === item.id || i.productId === item.id)?.quantity ?? 0,
   );
-  const [localQty, setLocalQty] = useState(Math.max(1, cartQty || 1));
-  const [loading, setLoading] = useState(false);
-  const catalogProduct = getProductById(item.id);
-  const mode = getAddToCartMode(localQty, cartQty);
 
-  useEffect(() => {
-    if (cartQty > 0) setLocalQty(cartQty);
-  }, [cartQty]);
+  const handleAdd = useCallback(() => {
+    if (catalogProduct) {
+      openSheet(catalogProduct);
+      return;
+    }
+    void (async () => {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const outcome = upsertItem({ ...frequentItemToCartItem(item), quantity: minOrder });
+      showFeedback({ outcome });
+    })();
+  }, [catalogProduct, item, minOrder, openSheet, showFeedback, upsertItem]);
 
-  const handleAdd = async () => {
-    setLoading(true);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const outcome = upsertItem({ ...frequentItemToCartItem(item), quantity: localQty });
-    showFeedback({ outcome });
-    setLoading(false);
-  };
+  const handleIncrement = useCallback(() => {
+    if (catalogProduct) {
+      openSheet(catalogProduct);
+      return;
+    }
+    updateQuantity(item.id, cartQty + 1);
+  }, [cartQty, catalogProduct, item.id, openSheet, updateQuantity]);
+
+  const handleDecrement = useCallback(() => {
+    const next = cartQty - 1;
+    updateQuantity(item.id, next < minOrder ? 0 : next);
+  }, [cartQty, item.id, minOrder, updateQuantity]);
 
   return (
     <View style={{ width: CARD_WIDTH }} className="rounded-card border border-border bg-surface p-3">
@@ -62,14 +77,14 @@ function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
         {item.desc}
       </Text>
       <Text className="mt-2 text-sm font-bold text-primary">{item.price}</Text>
-      <View className="mt-2 gap-2">
-        <ProductQuantitySelector quantity={localQty} onChange={setLocalQty} size="sm" />
-        <AddToCartButton
-          mode={mode}
-          onPress={() => void handleAdd()}
-          loading={loading}
-          compact
-          fullWidth
+      <View className="mt-2 items-end">
+        <QuantityControls
+          quantity={cartQty}
+          onAdd={handleAdd}
+          onIncrement={handleIncrement}
+          onDecrement={handleDecrement}
+          addLabel="ADD"
+          size="sm"
         />
       </View>
     </View>

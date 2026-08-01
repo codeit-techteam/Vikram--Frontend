@@ -3,9 +3,12 @@ import { Text, View } from 'react-native';
 
 import { AvailabilitySection } from '@components/filter-sections/AvailabilitySection';
 import { BrandSection } from '@components/filter-sections/BrandSection';
+import { BulkPricingSection } from '@components/filter-sections/BulkPricingSection';
+import { DiscountSection } from '@components/filter-sections/DiscountSection';
 import { ETASection } from '@components/filter-sections/ETASection';
 import { GradeSection } from '@components/filter-sections/GradeSection';
 import { PriceRangeSection } from '@components/filter-sections/PriceRangeSection';
+import { SortSection } from '@components/filter-sections/SortSection';
 import { FILTER_COLORS, FILTER_SPACING } from '@constants/filterTokens';
 import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
@@ -21,11 +24,14 @@ interface FilterSectionsProps {
 }
 
 const SECTION_META: { key: FilterKey; title: string }[] = [
-  { key: 'grade', title: 'GRADE' },
-  { key: 'eta', title: 'ETA' },
   { key: 'brand', title: 'BRAND' },
   { key: 'priceRange', title: 'PRICE RANGE' },
   { key: 'availability', title: 'AVAILABILITY' },
+  { key: 'eta', title: 'DELIVERY TIME' },
+  { key: 'grade', title: 'GRADE' },
+  { key: 'discount', title: 'DISCOUNT' },
+  { key: 'bulkPricing', title: 'BULK PRICING' },
+  { key: 'sort', title: 'SORT BY' },
 ];
 
 function FilterSectionBlock({
@@ -78,7 +84,7 @@ export function FilterSections({
 }: FilterSectionsProps) {
   const sections = visibleSections
     ? SECTION_META.filter((s) => visibleSections.includes(s.key))
-    : SECTION_META;
+    : SECTION_META.filter((s) => config.advancedSections.includes(s.key));
 
   const sectionProps = { draft, onChange, config, products };
 
@@ -94,6 +100,12 @@ export function FilterSections({
         return <PriceRangeSection {...sectionProps} />;
       case 'availability':
         return <AvailabilitySection {...sectionProps} />;
+      case 'discount':
+        return <DiscountSection {...sectionProps} />;
+      case 'bulkPricing':
+        return <BulkPricingSection {...sectionProps} />;
+      case 'sort':
+        return <SortSection {...sectionProps} />;
       default:
         return null;
     }

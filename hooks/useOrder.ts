@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useFocusEffect } from '@react-navigation/native';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { usePathname } from 'expo-router';
 
 import {
   cancelOrder,
@@ -13,7 +13,6 @@ import { ORDERS_QUERY_KEY, ORDERS_STALE_TIME } from '@hooks/useOrders';
 import { isActiveStatus } from '@constants/orderStatus';
 import { useOrdersSyncStore } from '@store/ordersSyncStore';
 import type { CancelOrderPayload, Order, OrdersPage } from '@/types/order';
-import type { InfiniteData } from '@tanstack/react-query';
 import { getOrderVersion, mergeOrderState, shouldReplaceOrder } from '@utils/orderMerge';
 
 /** Fallback poll when socket is down; slower when live connection is healthy. */
@@ -36,8 +35,17 @@ function findOrderInListCaches(
   return undefined;
 }
 
+function isOrderDetailsPath(pathname: string, orderId: string): boolean {
+  return (
+    pathname.includes(`/orders/view/${orderId}`) ||
+    pathname.includes(`/orders/details/${orderId}`) ||
+    pathname.includes(`/orders/${orderId}`)
+  );
+}
+
 export function useOrder(orderId: string | undefined) {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const [socketConnected, setSocketConnected] = useState(
     realtimeSocket.isConnected(),
   );
@@ -143,16 +151,18 @@ export function useOrder(orderId: string | undefined) {
       : false,
   });
 
-  // On focus: always revalidate against backend; merge keeps newer local if HTTP is stale.
-  useFocusEffect(
-    useCallback(() => {
-      if (!orderId) return;
-      void queryClient.invalidateQueries({
-        queryKey: ['order', orderId],
-        refetchType: 'active',
-      });
-    }, [orderId, queryClient]),
+  // Revalidate when this order's details/tracking route is active.
+  // Uses expo-router pathname (no NavigationContainer dependency).
+  const isViewingThisOrder = Boolean(
+    orderId && isOrderDetailsPath(pathname, orderId),
   );
+  useEffect(() => {
+    if (!orderId || !isViewingThisOrder) return;
+    void queryClient.invalidateQueries({
+      queryKey: ['order', orderId],
+      refetchType: 'active',
+    });
+  }, [orderId, isViewingThisOrder, queryClient]);
 
   // Mirror React Query → SSOT when socket/local patches update the cache.
   useEffect(() => {

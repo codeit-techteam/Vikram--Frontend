@@ -47,6 +47,11 @@ import { requireAuth } from '@utils/requireAuth';
 import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
 import type { CatalogCategory } from '@/types/catalog';
 import {
+  filterMarketplaceCategories,
+  getCategoryDisplayName,
+  sortHomeCategories,
+} from '@utils/categoryDisplay';
+import {
   adaptHeroSlides,
   adaptTestimonialReviews,
   adaptTestimonialVideos,
@@ -86,12 +91,17 @@ export default function HomeScreen() {
     useHomeCatalog();
 
   const {
-    categories: homeCategories,
+    categories: rawHomeCategories,
     isLoading: categoriesLoading,
     isRefreshing: categoriesRefreshing,
     error: categoriesError,
     refresh: refreshCategories,
   } = useCategories();
+
+  const homeCategories = useMemo(
+    () => sortHomeCategories(filterMarketplaceCategories(rawHomeCategories)),
+    [rawHomeCategories],
+  );
 
   const {
     sections,
@@ -188,8 +198,7 @@ export default function HomeScreen() {
   const onCategoryPress = useCallback(
     async (category: CatalogCategory) => {
       await Haptics.selectionAsync();
-      const name =
-        language === 'hi' && category.nameHi ? category.nameHi : category.name;
+      const name = getCategoryDisplayName(category, language, t);
       router.push({
         pathname: '/products/[categoryId]',
         params: {
@@ -199,7 +208,7 @@ export default function HomeScreen() {
         },
       } as Href);
     },
-    [language],
+    [language, t],
   );
 
   const onViewAllCategories = useCallback(async () => {

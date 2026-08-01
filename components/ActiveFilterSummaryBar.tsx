@@ -4,32 +4,40 @@ import Animated, { FadeInLeft, FadeOutLeft } from 'react-native-reanimated';
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
   formatPriceRangeLabel,
+  isDefaultAvailability,
   isPriceRangeActive,
+  SORT_OPTIONS,
 } from '@constants/filterOptions';
 import { FILTER_COLORS, FILTER_SPACING } from '@constants/filterTokens';
 import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
 
+export type RemovableFilterKey = FilterKey | 'search';
+
 interface ActiveFilterSummaryBarProps {
   activeFilters: ActiveFilters;
   config: CategoryFilterConfig;
-  resultCount: number;
+  resultCount?: number;
   onClearAll: () => void;
-  onRemoveTag: (key: FilterKey, value?: string) => void;
+  onRemoveTag: (key: RemovableFilterKey, value?: string) => void;
 }
 
-type FilterTag = { key: FilterKey; label: string; value?: string };
+type FilterTag = { key: RemovableFilterKey; label: string; value?: string };
 
 function buildTags(filters: ActiveFilters, config: CategoryFilterConfig): FilterTag[] {
   const tags: FilterTag[] = [];
 
+  if (filters.search.trim()) {
+    tags.push({ key: 'search', label: `"${filters.search.trim()}"` });
+  }
+
+  for (const brand of filters.brand) {
+    tags.push({ key: 'brand', label: `Brand: ${brand}`, value: brand });
+  }
   for (const grade of filters.grade) {
     tags.push({ key: 'grade', label: grade, value: grade });
   }
   if (filters.eta) {
     tags.push({ key: 'eta', label: filters.eta });
-  }
-  if (filters.brand) {
-    tags.push({ key: 'brand', label: filters.brand });
   }
   if (isPriceRangeActive(filters, config.priceBounds)) {
     tags.push({
@@ -41,8 +49,23 @@ function buildTags(filters: ActiveFilters, config: CategoryFilterConfig): Filter
       ),
     });
   }
-  for (const avail of filters.availability) {
-    tags.push({ key: 'availability', label: avail, value: avail });
+  if (!isDefaultAvailability(filters.availability)) {
+    for (const avail of filters.availability) {
+      tags.push({ key: 'availability', label: avail, value: avail });
+    }
+  }
+  if (filters.discount != null) {
+    tags.push({ key: 'discount', label: `${filters.discount}%+ OFF` });
+  }
+  if (filters.bulkPricing === true) {
+    tags.push({ key: 'bulkPricing', label: 'Bulk Pricing' });
+  } else if (filters.bulkPricing === false) {
+    tags.push({ key: 'bulkPricing', label: 'No Bulk' });
+  }
+  if (filters.sort !== 'recommended') {
+    const sortLabel =
+      SORT_OPTIONS.find((o) => o.key === filters.sort)?.label ?? filters.sort;
+    tags.push({ key: 'sort', label: sortLabel });
   }
 
   return tags;
@@ -51,7 +74,6 @@ function buildTags(filters: ActiveFilters, config: CategoryFilterConfig): Filter
 export function ActiveFilterSummaryBar({
   activeFilters,
   config,
-  resultCount,
   onClearAll,
   onRemoveTag,
 }: ActiveFilterSummaryBarProps) {
@@ -61,25 +83,18 @@ export function ActiveFilterSummaryBar({
   return (
     <View
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
         paddingLeft: FILTER_SPACING.lg,
         marginTop: FILTER_SPACING.sm,
         marginBottom: FILTER_SPACING.xs,
       }}>
-      <Text
-        style={{
-          fontSize: 13,
-          color: FILTER_COLORS.textMuted,
-          marginRight: FILTER_SPACING.sm,
-        }}>
-        {resultCount} results
-      </Text>
-
       <Animated.ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: FILTER_SPACING.sm, paddingRight: FILTER_SPACING.lg }}>
+        contentContainerStyle={{
+          gap: FILTER_SPACING.sm,
+          paddingRight: FILTER_SPACING.lg,
+          alignItems: 'center',
+        }}>
         {tags.map((tag) => (
           <Animated.View
             key={`${tag.key}-${tag.label}`}

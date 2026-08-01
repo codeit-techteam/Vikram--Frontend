@@ -5,16 +5,20 @@ import { getProductGridCardWidth } from '@components/product/productGridLayout';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 
+import { QuantityControls } from '@components/QuantityControls';
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
   allowsDirectAddToCart,
+  getMinOrderQuantity,
   getVariantCount,
   productHasStructuredVariants,
+  shouldOpenAddToCartSheet,
+  shouldOpenVariantSheet,
 } from '@constants/catalogVariantHelpers';
 import type { Product } from '@/types/catalog';
 import { useLanguageStore } from '@store/languageStore';
-import { useAddToCart } from '@hooks/useAddToCart';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
+import { useCartStore } from '@store/cartStore';
 import { useVariantStore } from '@store/variantStore';
 import { formatINR } from '@utils/formatCurrency';
 import {
@@ -23,9 +27,9 @@ import {
   getProductPricing,
   getStockLeft,
 } from '@utils/productPricing';
+import { isVisibleProductBrand } from '@utils/categoryDisplay';
 import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 
-const GOLD = '#FEB623';
 const DARK = '#1A1A1A';
 const GREEN = '#2E7D32';
 
@@ -43,13 +47,18 @@ function ProductGridCardComponent({
   const { width } = useWindowDimensions();
   const cardWidth = getProductGridCardWidth(width);
   const language = useLanguageStore((s) => s.language);
-  const { addToCart, buttonState } = useAddToCart();
-  const openVariantSheet = useVariantStore((s) => s.open);
+  const openSheet = useVariantStore((s) => s.open);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const getLineIdForProduct = useCartStore((s) => s.getLineIdForProduct);
   const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: false });
 
+  const cartQty = useCartStore((s) => s.getProductQuantity(product.id));
   const hasVariants = productHasStructuredVariants(product);
   const variantCount = getVariantCount(product);
-  const directAdd = allowsDirectAddToCart(product);
+  const multiVariant = shouldOpenVariantSheet(product);
+  const canInlineAdjust = allowsDirectAddToCart(product);
+  const minOrder = getMinOrderQuantity(product);
+  const step = product.incrementStep ?? 1;
   const pricing = getProductPricing(product);
   const stockLeft = getStockLeft(product);
   const bulkLabel = getBulkUnlockLabel(pricing);
@@ -74,6 +83,7 @@ function ProductGridCardComponent({
     productSlug: product.slug,
     categorySlug: product.categorySlug,
   });
+  const showBrand = isVisibleProductBrand(product.brand);
 
   const openDetail = useCallback(() => {
     router.push({
@@ -88,7 +98,7 @@ function ProductGridCardComponent({
   }, [categoryId, categoryName, displayName, product]);
 
   const openBrand = useCallback(() => {
-    if (!product.brand) return;
+    if (!isVisibleProductBrand(product.brand)) return;
     router.push({
       pathname: '/products/section/[section]',
       params: {
@@ -99,25 +109,66 @@ function ProductGridCardComponent({
     } as unknown as Href);
   }, [product.brand]);
 
-  const handleAdd = useCallback(async () => {
-    if (!directAdd && hasVariants && variantCount > 1) {
-      openVariantSheet(product);
-      return;
-    }
+  const resolveLineId = useCallback(() => {
     if (hasVariants && variantCount === 1) {
-      const only = product.productVariants?.[0];
-      await addToCart(product, product.defaultQuantity || 1, {
-        variantId: only?.id,
-      });
+      return getLineIdForProduct(product.id, product.productVariants?.[0]?.id);
+    }
+    return getLineIdForProduct(product.id);
+  }, [getLineIdForProduct, hasVariants, product, variantCount]);
+
+  const handleAdd = useCallback(() => {
+    if (shouldOpenAddToCartSheet(product)) {
+      openSheet(product);
       return;
     }
-    await addToCart(product, product.defaultQuantity || 1);
-  }, [addToCart, directAdd, hasVariants, openVariantSheet, product, variantCount]);
+    openDetail();
+  }, [openDetail, openSheet, product]);
 
-  const addLabel =
-    hasVariants && variantCount > 1
-      ? `${variantCount} Options`
-      : 'ADD';
+  const handleIncrement = useCallback(() => {
+    if (multiVariant || !canInlineAdjust) {
+      openSheet(product);
+      return;
+    }
+    const lineId = resolveLineId();
+    if (!lineId) {
+      openSheet(product);
+      return;
+    }
+    const next = cartQty + step;
+    const capped =
+      typeof product.maxOrder === 'number' ? Math.min(product.maxOrder, next) : next;
+    updateQuantity(lineId, capped);
+  }, [
+    canInlineAdjust,
+    cartQty,
+    multiVariant,
+    openSheet,
+    product,
+    resolveLineId,
+    step,
+    updateQuantity,
+  ]);
+
+  const handleDecrement = useCallback(() => {
+    if (multiVariant) {
+      const line = useCartStore
+        .getState()
+        .items.find((i) => (i.productId ?? i.id) === product.id || i.id.startsWith(`${product.id}_`));
+      if (!line) return;
+      const next = line.quantity - step;
+      updateQuantity(line.id, next < minOrder ? 0 : next);
+      return;
+    }
+
+    const lineId = resolveLineId();
+    if (!lineId) return;
+
+    const next = cartQty - step;
+    // Below MOQ → remove line (Blinkit-style clear)
+    updateQuantity(lineId, next < minOrder ? 0 : next);
+  }, [cartQty, minOrder, multiVariant, product.id, resolveLineId, step, updateQuantity]);
+
+  const addLabel = multiVariant ? `${variantCount} Options` : 'ADD';
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>
@@ -127,6 +178,7 @@ function ProductGridCardComponent({
           style={styles.image}
           contentFit="contain"
           recyclingKey={product.slug || product.id}
+          cachePolicy="memory-disk"
           placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           transition={200}
         />
@@ -138,7 +190,7 @@ function ProductGridCardComponent({
               contentFit="contain"
             />
           </ScaledPressable>
-        ) : product.brand ? (
+        ) : showBrand ? (
           <ScaledPressable onPress={openBrand} style={styles.brandBadge}>
             <Text style={styles.brandText} numberOfLines={1}>
               {product.brand}
@@ -154,15 +206,16 @@ function ProductGridCardComponent({
           </View>
         ) : null}
 
-        <ScaledPressable
-          onPress={() => void handleAdd()}
-          style={styles.addBtn}
-          disabled={buttonState === 'loading'}>
-          <Text style={styles.addText}>{addLabel}</Text>
-          {hasVariants && variantCount > 1 ? (
-            <Text style={styles.optionsHint}>{variantCount} options</Text>
-          ) : null}
-        </ScaledPressable>
+        <View style={styles.addWrap} pointerEvents="box-none">
+          <QuantityControls
+            quantity={cartQty}
+            onAdd={handleAdd}
+            onIncrement={handleIncrement}
+            onDecrement={handleDecrement}
+            addLabel={addLabel}
+            size="sm"
+          />
+        </View>
       </ScaledPressable>
 
       {bulkLabel ? (
@@ -174,7 +227,7 @@ function ProductGridCardComponent({
       ) : null}
 
       <ScaledPressable onPress={openDetail} style={styles.body}>
-        {product.brand ? (
+        {showBrand ? (
           <Text style={styles.brandName} numberOfLines={1}>
             {product.brand}
           </Text>
@@ -197,6 +250,11 @@ function ProductGridCardComponent({
             {variantLabel}
           </Text>
         ) : null}
+        {minOrder > 1 ? (
+          <Text style={styles.minOrder} numberOfLines={1}>
+            Minimum {minOrder} {pricing.unit}
+          </Text>
+        ) : null}
         {rating != null ? (
           <Text style={styles.rating}>★ {rating.toFixed(1)}</Text>
         ) : null}
@@ -211,14 +269,20 @@ function ProductGridCardComponent({
 const styles = StyleSheet.create({
   card: {
     marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   imageWrap: {
     aspectRatio: 1,
     borderRadius: 12,
     backgroundColor: '#F7F7F7',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#EEEEEE',
   },
   image: {
     width: '100%',
@@ -266,30 +330,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFF',
   },
-  addBtn: {
+  addWrap: {
     position: 'absolute',
-    right: 8,
-    bottom: 8,
-    backgroundColor: '#FFF',
-    borderWidth: 1.5,
-    borderColor: GOLD,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minWidth: 52,
-    alignItems: 'center',
+    right: 6,
+    bottom: 6,
     zIndex: 2,
-  },
-  addText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: GREEN,
-  },
-  optionsHint: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#8B6914',
-    marginTop: 1,
   },
   bulkBadge: {
     marginTop: 6,
@@ -304,7 +349,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   body: {
-    marginTop: 6,
+    marginTop: 8,
+    paddingHorizontal: 2,
   },
   brandName: {
     fontSize: 11,
@@ -352,6 +398,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#777',
     fontWeight: '500',
+  },
+  minOrder: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B6914',
   },
   rating: {
     marginTop: 3,

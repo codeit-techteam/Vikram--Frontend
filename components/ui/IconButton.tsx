@@ -26,6 +26,8 @@ interface IconButtonProps {
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
   surface?: boolean;
+  /** Smaller hit target for dense headers (e.g. BackHeader action clusters). */
+  compact?: boolean;
   disabled?: boolean;
   haptic?: boolean;
 }
@@ -43,6 +45,7 @@ function IconButtonComponent({
   children,
   style,
   surface = true,
+  compact = false,
   disabled = false,
   haptic = true,
 }: IconButtonProps) {
@@ -56,10 +59,14 @@ function IconButtonComponent({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
-      hitSlop={6}
+      hitSlop={compact ? 8 : 6}
       android_ripple={
         Platform.OS === 'android'
-          ? { color: 'rgba(0,0,0,0.08)', borderless: true, radius: 24 }
+          ? {
+              color: 'rgba(0,0,0,0.08)',
+              borderless: true,
+              radius: compact ? 18 : 24,
+            }
           : undefined
       }
       onPress={() => {
@@ -72,9 +79,14 @@ function IconButtonComponent({
       onPressOut={() => {
         scale.value = withSpring(1, { damping: 14, stiffness: 280 });
       }}
-      style={[styles.hit, style]}>
+      style={[styles.hit, compact && styles.hitCompact, style]}>
       <Animated.View
-        style={[surface ? styles.surface : styles.flat, animStyle, disabled && styles.disabled]}
+        style={[
+          surface ? styles.surface : styles.flat,
+          compact && (surface ? styles.surfaceCompact : styles.flatCompact),
+          animStyle,
+          disabled && styles.disabled,
+        ]}
         pointerEvents="none">
         {children ?? (icon ? <AppIcon name={icon} color={color} size={size} /> : null)}
       </Animated.View>
@@ -91,6 +103,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  hitCompact: {
+    width: 36,
+    height: 36,
   },
   surface: {
     width: 40,
@@ -110,6 +126,11 @@ const styles = StyleSheet.create({
       android: { elevation: 1 },
     }),
   },
+  surfaceCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+  },
   flat: {
     width: 40,
     height: 40,
@@ -117,6 +138,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  flatCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
   },
   disabled: {
     opacity: 0.4,

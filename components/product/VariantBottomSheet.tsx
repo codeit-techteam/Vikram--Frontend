@@ -10,13 +10,26 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
+import {
+  getMinOrderQuantity,
+  getVariantCount,
+  sheetShowsVariantPicker,
+} from '@constants/catalogVariantHelpers';
 import { useAddToCart } from '@hooks/useAddToCart';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { useVariantStore } from '@store/variantStore';
+import { isVisibleProductBrand } from '@utils/categoryDisplay';
 import { formatINR } from '@utils/formatCurrency';
-import { getProductPricing } from '@utils/productPricing';
+import { getDeliveryEta, getProductPricing } from '@utils/productPricing';
 import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 
 const GOLD = '#FEB623';
@@ -33,10 +46,23 @@ function VariantBottomSheetComponent() {
   const selectVariant = useVariantStore((s) => s.selectVariant);
   const setQuantity = useVariantStore((s) => s.setQuantity);
   const { addToCart, buttonState } = useAddToCart();
+  const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: false });
 
   const variants = product?.productVariants ?? [];
-  const selected = variants.find((v) => v.id === selectedVariantId) ?? variants[0];
+  const showVariants = product ? sheetShowsVariantPicker(product) : false;
+  const selected = showVariants
+    ? (variants.find((v) => v.id === selectedVariantId) ?? variants[0])
+    : (variants.find((v) => v.id === selectedVariantId) ?? variants[0] ?? null);
   const pricing = product ? getProductPricing(product, selected) : null;
+  const minOrder = product ? getMinOrderQuantity(product) : 1;
+  const deliveryEta = product
+    ? getDeliveryEta(product, estimatedMinutes, etaLabel)
+    : null;
+  const showBrand = product ? isVisibleProductBrand(product.brand) : false;
+
+  const unitPrice = pricing?.sellingPrice ?? 0;
+  const subtotal = unitPrice * quantity;
+  const subtotalScale = useSharedValue(1);
 
   const imageSource = useMemo(() => {
     if (!product) return null;
@@ -47,13 +73,38 @@ function VariantBottomSheetComponent() {
     });
   }, [product]);
 
+  const subtotalAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: subtotalScale.value }],
+  }));
+
+  const handleQuantityChange = useCallback(
+    (next: number) => {
+      setQuantity(next);
+      subtotalScale.value = withSequence(
+        withSpring(1.05, { damping: 14, stiffness: 260 }),
+        withSpring(1, { damping: 14 }),
+      );
+    },
+    [setQuantity, subtotalScale],
+  );
+
   const handleAdd = useCallback(async () => {
-    if (!product || !selected || selected.inStock === false) return;
-    await addToCart(product, quantity, { variantId: selected.id });
+    if (!product) return;
+    if (showVariants && (!selected || selected.inStock === false)) return;
+
+    const variantId =
+      selected?.id ??
+      (getVariantCount(product) === 1 ? product.productVariants?.[0]?.id : undefined);
+
+    await addToCart(product, quantity, variantId ? { variantId } : undefined);
     close();
-  }, [addToCart, close, product, quantity, selected]);
+  }, [addToCart, close, product, quantity, selected, showVariants]);
 
   if (!product || !pricing) return null;
+
+  const title = showVariants ? 'Select Variant' : 'Add to Cart';
+  const outOfStock = showVariants && selected?.inStock === false;
+  const canSubmit = !outOfStock && buttonState !== 'loading';
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
@@ -61,7 +112,7 @@ function VariantBottomSheetComponent() {
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.handle} />
         <View style={styles.header}>
-          <Text style={styles.title}>Select Variant</Text>
+          <Text style={styles.title}>{title}</Text>
           <Pressable onPress={close} hitSlop={12} accessibilityRole="button">
             <Ionicons name="close" size={22} color={DARK} />
           </Pressable>
@@ -75,6 +126,11 @@ function VariantBottomSheetComponent() {
               <View style={[styles.thumb, styles.thumbPlaceholder]} />
             )}
             <View style={styles.summaryText}>
+              {showBrand ? (
+                <Text style={styles.brand} numberOfLines={1}>
+                  {product.brand}
+                </Text>
+              ) : null}
               <Text style={styles.name} numberOfLines={2}>
                 {product.detailName ?? product.name}
               </Text>
@@ -89,6 +145,11 @@ function VariantBottomSheetComponent() {
                   <Text style={styles.off}>{pricing.discountPercent}% OFF</Text>
                 ) : null}
               </View>
+              {deliveryEta ? (
+                <Text style={styles.eta} numberOfLines={1}>
+                  {deliveryEta}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -105,64 +166,80 @@ function VariantBottomSheetComponent() {
             </View>
           ) : null}
 
-          <Text style={styles.sectionLabel}>Weight</Text>
-          <View style={styles.chips}>
-            {variants.map((v) => {
-              const selectedChip = v.id === selected?.id;
-              const oos = v.inStock === false;
-              return (
-                <Pressable
-                  key={v.id}
-                  disabled={oos}
-                  onPress={() => selectVariant(v.id)}
-                  style={[
-                    styles.chip,
-                    selectedChip && styles.chipSelected,
-                    oos && styles.chipOos,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.chipLabel,
-                      selectedChip && styles.chipLabelSelected,
-                      oos && styles.chipLabelOos,
-                    ]}>
-                    {v.label}
-                  </Text>
-                  {oos ? <Text style={styles.oosText}>Out of stock</Text> : null}
-                  {!oos ? (
-                    <Text style={styles.chipPrice}>{formatINR(v.price, false)}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
+          {minOrder > 1 ? (
+            <Text style={styles.minOrderHint}>
+              Minimum order: {minOrder} {pricing.unit}
+            </Text>
+          ) : null}
+
+          {showVariants ? (
+            <>
+              <Text style={styles.sectionLabel}>Options</Text>
+              <View style={styles.chips}>
+                {variants.map((v) => {
+                  const selectedChip = v.id === selected?.id;
+                  const oos = v.inStock === false;
+                  return (
+                    <Pressable
+                      key={v.id}
+                      disabled={oos}
+                      onPress={() => selectVariant(v.id)}
+                      style={[
+                        styles.chip,
+                        selectedChip && styles.chipSelected,
+                        oos && styles.chipOos,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.chipLabel,
+                          selectedChip && styles.chipLabelSelected,
+                          oos && styles.chipLabelOos,
+                        ]}>
+                        {v.label}
+                      </Text>
+                      {oos ? <Text style={styles.oosText}>Out of stock</Text> : null}
+                      {!oos ? (
+                        <Text style={styles.chipPrice}>{formatINR(v.price, false)}</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+
+          <Text style={styles.sectionLabel}>Quantity</Text>
+          <ProductQuantitySelector
+            quantity={quantity}
+            onChange={handleQuantityChange}
+            min={minOrder}
+            max={product.maxOrder}
+            step={product.incrementStep ?? 1}
+            size="lg"
+            variant="capsule"
+          />
+
+          <Animated.View style={[styles.subtotalRow, subtotalAnimStyle]}>
+            <Text style={styles.subtotalLabel}>
+              {formatINR(unitPrice, false)} × {quantity}
+            </Text>
+            <Text style={styles.subtotalValue}>{formatINR(subtotal, false)}</Text>
+          </Animated.View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <View>
-            <Text style={styles.footerPrice}>
-              {formatINR(pricing.sellingPrice, false)}/{pricing.unit}
-            </Text>
-            <ProductQuantitySelector
-              quantity={quantity}
-              onChange={setQuantity}
-              min={product.minOrder ?? 1}
-              max={product.maxOrder}
-              step={product.incrementStep ?? 1}
-              size="sm"
-            />
+          <View style={styles.footerLeft}>
+            <Text style={styles.footerHint}>Subtotal</Text>
+            <Text style={styles.footerPrice}>{formatINR(subtotal, false)}</Text>
           </View>
           <Pressable
-            style={[
-              styles.addBtn,
-              (selected?.inStock === false || buttonState === 'loading') && styles.addBtnDisabled,
-            ]}
-            disabled={selected?.inStock === false || buttonState === 'loading'}
+            style={[styles.addBtn, !canSubmit && styles.addBtnDisabled]}
+            disabled={!canSubmit}
             onPress={() => void handleAdd()}>
             {buttonState === 'loading' ? (
               <ActivityIndicator color={DARK} />
             ) : (
-              <Text style={styles.addBtnText}>Add to cart</Text>
+              <Text style={styles.addBtnText}>Add to Cart</Text>
             )}
           </Pressable>
         </View>
@@ -180,9 +257,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '82%',
+    maxHeight: '85%',
     paddingHorizontal: 16,
     paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 16,
   },
   handle: {
     alignSelf: 'center',
@@ -204,7 +286,7 @@ const styles = StyleSheet.create({
     color: DARK,
   },
   body: {
-    maxHeight: 420,
+    maxHeight: 460,
   },
   summary: {
     flexDirection: 'row',
@@ -212,9 +294,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   thumb: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
+    width: 80,
+    height: 80,
+    borderRadius: 12,
     backgroundColor: '#F5F5F5',
   },
   thumbPlaceholder: {
@@ -224,6 +306,14 @@ const styles = StyleSheet.create({
   summaryText: {
     flex: 1,
     justifyContent: 'center',
+  },
+  brand: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
   },
   name: {
     fontSize: 15,
@@ -252,11 +342,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: GREEN,
   },
+  eta: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
   bulkBox: {
     backgroundColor: '#E8F5E9',
     borderRadius: 10,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   bulkTitle: {
     fontSize: 13,
@@ -271,6 +367,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: DARK,
+  },
+  minOrderHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B6914',
+    marginBottom: 12,
   },
   sectionLabel: {
     fontSize: 14,
@@ -324,6 +426,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#999',
   },
+  subtotalRow: {
+    marginTop: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  subtotalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  subtotalValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: DARK,
+  },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -333,17 +456,25 @@ const styles = StyleSheet.create({
     borderTopColor: '#EEE',
     paddingTop: 12,
   },
+  footerLeft: {
+    minWidth: 88,
+  },
+  footerHint: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 2,
+  },
   footerPrice: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: DARK,
-    marginBottom: 6,
   },
   addBtn: {
     flex: 1,
     backgroundColor: GOLD,
     borderRadius: 12,
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,

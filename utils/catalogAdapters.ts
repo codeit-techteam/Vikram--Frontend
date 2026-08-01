@@ -157,6 +157,7 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     subcategorySlug: dto.subcategorySlug,
     subcategoryName: dto.subcategoryName,
     brand: dto.brand ?? undefined,
+    sku: dto.sku ?? null,
     name: dto.name,
     nameHi: dto.nameHi ?? undefined,
     grade: dto.grade ?? '',
@@ -180,8 +181,9 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     bulkPriceValue: bulk || firstBulk?.price || 0,
     bulkPricing,
     unit: dto.unit,
-    defaultQuantity: Math.max(1, dto.defaultQuantity ?? dto.minOrder ?? 1),
+    // Default selected qty follows minOrder (else 1) — never invent 10/50/etc.
     minOrder: dto.minOrder ?? 1,
+    defaultQuantity: Math.max(1, dto.minOrder ?? 1),
     maxOrder: dto.maxOrder ?? undefined,
     incrementStep: dto.incrementStep ?? 1,
     bulkThreshold: firstBulk?.minQty ?? dto.bulkThreshold ?? 0,

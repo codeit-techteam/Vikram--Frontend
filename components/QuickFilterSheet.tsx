@@ -10,13 +10,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FilterFooter } from '@components/FilterFooter';
 import { FilterSections } from '@components/FilterSections';
 import { ScaledPressable } from '@components/ScaledPressable';
+import {
+  createDefaultFilters,
+  isDefaultAvailability,
+} from '@constants/filterOptions';
 import { getQuickFilterSnapPoints } from '@constants/filterSnapPoints';
 import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
-import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
+import type {
+  ActiveFilters,
+  CategoryFilterConfig,
+  QuickFilterKey,
+} from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
 
 export interface QuickFilterSheetRef {
-  open: (key: FilterKey) => void;
+  open: (key: QuickFilterKey) => void;
   close: () => void;
 }
 
@@ -27,18 +35,22 @@ interface QuickFilterSheetProps {
   resultCount: number;
   onChange: (draft: ActiveFilters) => void;
   onApply: () => void;
-  onClearSection: (key: FilterKey) => void;
+  onClearSection: (key: QuickFilterKey) => void;
 }
 
-const FILTER_TITLES: Record<FilterKey, string> = {
+const FILTER_TITLES: Record<QuickFilterKey, string> = {
   grade: 'Grade',
   eta: 'ETA',
-  brand: 'Brand',
+  brand: 'Brands',
   priceRange: 'Price',
   availability: 'Availability',
 };
 
-function clearSectionFromDraft(draft: ActiveFilters, key: FilterKey, bounds: [number, number]) {
+function clearSectionFromDraft(
+  draft: ActiveFilters,
+  key: QuickFilterKey,
+  bounds: [number, number],
+) {
   const next = { ...draft };
   switch (key) {
     case 'grade':
@@ -48,30 +60,34 @@ function clearSectionFromDraft(draft: ActiveFilters, key: FilterKey, bounds: [nu
       next.eta = null;
       break;
     case 'brand':
-      next.brand = null;
+      next.brand = [];
       break;
     case 'priceRange':
       next.priceRange = [...bounds] as [number, number];
       break;
     case 'availability':
-      next.availability = [];
+      next.availability = [...createDefaultFilters(bounds).availability];
       break;
   }
   return next;
 }
 
-function isSectionActive(draft: ActiveFilters, key: FilterKey, bounds: [number, number]) {
+function isSectionActive(
+  draft: ActiveFilters,
+  key: QuickFilterKey,
+  bounds: [number, number],
+) {
   switch (key) {
     case 'grade':
       return draft.grade.length > 0;
     case 'eta':
       return draft.eta !== null;
     case 'brand':
-      return draft.brand !== null;
+      return draft.brand.length > 0;
     case 'priceRange':
       return draft.priceRange[0] > bounds[0] || draft.priceRange[1] < bounds[1];
     case 'availability':
-      return draft.availability.length > 0;
+      return !isDefaultAvailability(draft.availability);
     default:
       return false;
   }
@@ -81,7 +97,7 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
   ({ draft, config, products, resultCount, onChange, onApply, onClearSection }, ref) => {
     const sheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
-    const [activeKey, setActiveKey] = useState<FilterKey>('grade');
+    const [activeKey, setActiveKey] = useState<QuickFilterKey>('brand');
 
     const snapPoints = useMemo(
       () => getQuickFilterSnapPoints(activeKey),
@@ -89,7 +105,7 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
     );
 
     useImperativeHandle(ref, () => ({
-      open: (key: FilterKey) => {
+      open: (key: QuickFilterKey) => {
         setActiveKey(key);
         requestAnimationFrame(() => {
           sheetRef.current?.snapToIndex(0);
@@ -179,7 +195,8 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
               paddingBottom: FILTER_SPACING.sm,
             }}
             showsVerticalScrollIndicator={false}
-            bounces={false}>
+            bounces={false}
+            keyboardShouldPersistTaps="handled">
             <FilterSections
               draft={draft}
               onChange={onChange}
@@ -194,7 +211,7 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
             resultCount={resultCount}
             onReset={handleClear}
             onApply={handleApply}
-            applyLabel="Apply Filter"
+            applyLabel="Apply"
             safeAreaBottom={false}
           />
         </View>

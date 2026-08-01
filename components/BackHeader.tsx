@@ -49,7 +49,9 @@ export function BackHeader({
         {title}
       </Text>
 
-      <View style={styles.right}>{rightElement ?? <View style={{ width: 22 }} />}</View>
+      <View style={styles.right}>
+        {rightElement ?? <View style={styles.rightPlaceholder} />}
+      </View>
     </View>
   );
 }
@@ -112,14 +114,21 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    minWidth: 0,
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
     marginHorizontal: 8,
   },
   right: {
-    width: 36,
-    alignItems: 'flex-end',
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    minWidth: 36,
+  },
+  rightPlaceholder: {
+    width: 22,
   },
   yellowHeader: {
     flexDirection: 'row',
