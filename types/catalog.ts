@@ -109,6 +109,8 @@ export interface Product {
   maxOrder?: number;
   incrementStep?: number;
   bulkThreshold: number;
+  /** Unit weight in kg (e.g. 50 for cement bag). Used for logistics estimates. */
+  weightPerUnit?: number | null;
   description: string;
   descriptionHi?: string;
   categoryType: ProductCategoryType;

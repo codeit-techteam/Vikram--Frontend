@@ -181,12 +181,13 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     bulkPriceValue: bulk || firstBulk?.price || 0,
     bulkPricing,
     unit: dto.unit,
-    // Default selected qty follows minOrder (else 1) — never invent 10/50/etc.
+    // Default selected qty always starts at 1 — bulk unlocks as qty grows.
     minOrder: dto.minOrder ?? 1,
-    defaultQuantity: Math.max(1, dto.minOrder ?? 1),
+    defaultQuantity: 1,
     maxOrder: dto.maxOrder ?? undefined,
     incrementStep: dto.incrementStep ?? 1,
     bulkThreshold: firstBulk?.minQty ?? dto.bulkThreshold ?? 0,
+    weightPerUnit: dto.weightPerUnit ?? null,
     description: dto.description ?? '',
     categoryType,
     detailName: dto.detailName ?? dto.name,

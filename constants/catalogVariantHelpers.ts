@@ -178,9 +178,13 @@ export function getMinOrderQuantity(product: Pick<Product, 'minOrder'>): number 
   return 1;
 }
 
-/** Initial quantity in sheets / steppers — always minOrder (else 1). */
-export function getDefaultOrderQuantity(product: Pick<Product, 'minOrder'>): number {
-  return getMinOrderQuantity(product);
+/**
+ * Initial quantity in sheets / steppers.
+ * Always starts at 1 so customers can buy a single unit;
+ * bulk pricing unlocks as quantity increases.
+ */
+export function getDefaultOrderQuantity(_product?: Pick<Product, 'minOrder'>): number {
+  return 1;
 }
 
 /** Listing cards: stepper only for free-quantity products */

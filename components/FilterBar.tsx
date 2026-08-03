@@ -1,18 +1,18 @@
-import { ScrollView, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
 
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
   getChipLabel,
   countActiveFilters,
   FILTER_CHIPS,
-  isDefaultAvailability,
+  isPriceRangeActive,
 } from '@constants/filterOptions';
 import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
 import type {
@@ -20,6 +20,8 @@ import type {
   CategoryFilterConfig,
   QuickFilterKey,
 } from '@/types/filter.types';
+
+const CHIP_HEIGHT = 48;
 
 interface FilterBarProps {
   activeFilters: ActiveFilters;
@@ -51,7 +53,7 @@ function ChipBadge({ count }: { count: number }) {
           minWidth: 18,
           height: 18,
           borderRadius: 9,
-          backgroundColor: 'rgba(255,255,255,0.3)',
+          backgroundColor: 'rgba(255,255,255,0.35)',
           alignItems: 'center',
           justifyContent: 'center',
           paddingHorizontal: 4,
@@ -70,18 +72,11 @@ function getChipSelectionCount(
   switch (key) {
     case 'grade':
       return filters.grade.length;
-    case 'eta':
-      return filters.eta ? 1 : 0;
     case 'brand':
       return filters.brand.length;
     case 'priceRange':
-      return filters.priceRange[0] > bounds[0] || filters.priceRange[1] < bounds[1]
-        ? 1
-        : 0;
-    case 'availability':
-      return isDefaultAvailability(filters.availability)
-        ? 0
-        : filters.availability.length;
+      if (filters.pricePresets.length > 0) return filters.pricePresets.length;
+      return isPriceRangeActive(filters, bounds) ? 1 : 0;
     default:
       return 0;
   }
@@ -94,6 +89,7 @@ function FilterChipButton({
   count,
   onPress,
   onLongPress,
+  showChevron = true,
 }: {
   label: string;
   icon?: string;
@@ -101,6 +97,7 @@ function FilterChipButton({
   count: number;
   onPress: () => void;
   onLongPress?: () => void;
+  showChevron?: boolean;
 }) {
   return (
     <ScaledPressable
@@ -108,41 +105,41 @@ function FilterChipButton({
       onLongPress={onLongPress}
       scaleTo={0.96}
       style={{
-        height: 36,
+        height: CHIP_HEIGHT,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        borderRadius: FILTER_RADIUS.chip,
+        paddingHorizontal: 16,
+        borderRadius: FILTER_RADIUS.chip + 6,
         backgroundColor: isActive ? FILTER_COLORS.primary : FILTER_COLORS.surface,
         borderWidth: isActive ? 0 : 1,
         borderColor: FILTER_COLORS.border,
       }}>
-      {icon && (
+      {icon ? (
         <Ionicons
           name={icon as keyof typeof Ionicons.glyphMap}
-          size={14}
+          size={16}
           color={isActive ? '#FFFFFF' : FILTER_COLORS.textMuted}
-          style={{ marginRight: 4 }}
+          style={{ marginRight: 6 }}
         />
-      )}
+      ) : null}
       <Text
         style={{
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: '600',
           color: isActive ? '#FFFFFF' : FILTER_COLORS.text,
         }}
         numberOfLines={1}>
         {label}
       </Text>
-      {isActive && count > 0 && <ChipBadge count={count} />}
-      {!isActive && (
+      {isActive && count > 0 ? <ChipBadge count={count} /> : null}
+      {showChevron && !isActive ? (
         <Ionicons
           name="chevron-down"
-          size={12}
+          size={14}
           color={FILTER_COLORS.textMuted}
-          style={{ marginLeft: 2 }}
+          style={{ marginLeft: 4 }}
         />
-      )}
+      ) : null}
     </ScaledPressable>
   );
 }
@@ -155,6 +152,7 @@ export function FilterBar({
   onClearChip,
 }: FilterBarProps) {
   const totalActive = countActiveFilters(activeFilters, config.priceBounds);
+  // Fixed order: Brand → Grade → Price
   const visibleChips = FILTER_CHIPS.filter((chip) =>
     config.visibleChips.includes(chip.key),
   );
@@ -167,8 +165,18 @@ export function FilterBar({
         paddingHorizontal: FILTER_SPACING.lg,
         gap: FILTER_SPACING.sm,
         alignItems: 'center',
+        paddingVertical: 2,
       }}
-      style={{ flexGrow: 0, marginTop: FILTER_SPACING.lg }}>
+      style={{ flexGrow: 0, marginTop: FILTER_SPACING.md }}>
+      <FilterChipButton
+        label={totalActive > 0 ? `Filters` : 'Filters'}
+        icon="options-outline"
+        isActive={totalActive > 0}
+        count={totalActive}
+        onPress={onOpenAll}
+        showChevron={totalActive === 0}
+      />
+
       {visibleChips.map((chip) => {
         const count = getChipSelectionCount(
           chip.key,
@@ -176,7 +184,10 @@ export function FilterBar({
           config.priceBounds,
         );
         const isActive = count > 0;
-        const label = getChipLabel(chip.key, activeFilters, config);
+        // Active chips keep the category name + count badge (Brand (2))
+        const label = isActive
+          ? chip.label
+          : getChipLabel(chip.key, activeFilters, config);
 
         return (
           <FilterChipButton
@@ -190,14 +201,6 @@ export function FilterBar({
           />
         );
       })}
-
-      <FilterChipButton
-        label="Filter"
-        icon="options-outline"
-        isActive={totalActive > 0}
-        count={totalActive}
-        onPress={onOpenAll}
-      />
     </ScrollView>
   );
 }

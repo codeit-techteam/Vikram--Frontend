@@ -21,23 +21,22 @@ export const PriceSummary = memo(function PriceSummary({
   discount = 0,
   couponDiscount = 0,
   deliveryCharge,
-  platformFee = 0,
+  platformFee: _platformFee = 0,
   grandTotal,
   savings,
 }: PriceSummaryProps) {
   const rows = [
-    { label: 'Subtotal', value: formatINR(subtotal, false) },
-    { label: 'GST', value: formatINR(gst, false) },
-    ...(discount > 0 ? [{ label: 'Discount', value: `-${formatINR(discount, false)}`, green: true }] : []),
-    ...(couponDiscount > 0
-      ? [{ label: 'Coupon', value: `-${formatINR(couponDiscount, false)}`, green: true }]
-      : []),
+    { label: 'Items Total', value: formatINR(subtotal, false) },
     {
       label: 'Delivery Charges',
       value: deliveryCharge === 0 ? 'FREE' : formatINR(deliveryCharge, false),
       green: deliveryCharge === 0,
     },
-    ...(platformFee > 0 ? [{ label: 'Platform Fee', value: formatINR(platformFee, false) }] : []),
+    { label: 'GST', value: formatINR(gst, false) },
+    ...(discount > 0 ? [{ label: 'Discount', value: `-${formatINR(discount, false)}`, green: true }] : []),
+    ...(couponDiscount > 0
+      ? [{ label: 'Discount', value: `-${formatINR(couponDiscount, false)}`, green: true }]
+      : []),
   ];
 
   return (
@@ -51,7 +50,7 @@ export const PriceSummary = memo(function PriceSummary({
       }}>
       <View style={{ padding: 16 }}>
         <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 1, color: theme.textMuted }}>
-          PRICE BREAKDOWN
+          ORDER SUMMARY
         </Text>
         <View style={{ marginTop: 12, gap: 10 }}>
           {rows.map((row) => (

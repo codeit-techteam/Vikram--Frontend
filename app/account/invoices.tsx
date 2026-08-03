@@ -1,34 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
-  LayoutAnimation,
   Linking,
   Platform,
+  ScrollView,
   Text,
   TextInput,
   UIManager,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
 import { ScaledPressable } from '@components/ScaledPressable';
-import type { StringKey } from '@constants/strings';
+import { useInvoices } from '@hooks/useInvoices';
 import { useTranslation } from '@store/languageStore';
-import type { AccountInvoice, InvoiceStatus } from '@store/invoiceStore';
-import { useInvoiceStore } from '@store/invoiceStore';
-import { buildAccountInvoiceHtml } from '@utils/accountInvoiceHtml';
+import type {
+  AccountInvoiceListItem,
+  InvoiceListFilter,
+  InvoiceSort,
+} from '@/types/invoice';
+import {
+  formatInvoiceDate,
+  invoiceRouteParams,
+  isPaidPaymentStatus,
+  paymentStatusLabel,
+} from '@utils/invoiceAdapters';
 import { formatINR } from '@utils/formatCurrency';
+import { shareInvoicePdf } from '@hooks/useInvoices';
 import { safeGoBack } from '@utils/navigation';
 import { showToast } from '@utils/toast';
 
@@ -36,231 +40,246 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const FILTERS: { key: 'all' | 'unpaid' | 'paid' | 'overdue'; labelKey: StringKey }[] = [
-  { key: 'all', labelKey: 'all' },
-  { key: 'unpaid', labelKey: 'unpaid' },
-  { key: 'paid', labelKey: 'paidFilter' },
-  { key: 'overdue', labelKey: 'overdue' },
+const FILTERS: { key: InvoiceListFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'gst', label: 'GST Invoice' },
+  { key: 'retail', label: 'Retail Invoice' },
+  { key: 'paid', label: 'Paid' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'last_30_days', label: 'Last 30 Days' },
+  { key: 'this_year', label: 'This Year' },
 ];
-const STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
-  paid: { bg: '#E8F5E9', text: '#2E7D32' },
-  pending: { bg: '#FFF4D1', text: '#FEB623' },
-  overdue: { bg: '#FFEBEE', text: '#D32F2F' },
-};
+
+const SORTS: { key: InvoiceSort; label: string }[] = [
+  { key: 'newest', label: 'Newest' },
+  { key: 'oldest', label: 'Oldest' },
+  { key: 'highest_amount', label: 'Highest Amount' },
+  { key: 'lowest_amount', label: 'Lowest Amount' },
+];
 
 export default function InvoicesScreen() {
   const { t } = useTranslation();
-  const invoices = useInvoiceStore((st) => st.invoices);
-  const filter = useInvoiceStore((st) => st.filter);
-  const setFilter = useInvoiceStore((st) => st.setFilter);
   const [search, setSearch] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<InvoiceListFilter>('all');
+  const [sort, setSort] = useState<InvoiceSort>('newest');
 
-  const filtered = useMemo(() => {
-    let list = invoices;
-    if (filter !== 'all') {
-      const statusMap = { unpaid: 'pending', paid: 'paid', overdue: 'overdue' } as const;
-      list = list.filter((inv) => inv.status === statusMap[filter as keyof typeof statusMap]);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (inv) =>
-          inv.id.toLowerCase().includes(q) ||
-          inv.site.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [invoices, filter, search]);
-
-  const setFilterWithAnim = (f: typeof filter) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setFilter(f);
-  };
+  const {
+    invoices,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    loadMore,
+  } = useInvoices(search, filter, sort);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <BackHeader title={t('invoicesTitle')} onBack={() => safeGoBack('/(tabs)/account')} />
-      <View className="mb-4 px-4">
+
+      <View className="mb-2 px-4">
         <View className="flex-row items-center rounded-pill border border-border bg-surface px-4 py-2.5">
           <Ionicons name="search" size={18} color="#999999" />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder={t('searchInvoice')}
+            placeholder="Search invoice, order, product, date"
             placeholderTextColor="#999"
             className="ml-2 flex-1 text-sm text-text"
           />
         </View>
 
-        <View className="mt-3 flex-row gap-2">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-3"
+          contentContainerStyle={{ gap: 8 }}>
           {FILTERS.map((f) => (
             <ScaledPressable
               key={f.key}
-              onPress={() => setFilterWithAnim(f.key)}
+              onPress={() => setFilter(f.key)}
               className={`rounded-full px-3 py-1.5 ${
                 filter === f.key ? 'bg-primary' : 'border border-border bg-surface'
               }`}>
               <Text
-                className={`text-xs font-semibold capitalize ${
+                className={`text-xs font-semibold ${
                   filter === f.key ? 'text-onPrimary' : 'text-text-secondary'
                 }`}>
-                {t(f.labelKey)}
+                {f.label}
               </Text>
             </ScaledPressable>
           ))}
-        </View>
+        </ScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-2"
+          contentContainerStyle={{ gap: 8 }}>
+          {SORTS.map((s) => (
+            <ScaledPressable
+              key={s.key}
+              onPress={() => setSort(s.key)}
+              className={`rounded-full px-3 py-1.5 ${
+                sort === s.key ? 'bg-text' : 'border border-border bg-surface'
+              }`}>
+              <Text
+                className={`text-xs font-semibold ${
+                  sort === s.key ? 'text-white' : 'text-text-secondary'
+                }`}>
+                {s.label}
+              </Text>
+            </ScaledPressable>
+          ))}
+        </ScrollView>
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-        renderItem={({ item }) => (
-          <InvoiceCard
-            invoice={item}
-            expanded={expandedId === item.id}
-            onToggleTimeline={() => {
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setExpandedId((id) => (id === item.id ? null : item.id));
-            }}
-            t={t}
-          />
-        )}
-        ListFooterComponent={
-          <View className="mt-4 rounded-card bg-[#333333] p-5">
-            <Text className="text-base font-bold text-white">{t('syncGstTitle')}</Text>
-            <Text className="mt-2 text-xs leading-5 text-white/80">{t('syncGstSubtitle')}</Text>
-            <ScaledPressable
-              onPress={() => showToast(t('comingSoon'))}
-              className="mt-4 items-center rounded-pill border border-white py-2.5">
-              <Text className="text-sm font-bold text-primary">{t('connectErp')}</Text>
-            </ScaledPressable>
-          </View>
-        }
-      />
+      {isLoading && invoices.length === 0 ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#FEB623" />
+        </View>
+      ) : (
+        <FlatList
+          data={invoices}
+          keyExtractor={(item) => item.id || `${item.orderId}-${item.invoiceNumber}`}
+          contentContainerStyle={{ padding: 16, paddingBottom: 32, flexGrow: 1 }}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) loadMore();
+          }}
+          onEndReachedThreshold={0.4}
+          renderItem={({ item }) => <InvoiceCard invoice={item} />}
+          ListEmptyComponent={<EmptyInvoices />}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="items-center py-4">
+                <ActivityIndicator color="#FEB623" />
+              </View>
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
-function InvoiceCard({
-  invoice,
-  expanded,
-  onToggleTimeline,
-  t,
-}: {
-  invoice: AccountInvoice;
-  expanded: boolean;
-  onToggleTimeline: () => void;
-  t: (key: StringKey) => string;
-}) {
-  const colors = STATUS_COLORS[invoice.status];
-  const timelineHeight = useSharedValue(0);
+function EmptyInvoices() {
+  return (
+    <View className="flex-1 items-center justify-center px-6 py-16">
+      <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+        <Ionicons name="document-text-outline" size={32} color="#FEB623" />
+      </View>
+      <Text className="text-center text-lg font-bold text-text">No invoices available yet.</Text>
+      <Text className="mt-2 text-center text-sm leading-5 text-text-secondary">
+        Your completed orders will automatically appear here.
+      </Text>
+      <ScaledPressable
+        onPress={() => router.push('/(tabs)/catalog' as Href)}
+        className="mt-6 h-11 items-center justify-center rounded-pill bg-primary px-6">
+        <Text className="text-sm font-bold text-onPrimary">Browse Products</Text>
+      </ScaledPressable>
+    </View>
+  );
+}
 
-  const timelineStyle = useAnimatedStyle(() => ({
-    height: timelineHeight.value,
-    opacity: timelineHeight.value > 0 ? 1 : 0,
-  }));
+function InvoiceCard({ invoice }: { invoice: AccountInvoiceListItem }) {
+  const paid = isPaidPaymentStatus(invoice.paymentStatus);
+  const cancelled = invoice.status === 'CANCELLED';
+  const statusBg = cancelled ? '#FFEBEE' : paid ? '#E8F5E9' : '#FFF4D1';
+  const statusColor = cancelled ? '#D32F2F' : paid ? '#2E7D32' : '#FEB623';
+  const statusText = cancelled
+    ? 'Cancelled'
+    : paymentStatusLabel(invoice.paymentStatus);
 
-  const toggleTimeline = () => {
-    timelineHeight.value = withTiming(expanded ? 0 : 80, { duration: 250 });
-    onToggleTimeline();
+  const openDetails = async () => {
+    await Haptics.selectionAsync();
+    router.push(invoiceRouteParams(invoice.orderId, invoice.id) as Href);
   };
 
-  const downloadPdf = async () => {
+  const download = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const html = buildAccountInvoiceHtml(invoice);
-    const { uri } = await Print.printToFileAsync({ html });
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+    try {
+      const { uri, filename } = await shareInvoicePdf(invoice.orderId);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: filename,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        showToast('Invoice PDF ready');
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to download invoice');
     }
   };
 
-  const shareWhatsApp = async () => {
+  const share = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const text = encodeURIComponent(
-      `Invoice ${invoice.id} — ${formatINR(invoice.total, false)} from Bajriwala`,
+      `Invoice ${invoice.invoiceNumber} — Order ${invoice.orderNumber} — ${formatINR(invoice.grandTotal, false)} from Bajriwala`,
     );
-    Linking.openURL(`whatsapp://send?text=${text}`);
+    Linking.openURL(`whatsapp://send?text=${text}`).catch(() => undefined);
   };
 
   return (
     <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-bold text-primary">{invoice.id}</Text>
-        <View style={{ backgroundColor: colors.bg }} className="rounded px-2 py-0.5">
-          <Text style={{ color: colors.text }} className="text-[10px] font-bold uppercase">
-            {invoice.status === 'pending' ? 'PENDING' : invoice.status}
+      <View className="flex-row items-start justify-between gap-2">
+        <View className="flex-1">
+          <Text className="text-sm font-bold text-primary">
+            Invoice #{invoice.invoiceNumber}
+          </Text>
+          <Text className="mt-1 text-xs text-text-secondary">
+            Order {invoice.orderNumber}
           </Text>
         </View>
-      </View>
-      <Text className="mt-1 text-xs text-text-secondary">
-        {invoice.date} • {invoice.site}
-      </Text>
-
-      <Text className="mt-3 text-[10px] font-semibold uppercase text-text-secondary">
-        {t('totalAmountLabel')}
-      </Text>
-      <Text className="text-2xl font-bold text-text">{formatINR(invoice.total, false)}</Text>
-
-      <View className="mt-3 flex-row rounded-lg bg-background">
-        <GstCol label={`CGST (${invoice.cgst > 0 ? '9%' : '0%'})`} value={formatINR(invoice.cgst, false)} />
-        <View className="w-px bg-border" />
-        <GstCol label={`SGST (${invoice.sgst > 0 ? '9%' : '0%'})`} value={formatINR(invoice.sgst, false)} />
-        <View className="w-px bg-border" />
-        <GstCol
-          label={`IGST (${invoice.igst > 0 ? '18%' : '0%'})`}
-          value={formatINR(invoice.igst, false)}
-        />
-      </View>
-
-      <View className="mt-3 flex-row items-center">
-        <ScaledPressable
-          onPress={downloadPdf}
-          className="mr-2 flex-row items-center rounded-full border border-primary px-3 py-1.5">
-          <Ionicons name="download-outline" size={14} color="#FEB623" />
-          <Text className="ml-1 text-xs font-semibold text-primary">{t('pdf')}</Text>
-        </ScaledPressable>
-        <ScaledPressable
-          onPress={shareWhatsApp}
-          className="flex-row items-center rounded-full border border-success px-3 py-1.5">
-          <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-          <Text className="ml-1 text-xs font-semibold text-success">{t('whatsapp')}</Text>
-        </ScaledPressable>
-        <ScaledPressable onPress={toggleTimeline} className="ml-auto">
-          <Text className="text-xs font-semibold text-primary">{t('viewTimeline')}</Text>
-        </ScaledPressable>
-      </View>
-
-      <Animated.View style={[{ overflow: 'hidden' }, timelineStyle]} className="mt-2">
-        <View className="rounded-lg bg-background p-3">
-          <TimelineStep label={t('invoiceGenerated')} done />
-          <TimelineStep label={t('paymentReceived')} done={invoice.status === 'paid'} />
-          <TimelineStep label={t('gstFiled')} done={invoice.status === 'paid'} />
+        <View className="items-end gap-1">
+          <View style={{ backgroundColor: statusBg }} className="rounded px-2 py-0.5">
+            <Text style={{ color: statusColor }} className="text-[10px] font-bold uppercase">
+              {statusText}
+            </Text>
+          </View>
+          <View
+            className={`rounded px-2 py-0.5 ${
+              invoice.invoiceType === 'GST' ? 'bg-info/15' : 'bg-background'
+            }`}>
+            <Text
+              className={`text-[10px] font-bold ${
+                invoice.invoiceType === 'GST' ? 'text-info' : 'text-text-secondary'
+              }`}>
+              {invoice.invoiceType === 'GST' ? 'GST Invoice' : 'Retail Invoice'}
+            </Text>
+          </View>
         </View>
-      </Animated.View>
-    </View>
-  );
-}
+      </View>
 
-function GstCol({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-1 items-center py-3">
-      <Text className="text-[9px] text-text-secondary">{label}</Text>
-      <Text className="mt-1 text-xs font-bold text-text">{value}</Text>
-    </View>
-  );
-}
+      <Text className="mt-3 text-xs text-text-secondary">
+        {formatInvoiceDate(invoice.invoiceDate)}
+        {invoice.customerName ? ` · ${invoice.customerName}` : ''}
+      </Text>
 
-function TimelineStep({ label, done }: { label: string; done?: boolean }) {
-  return (
-    <View className="mb-1 flex-row items-center gap-2">
-      <Ionicons
-        name={done ? 'checkmark-circle' : 'ellipse-outline'}
-        size={14}
-        color={done ? '#2E7D32' : '#CCCCCC'}
-      />
-      <Text className="text-xs text-text-secondary">{label}</Text>
+      <Text className="mt-3 text-2xl font-bold text-text">
+        {formatINR(invoice.grandTotal, false)}
+      </Text>
+
+      <View className="mt-3 flex-row flex-wrap gap-2">
+        <ScaledPressable
+          onPress={openDetails}
+          className="flex-row items-center rounded-full border border-primary px-3 py-1.5">
+          <Ionicons name="eye-outline" size={14} color="#FEB623" />
+          <Text className="ml-1 text-xs font-semibold text-primary">View</Text>
+        </ScaledPressable>
+        <ScaledPressable
+          onPress={download}
+          className="flex-row items-center rounded-full border border-border px-3 py-1.5">
+          <Ionicons name="download-outline" size={14} color="#666666" />
+          <Text className="ml-1 text-xs font-semibold text-text">Download</Text>
+        </ScaledPressable>
+        <ScaledPressable
+          onPress={share}
+          className="flex-row items-center rounded-full border border-success px-3 py-1.5">
+          <Ionicons name="share-social-outline" size={14} color="#2E7D32" />
+          <Text className="ml-1 text-xs font-semibold text-success">Share</Text>
+        </ScaledPressable>
+      </View>
     </View>
   );
 }

@@ -1,14 +1,10 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { Text, View } from 'react-native';
 
-import { AvailabilitySection } from '@components/filter-sections/AvailabilitySection';
 import { BrandSection } from '@components/filter-sections/BrandSection';
-import { BulkPricingSection } from '@components/filter-sections/BulkPricingSection';
-import { DiscountSection } from '@components/filter-sections/DiscountSection';
-import { ETASection } from '@components/filter-sections/ETASection';
 import { GradeSection } from '@components/filter-sections/GradeSection';
 import { PriceRangeSection } from '@components/filter-sections/PriceRangeSection';
-import { SortSection } from '@components/filter-sections/SortSection';
+import { computeFacetCounts } from '@constants/filterOptions';
 import { FILTER_COLORS, FILTER_SPACING } from '@constants/filterTokens';
 import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
@@ -18,20 +14,17 @@ interface FilterSectionsProps {
   onChange: (draft: ActiveFilters) => void;
   config: CategoryFilterConfig;
   products: Product[];
+  categoryId?: string;
   visibleSections?: FilterKey[];
+  matchingCount?: number;
   /** Hide section titles — used in quick filter sheets where header already shows the title */
   compact?: boolean;
 }
 
 const SECTION_META: { key: FilterKey; title: string }[] = [
   { key: 'brand', title: 'BRAND' },
-  { key: 'priceRange', title: 'PRICE RANGE' },
-  { key: 'availability', title: 'AVAILABILITY' },
-  { key: 'eta', title: 'DELIVERY TIME' },
   { key: 'grade', title: 'GRADE' },
-  { key: 'discount', title: 'DISCOUNT' },
-  { key: 'bulkPricing', title: 'BULK PRICING' },
-  { key: 'sort', title: 'SORT BY' },
+  { key: 'priceRange', title: 'PRICE' },
 ];
 
 function FilterSectionBlock({
@@ -79,33 +72,53 @@ export function FilterSections({
   onChange,
   config,
   products,
+  categoryId = '',
   visibleSections,
+  matchingCount,
   compact,
 }: FilterSectionsProps) {
   const sections = visibleSections
     ? SECTION_META.filter((s) => visibleSections.includes(s.key))
     : SECTION_META.filter((s) => config.advancedSections.includes(s.key));
 
+  const brandCounts = useMemo(
+    () =>
+      categoryId
+        ? computeFacetCounts(products, draft, config, categoryId, 'brand')
+        : undefined,
+    [products, draft, config, categoryId],
+  );
+  const gradeCounts = useMemo(
+    () =>
+      categoryId
+        ? computeFacetCounts(products, draft, config, categoryId, 'grade')
+        : undefined,
+    [products, draft, config, categoryId],
+  );
+  const priceCounts = useMemo(
+    () =>
+      categoryId
+        ? computeFacetCounts(products, draft, config, categoryId, 'price')
+        : undefined,
+    [products, draft, config, categoryId],
+  );
+
   const sectionProps = { draft, onChange, config, products };
 
   const renderSection = (key: FilterKey) => {
     switch (key) {
       case 'grade':
-        return <GradeSection {...sectionProps} />;
-      case 'eta':
-        return <ETASection {...sectionProps} />;
+        return <GradeSection {...sectionProps} facetCounts={gradeCounts} />;
       case 'brand':
-        return <BrandSection {...sectionProps} />;
+        return <BrandSection {...sectionProps} facetCounts={brandCounts} />;
       case 'priceRange':
-        return <PriceRangeSection {...sectionProps} />;
-      case 'availability':
-        return <AvailabilitySection {...sectionProps} />;
-      case 'discount':
-        return <DiscountSection {...sectionProps} />;
-      case 'bulkPricing':
-        return <BulkPricingSection {...sectionProps} />;
-      case 'sort':
-        return <SortSection {...sectionProps} />;
+        return (
+          <PriceRangeSection
+            {...sectionProps}
+            facetCounts={priceCounts}
+            matchingCount={matchingCount}
+          />
+        );
       default:
         return null;
     }

@@ -1,5 +1,5 @@
 import type { CartItem } from '@store/cartStore';
-import { getLineTotal } from '@store/cartStore';
+import { getEffectivePrice, getLineTotal } from '@store/cartStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import {
   generateInvoiceId,
@@ -63,10 +63,17 @@ export function buildOrderFromCheckout(params: {
     productId: item.productId,
     cartLineId: item.id,
     quantityLabel: `${item.quantity} ${item.unit}`,
-    unitPriceLabel: `₹${item.unitPrice.toLocaleString('en-IN')}`,
+    unitPriceLabel: `₹${(item.appliedPrice ?? item.unitPrice).toLocaleString('en-IN')}`,
     total: getLineTotal(item),
     gstRate: 18,
     gstAmount: Math.round(getLineTotal(item) * 0.18),
+    quantity: item.quantity,
+    unitPrice: item.appliedPrice ?? getEffectivePrice(item),
+    bulkApplied: item.bulkApplied ?? false,
+    vehicleType: item.vehicleType,
+    estimatedWeight: item.estimatedWeightKg,
+    deliveryMode: item.deliveryMode,
+    eta: item.eta,
   }));
 
   return {
@@ -78,7 +85,7 @@ export function buildOrderFromCheckout(params: {
     unit: primary?.unit ?? 'unit',
     imageSearch: primary?.imageSearch ?? primary?.image ?? 'construction materials',
     badge: 'GET READY',
-    isBulkDiscount: false,
+    isBulkDiscount: params.items.some((i) => i.bulkApplied),
     items: params.items,
     materials,
     timeline: [

@@ -14,13 +14,23 @@ interface ProductPriceProps {
 
 export function ProductPrice({ pricing, size = 'sm', showUnit = false }: ProductPriceProps) {
   const isLg = size === 'lg';
+  const showUnitLabel = showUnit || pricing.hasBulk;
 
   return (
     <View style={styles.wrap}>
+      {pricing.hasBulk ? (
+        <Text style={[styles.startsFrom, isLg && styles.startsFromLg]}>Starts from</Text>
+      ) : null}
       <View style={styles.row}>
         <Text style={[styles.selling, isLg && styles.sellingLg]}>
           {formatINR(pricing.sellingPrice, false)}
-          {showUnit ? <ProductUnit unit={pricing.unit} variant="price" style={isLg ? styles.unitLg : styles.unit} /> : null}
+          {showUnitLabel ? (
+            <ProductUnit
+              unit={pricing.unit}
+              variant="price"
+              style={isLg ? styles.unitLg : styles.unit}
+            />
+          ) : null}
         </Text>
         {pricing.discountPercent > 0 ? (
           <>
@@ -40,6 +50,15 @@ export function ProductPrice({ pricing, size = 'sm', showUnit = false }: Product
 const styles = StyleSheet.create({
   wrap: {
     gap: 2,
+  },
+  startsFrom: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 0.2,
+  },
+  startsFromLg: {
+    fontSize: 12,
   },
   row: {
     flexDirection: 'row',

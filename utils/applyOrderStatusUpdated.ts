@@ -1,10 +1,15 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
-import type { Order, OrdersPage, OrderStatus, TimelineStep } from '@/types/order';
+import { INVOICE_DETAIL_QUERY_KEY, INVOICES_QUERY_KEY } from '@hooks/useInvoices';
+import type { Order, OrdersPage, OrderStatus } from '@/types/order';
 import { ACTIVE_ORDER_STATUSES } from '@constants/orderStatus';
 import type { OrderStatusUpdatedPayload } from '@services/realtime.socket';
 import { useOrdersSyncStore } from '@store/ordersSyncStore';
+import {
+  buildCustomerTimeline,
+  getCustomerStatusLabel,
+} from '@utils/customerOrderStatus';
 import {
   getOrderVersion,
   getStatusRank,
@@ -18,11 +23,11 @@ const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
   HUB_ASSIGNED: 'confirmed',
   AWAITING_HUB_ALLOCATION: 'pending',
   ACCEPTED_BY_HUB: 'processing',
-  PICKING: 'processing',
+  PICKING: 'packed',
   PROCESSING: 'processing',
   PACKED: 'packed',
   READY_FOR_DISPATCH: 'ready_for_dispatch',
-  DRIVER_ASSIGNED: 'ready_for_dispatch',
+  DRIVER_ASSIGNED: 'out_for_delivery',
   OUT_FOR_DELIVERY: 'out_for_delivery',
   DISPATCHED: 'out_for_delivery',
   DELIVERED: 'delivered',
@@ -54,104 +59,6 @@ function payloadVersion(payload: OrderStatusUpdatedPayload): number {
   return Number.isFinite(parsed) ? parsed : Date.now();
 }
 
-function mapPayloadTimeline(
-  payload: OrderStatusUpdatedPayload,
-  orderStatus: OrderStatus,
-): TimelineStep[] | null {
-  if (!payload.timeline?.length) return null;
-  const last = payload.timeline.length - 1;
-  const terminal = orderStatus === 'delivered' || orderStatus === 'cancelled';
-  return payload.timeline.map((entry, index) => ({
-    key: entry.id || `timeline-${index}`,
-    label: entry.message || entry.statusLabel || entry.status,
-    time: entry.createdAt
-      ? new Date(entry.createdAt).toLocaleString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : undefined,
-    done: terminal || index < last,
-    active: !terminal && index === last,
-  }));
-}
-
-function buildTimelineFromStatus(
-  status: OrderStatus,
-  previous?: TimelineStep[],
-  statusLabel?: string,
-): TimelineStep[] {
-  if (previous?.length) {
-    const label = statusLabel ?? status;
-    const alreadyHas = previous.some(
-      (step) => step.label.toLowerCase() === label.toLowerCase(),
-    );
-
-    if (alreadyHas) {
-      const idx = previous.findIndex(
-        (step) => step.label.toLowerCase() === label.toLowerCase(),
-      );
-      return previous.map((step, index) => ({
-        ...step,
-        done: index < idx || (index === idx && status === 'delivered'),
-        active: index === idx && status !== 'delivered' && status !== 'cancelled',
-      }));
-    }
-
-    const completed = previous.map((step) => ({
-      ...step,
-      done: true,
-      active: false,
-    }));
-
-    return [
-      ...completed,
-      {
-        key: `live-${status}-${Date.now()}`,
-        label,
-        time: new Date().toLocaleString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        done: status === 'delivered' || status === 'cancelled',
-        active: status !== 'delivered' && status !== 'cancelled',
-      },
-    ];
-  }
-
-  const steps = [
-    { key: 'placed', label: 'Order Placed' },
-    { key: 'confirmed', label: 'Confirmed' },
-    { key: 'packed', label: 'Packed' },
-    { key: 'dispatched', label: 'Dispatched' },
-    { key: 'out_for_delivery', label: 'Out For Delivery' },
-    { key: 'delivered', label: 'Delivered' },
-  ];
-
-  const statusIndex: Record<OrderStatus, number> = {
-    pending: 0,
-    confirmed: 1,
-    processing: 1,
-    packed: 2,
-    ready_for_dispatch: 3,
-    out_for_delivery: 4,
-    delivered: 5,
-    cancelled: 0,
-    payment_failed: 0,
-    refunded: 5,
-  };
-
-  const current = statusIndex[status];
-  return steps.map((step, index) => ({
-    ...step,
-    done: index < current || (status === 'delivered' && index <= current),
-    active: index === current && status !== 'delivered' && status !== 'cancelled',
-  }));
-}
-
 function findOrderInListCaches(
   queryClient: QueryClient,
   orderId: string,
@@ -171,12 +78,16 @@ function findOrderInListCaches(
 /** Build a usable order snapshot from a socket payload when no local copy exists. */
 function orderFromPayload(payload: OrderStatusUpdatedPayload, base?: Order): Order {
   const status = mapBackendStatus(payload.status);
-  const statusLabel = payload.statusLabel || base?.statusLabel;
+  const statusLabel = getCustomerStatusLabel(status);
   const version = payloadVersion(payload);
-  const fromPayload = mapPayloadTimeline(payload, status);
-  const timeline =
-    fromPayload ??
-    buildTimelineFromStatus(status, base?.timeline, statusLabel ?? status);
+  const deliveredAt =
+    status === 'delivered'
+      ? payload.updatedAt || base?.deliveredAt || new Date().toISOString()
+      : base?.deliveredAt;
+  const timeline = buildCustomerTimeline(status, {
+    createdAt: base?.createdAt ?? payload.updatedAt,
+    deliveredAt,
+  });
 
   const driver =
     payload.driver?.name || payload.vehicle?.registration
@@ -203,10 +114,7 @@ function orderFromPayload(payload: OrderStatusUpdatedPayload, base?: Order): Ord
     updatedAt: payload.updatedAt,
     version,
     expectedDelivery,
-    deliveredAt:
-      status === 'delivered'
-        ? payload.updatedAt || base?.deliveredAt || new Date().toISOString()
-        : base?.deliveredAt,
+    deliveredAt,
     products: base?.products ?? [],
     subtotal: base?.subtotal ?? 0,
     discount: base?.discount ?? 0,
@@ -237,6 +145,12 @@ function orderFromPayload(payload: OrderStatusUpdatedPayload, base?: Order): Ord
     timeline,
     deliveredEarly: base?.deliveredEarly,
     loyaltyPointsEarned: base?.loyaltyPointsEarned,
+    deliveryOtp: base?.deliveryOtp,
+    deliveryOtpGenerated:
+      payload.deliveryOtpGenerated ?? base?.deliveryOtpGenerated,
+    deliveryOtpVerified:
+      payload.deliveryOtpVerified ?? base?.deliveryOtpVerified,
+    driverReachedAt: payload.driverReachedAt ?? base?.driverReachedAt,
     tracking: ACTIVE_ORDER_STATUSES.includes(status)
       ? {
           currentStep: status,
@@ -283,10 +197,7 @@ export function patchOrderFromStatusEvent(
         ? order.status
         : nextStatus;
 
-  const statusLabel =
-    status === order.status && nextStatus !== status
-      ? order.statusLabel
-      : payload.statusLabel || order.statusLabel;
+  const statusLabel = getCustomerStatusLabel(status);
 
   const expectedDelivery =
     status === 'delivered' || status === 'cancelled'
@@ -304,10 +215,20 @@ export function patchOrderFromStatusEvent(
         }
       : order.driver;
 
-  const fromPayload = mapPayloadTimeline(payload, status);
-  const timeline =
-    fromPayload ??
-    buildTimelineFromStatus(status, order.timeline, statusLabel ?? status);
+  const deliveredAt =
+    status === 'delivered'
+      ? payload.updatedAt || order.deliveredAt || new Date().toISOString()
+      : order.deliveredAt;
+
+  const timeline = buildCustomerTimeline(status, {
+    createdAt: order.createdAt,
+    deliveredAt,
+  });
+
+  const deliveryOtpVerified =
+    payload.deliveryOtpVerified ?? order.deliveryOtpVerified;
+  const deliveryOtpGenerated =
+    payload.deliveryOtpGenerated ?? order.deliveryOtpGenerated;
 
   return normalizeDeliveredFields({
     ...order,
@@ -316,13 +237,14 @@ export function patchOrderFromStatusEvent(
     updatedAt: payload.updatedAt || order.updatedAt,
     version: Math.max(incomingVersion, currentVersion),
     expectedDelivery,
-    deliveredAt:
-      status === 'delivered'
-        ? payload.updatedAt || order.deliveredAt || new Date().toISOString()
-        : order.deliveredAt,
+    deliveredAt,
     driver,
     timeline,
     canCancel: status === 'pending' || status === 'confirmed' ? order.canCancel : false,
+    deliveryOtpGenerated,
+    deliveryOtpVerified,
+    deliveryOtp: deliveryOtpVerified ? null : order.deliveryOtp,
+    driverReachedAt: payload.driverReachedAt ?? order.driverReachedAt,
     tracking: ACTIVE_ORDER_STATUSES.includes(status)
       ? {
           currentStep: status,
@@ -371,7 +293,7 @@ export function applyOrderStatusUpdated(
       '[realtime] Customer Store Updated',
       payload.orderId,
       payload.status,
-      payload.statusLabel,
+      getCustomerStatusLabel(mapBackendStatus(payload.status)),
     );
   }
 
@@ -409,5 +331,15 @@ export function applyOrderStatusUpdated(
       queryKey: ['home'],
       refetchType: 'active',
     });
+    if (patched.status === 'delivered' || patched.status === 'refunded') {
+      void queryClient.invalidateQueries({
+        queryKey: [INVOICES_QUERY_KEY],
+        refetchType: 'active',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [INVOICE_DETAIL_QUERY_KEY],
+        refetchType: 'active',
+      });
+    }
   }, 300);
 }

@@ -1,118 +1,357 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
+import { DualRangeSlider } from '@components/filter-sections/DualRangeSlider';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { PRICE_PRESETS } from '@constants/filterOptions';
-import { FILTER_COLORS, FILTER_RADIUS } from '@constants/filterTokens';
+import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
 import type { FilterSectionProps } from '@/types/filter.types';
 
 function formatPrice(value: number) {
-  return `₹${value.toLocaleString('en-IN')}`;
+  return `₹${Math.round(value).toLocaleString('en-IN')}`;
 }
 
-export function PriceRangeSection({ draft, onChange, config }: FilterSectionProps) {
-  const [minBound, maxBound] = config.priceBounds;
-  const [minVal, maxVal] = draft.priceRange;
+function parsePriceInput(text: string): number | null {
+  const cleaned = text.replace(/[^\d]/g, '');
+  if (!cleaned) return null;
+  return Number(cleaned);
+}
 
-  const setMin = (value: number) => {
-    const clamped = Math.min(Math.round(value), maxVal - 100);
-    onChange({ ...draft, priceRange: [Math.max(minBound, clamped), maxVal] });
-  };
+function MatchingCount({ count }: { count: number }) {
+  const opacity = useSharedValue(1);
 
-  const setMax = (value: number) => {
-    const clamped = Math.max(Math.round(value), minVal + 100);
-    onChange({ ...draft, priceRange: [minVal, Math.min(maxBound, clamped)] });
-  };
+  useEffect(() => {
+    opacity.value = withSequence(
+      withTiming(0.35, { duration: 80 }),
+      withTiming(1, { duration: 120 }),
+    );
+  }, [count, opacity]);
 
-  const applyPreset = (range: [number, number]) => {
-    void Haptics.selectionAsync();
-    const min = Math.max(minBound, range[0]);
-    const max = Math.min(maxBound, range[1] === 100000 ? maxBound : range[1]);
-    onChange({ ...draft, priceRange: [min, max] });
-  };
-
-  const isPresetActive = (range: [number, number]) =>
-    draft.priceRange[0] === Math.max(minBound, range[0]) &&
-    draft.priceRange[1] === Math.min(maxBound, range[1] === 100000 ? maxBound : range[1]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <View>
-      <View
+    <Animated.Text
+      style={[
+        {
+          fontSize: 15,
+          fontWeight: '700',
+          color: FILTER_COLORS.text,
+        },
+        style,
+      ]}>
+      {count} {count === 1 ? 'Product' : 'Products'}
+    </Animated.Text>
+  );
+}
+
+/**
+ * Compact price filter: quick radios + min/max inputs + dual-thumb slider.
+ * Designed to fit on one screen without scrolling.
+ */
+export function PriceRangeSection({
+  draft,
+  onChange,
+  config,
+  facetCounts,
+  matchingCount,
+}: FilterSectionProps) {
+  const [minBound, maxBound] = config.priceBounds;
+  const [minVal, maxVal] = draft.priceRange;
+  const safeMin = Math.min(minVal, maxVal);
+  const safeMax = Math.max(minVal, maxVal);
+
+  const [minText, setMinText] = useState(String(Math.round(safeMin)));
+  const [maxText, setMaxText] = useState(String(Math.round(safeMax)));
+
+  useEffect(() => {
+    setMinText(String(Math.round(safeMin)));
+    setMaxText(String(Math.round(safeMax)));
+  }, [safeMin, safeMax]);
+
+  const applyCustomRange = useCallback(
+    (nextMin: number, nextMax: number) => {
+      const lo = Math.max(minBound, Math.min(nextMin, nextMax - 50));
+      const hi = Math.min(maxBound, Math.max(nextMax, nextMin + 50));
+      onChange({
+        ...draft,
+        pricePresets: [],
+        priceRange: [lo, hi],
+      });
+    },
+    [draft, onChange, minBound, maxBound],
+  );
+
+  const selectPreset = (presetId: string) => {
+    void Haptics.selectionAsync();
+    const exists = draft.pricePresets.includes(presetId) && draft.pricePresets.length === 1;
+    if (exists) {
+      onChange({
+        ...draft,
+        pricePresets: [],
+        priceRange: [...config.priceBounds] as [number, number],
+      });
+      return;
+    }
+    // Single-select radio behaviour for quick price
+    onChange({
+      ...draft,
+      pricePresets: [presetId],
+      priceRange: [...config.priceBounds] as [number, number],
+    });
+  };
+
+  const commitMinText = () => {
+    const parsed = parsePriceInput(minText);
+    if (parsed == null) {
+      setMinText(String(Math.round(safeMin)));
+      return;
+    }
+    applyCustomRange(parsed, safeMax);
+  };
+
+  const commitMaxText = () => {
+    const parsed = parsePriceInput(maxText);
+    if (parsed == null) {
+      setMaxText(String(Math.round(safeMax)));
+      return;
+    }
+    applyCustomRange(safeMin, parsed);
+  };
+
+  const customActive =
+    draft.pricePresets.length === 0 &&
+    (safeMin > minBound || safeMax < maxBound);
+
+  return (
+    <View style={{ gap: FILTER_SPACING.md }}>
+      <Text
         style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginBottom: 4,
+          fontSize: 12,
+          fontWeight: '700',
+          color: FILTER_COLORS.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
         }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: FILTER_COLORS.text }}>
-          {formatPrice(minVal)}
-        </Text>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: FILTER_COLORS.text }}>
-          {formatPrice(maxVal)}
-        </Text>
-      </View>
+        Quick Price
+      </Text>
 
-      <View style={{ marginBottom: 8 }}>
-        <Text style={{ fontSize: 11, color: FILTER_COLORS.textMuted, marginBottom: 4 }}>
-          Min price
-        </Text>
-        <Slider
-          minimumValue={minBound}
-          maximumValue={maxBound}
-          value={minVal}
-          onValueChange={setMin}
-          minimumTrackTintColor={FILTER_COLORS.border}
-          maximumTrackTintColor={FILTER_COLORS.border}
-          thumbTintColor={FILTER_COLORS.surface}
-          style={{ height: 40 }}
-        />
-      </View>
-
-      <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 11, color: FILTER_COLORS.textMuted, marginBottom: 4 }}>
-          Max price
-        </Text>
-        <Slider
-          minimumValue={minBound}
-          maximumValue={maxBound}
-          value={maxVal}
-          onValueChange={setMax}
-          minimumTrackTintColor={FILTER_COLORS.primary}
-          maximumTrackTintColor={FILTER_COLORS.border}
-          thumbTintColor={FILTER_COLORS.surface}
-          style={{ height: 40 }}
-        />
-      </View>
-
-      <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-        {PRICE_PRESETS.map((preset) => {
-          const active = isPresetActive(preset.range);
+      <View style={{ gap: 2 }}>
+        {config.pricePresets.map((preset) => {
+          const selected = draft.pricePresets.includes(preset.id);
+          const count = facetCounts?.[preset.id];
           return (
             <ScaledPressable
-              key={preset.label}
-              onPress={() => applyPreset(preset.range)}
-              scaleTo={0.95}
+              key={preset.id}
+              onPress={() => selectPreset(preset.id)}
+              scaleTo={0.98}
               style={{
-                height: 36,
-                paddingHorizontal: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                minHeight: 44,
+                paddingVertical: 8,
+                paddingHorizontal: 4,
                 borderRadius: FILTER_RADIUS.input,
-                backgroundColor: active ? FILTER_COLORS.primaryLight : '#F5F5F5',
-                borderWidth: active ? 1.5 : 0,
-                borderColor: FILTER_COLORS.primaryBorder,
-                justifyContent: 'center',
+                backgroundColor: selected ? FILTER_COLORS.primaryLight : 'transparent',
               }}>
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  borderWidth: 2,
+                  borderColor: selected ? FILTER_COLORS.primary : FILTER_COLORS.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}>
+                {selected ? (
+                  <View
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
+                      backgroundColor: FILTER_COLORS.primary,
+                    }}
+                  />
+                ) : null}
+              </View>
               <Text
                 style={{
-                  fontSize: 12,
-                  fontWeight: '600',
-                  color: active ? FILTER_COLORS.primary : '#333333',
+                  flex: 1,
+                  fontSize: 15,
+                  fontWeight: selected ? '600' : '500',
+                  color: FILTER_COLORS.text,
                 }}>
                 {preset.label}
               </Text>
+              {typeof count === 'number' ? (
+                <Text style={{ fontSize: 13, color: FILTER_COLORS.textMuted }}>
+                  ({count})
+                </Text>
+              ) : null}
             </ScaledPressable>
           );
         })}
       </View>
+
+      <View
+        style={{
+          height: 1,
+          backgroundColor: FILTER_COLORS.divider,
+          marginVertical: 2,
+        }}
+      />
+
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: '700',
+          color: FILTER_COLORS.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}>
+        Custom Range
+      </Text>
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              color: FILTER_COLORS.textMuted,
+              marginBottom: 6,
+              fontWeight: '500',
+            }}>
+            Min
+          </Text>
+          <View
+            style={{
+              height: 44,
+              borderRadius: FILTER_RADIUS.input,
+              borderWidth: 1.5,
+              borderColor: customActive ? FILTER_COLORS.primary : FILTER_COLORS.border,
+              backgroundColor: FILTER_COLORS.surfaceMuted,
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+            }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: FILTER_COLORS.text }}>
+              ₹
+            </Text>
+            <BottomSheetTextInput
+              value={minText}
+              onChangeText={setMinText}
+              onBlur={commitMinText}
+              onSubmitEditing={commitMinText}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              style={{
+                flex: 1,
+                marginLeft: 4,
+                fontSize: 15,
+                fontWeight: '600',
+                color: FILTER_COLORS.text,
+                paddingVertical: 0,
+              }}
+            />
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              color: FILTER_COLORS.textMuted,
+              marginBottom: 6,
+              fontWeight: '500',
+            }}>
+            Max
+          </Text>
+          <View
+            style={{
+              height: 44,
+              borderRadius: FILTER_RADIUS.input,
+              borderWidth: 1.5,
+              borderColor: customActive ? FILTER_COLORS.primary : FILTER_COLORS.border,
+              backgroundColor: FILTER_COLORS.surfaceMuted,
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+            }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: FILTER_COLORS.text }}>
+              ₹
+            </Text>
+            <BottomSheetTextInput
+              value={maxText}
+              onChangeText={setMaxText}
+              onBlur={commitMaxText}
+              onSubmitEditing={commitMaxText}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              style={{
+                flex: 1,
+                marginLeft: 4,
+                fontSize: 15,
+                fontWeight: '600',
+                color: FILTER_COLORS.text,
+                paddingVertical: 0,
+              }}
+            />
+          </View>
+        </View>
+      </View>
+
+      <DualRangeSlider
+        minBound={minBound}
+        maxBound={maxBound}
+        low={Math.min(Math.max(safeMin, minBound), maxBound)}
+        high={Math.min(Math.max(safeMax, minBound), maxBound)}
+        onChange={applyCustomRange}
+      />
+
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: -4,
+        }}>
+        <Text style={{ fontSize: 12, color: FILTER_COLORS.textMuted }}>
+          {formatPrice(minBound)}
+        </Text>
+        <Text style={{ fontSize: 12, color: FILTER_COLORS.textMuted }}>
+          {formatPrice(maxBound)}
+        </Text>
+      </View>
+
+      {typeof matchingCount === 'number' ? (
+        <View
+          style={{
+            marginTop: 4,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderRadius: FILTER_RADIUS.card,
+            backgroundColor: FILTER_COLORS.surfaceMuted,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: FILTER_COLORS.textMuted,
+            }}>
+            Products Matching
+          </Text>
+          <MatchingCount count={matchingCount} />
+        </View>
+      ) : null}
     </View>
   );
 }

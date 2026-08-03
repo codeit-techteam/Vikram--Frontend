@@ -209,12 +209,6 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
           <ProductBulkPrice pricing={pricing} variant="box" compact />
         </ScaledPressable>
 
-        {minOrder > 1 ? (
-          <Text style={styles.minOrder}>
-            Minimum {minOrder} {product.unit}
-          </Text>
-        ) : null}
-
         <View style={styles.actions}>
           <QuantityControls
             quantity={cartQty}
@@ -326,12 +320,6 @@ const styles = StyleSheet.create({
     color: '#888',
     fontWeight: '500',
     marginTop: 2,
-  },
-  minOrder: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8B6914',
   },
   actions: {
     marginTop: 12,

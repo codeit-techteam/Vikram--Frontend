@@ -31,7 +31,7 @@ export function useAddToCart() {
         typeof product.minOrder === 'number' && product.minOrder >= 1
           ? Math.floor(product.minOrder)
           : 1;
-      const clampedQty = Math.max(minOrder, Math.floor(quantity) || minOrder);
+      const clampedQty = Math.max(minOrder, Math.max(1, Math.floor(quantity) || 1));
 
       const runAdd = async () => {
         setButtonState('loading');

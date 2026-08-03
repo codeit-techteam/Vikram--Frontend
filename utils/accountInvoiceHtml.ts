@@ -1,7 +1,8 @@
-import type { AccountInvoice } from '@store/invoiceStore';
+import type { AccountInvoiceListItem } from '@/types/invoice';
 import { formatINR } from '@utils/formatCurrency';
+import { formatInvoiceDate, paymentStatusLabel } from '@utils/invoiceAdapters';
 
-export function buildAccountInvoiceHtml(invoice: AccountInvoice): string {
+export function buildAccountInvoiceHtml(invoice: AccountInvoiceListItem): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -9,19 +10,18 @@ export function buildAccountInvoiceHtml(invoice: AccountInvoice): string {
 <style>body{font-family:Arial,sans-serif;margin:24px}h1{color:#FEB623}table{width:100%;border-collapse:collapse;margin-top:16px}td,th{border:1px solid #ddd;padding:8px}</style>
 </head>
 <body>
-  <h1>${invoice.id}</h1>
-  <p>Date: ${invoice.date} | Site: ${invoice.site}</p>
-  <p>Status: ${invoice.status.toUpperCase()}</p>
+  <h1>Invoice #${invoice.invoiceNumber}</h1>
+  <p>Order: ${invoice.orderNumber}</p>
+  <p>Date: ${formatInvoiceDate(invoice.invoiceDate)} | Customer: ${invoice.customerName}</p>
+  <p>Type: ${invoice.invoiceType === 'GST' ? 'GST Invoice' : 'Retail Invoice'}</p>
+  <p>Status: ${paymentStatusLabel(invoice.paymentStatus)}</p>
   <table>
-    <tr><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th></tr>
+    <tr><th>Total</th></tr>
     <tr>
-      <td>${formatINR(invoice.cgst, false)}</td>
-      <td>${formatINR(invoice.sgst, false)}</td>
-      <td>${formatINR(invoice.igst, false)}</td>
-      <td><strong>${formatINR(invoice.total, false)}</strong></td>
+      <td><strong>${formatINR(invoice.grandTotal, false)}</strong></td>
     </tr>
   </table>
-  <p style="margin-top:24px;font-size:12px;color:#666">Bajriwala — GST Compliant Invoice</p>
+  <p style="margin-top:24px;font-size:12px;color:#666">Bajriwala — Invoice</p>
 </body>
 </html>`;
 }

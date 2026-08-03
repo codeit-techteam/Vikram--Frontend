@@ -257,14 +257,9 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           onPress: () => {},
         },
         {
-          icon: 'shield-checkmark-outline',
-          label: t('privacySecurity'),
-          onPress: () => navigateAndClose('/account/privacy'),
-        },
-        {
-          icon: 'document-outline',
+          icon: 'reader-outline',
           label: t('drawerTerms'),
-          onPress: () => navigateAndClose('/(tabs)/account'),
+          onPress: () => navigateAndClose('/account/terms' as Href),
         },
       ],
     },

@@ -4,14 +4,14 @@ import Animated, { FadeInLeft, FadeOutLeft } from 'react-native-reanimated';
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
   formatPriceRangeLabel,
-  isDefaultAvailability,
+  getPricePresetLabel,
   isPriceRangeActive,
   SORT_OPTIONS,
 } from '@constants/filterOptions';
 import { FILTER_COLORS, FILTER_SPACING } from '@constants/filterTokens';
 import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
 
-export type RemovableFilterKey = FilterKey | 'search';
+export type RemovableFilterKey = FilterKey | 'search' | 'pricePresets';
 
 interface ActiveFilterSummaryBarProps {
   activeFilters: ActiveFilters;
@@ -31,15 +31,20 @@ function buildTags(filters: ActiveFilters, config: CategoryFilterConfig): Filter
   }
 
   for (const brand of filters.brand) {
-    tags.push({ key: 'brand', label: `Brand: ${brand}`, value: brand });
+    tags.push({ key: 'brand', label: brand, value: brand });
   }
   for (const grade of filters.grade) {
     tags.push({ key: 'grade', label: grade, value: grade });
   }
-  if (filters.eta) {
-    tags.push({ key: 'eta', label: filters.eta });
-  }
-  if (isPriceRangeActive(filters, config.priceBounds)) {
+  if (filters.pricePresets.length > 0) {
+    for (const presetId of filters.pricePresets) {
+      tags.push({
+        key: 'pricePresets',
+        label: getPricePresetLabel(presetId, config),
+        value: presetId,
+      });
+    }
+  } else if (isPriceRangeActive(filters, config.priceBounds)) {
     tags.push({
       key: 'priceRange',
       label: formatPriceRangeLabel(
@@ -48,11 +53,6 @@ function buildTags(filters: ActiveFilters, config: CategoryFilterConfig): Filter
         config.priceBounds,
       ),
     });
-  }
-  if (!isDefaultAvailability(filters.availability)) {
-    for (const avail of filters.availability) {
-      tags.push({ key: 'availability', label: avail, value: avail });
-    }
   }
   if (filters.discount != null) {
     tags.push({ key: 'discount', label: `${filters.discount}%+ OFF` });
@@ -97,19 +97,21 @@ export function ActiveFilterSummaryBar({
         }}>
         {tags.map((tag) => (
           <Animated.View
-            key={`${tag.key}-${tag.label}`}
+            key={`${tag.key}-${tag.value ?? tag.label}`}
             entering={FadeInLeft.duration(200)}
             exiting={FadeOutLeft.duration(150)}>
             <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                height: 28,
-                paddingHorizontal: 10,
+                height: 32,
+                paddingHorizontal: 12,
                 borderRadius: 16,
                 backgroundColor: FILTER_COLORS.primaryLight,
+                borderWidth: 1,
+                borderColor: 'rgba(254,182,35,0.35)',
               }}>
-              <Text style={{ fontSize: 13, color: FILTER_COLORS.primary, fontWeight: '500' }}>
+              <Text style={{ fontSize: 13, color: FILTER_COLORS.text, fontWeight: '600' }}>
                 {tag.label}
               </Text>
               <ScaledPressable
@@ -124,9 +126,9 @@ export function ActiveFilterSummaryBar({
           </Animated.View>
         ))}
 
-        <ScaledPressable onPress={onClearAll}>
-          <Text style={{ fontSize: 13, color: FILTER_COLORS.primary, fontWeight: '600' }}>
-            Clear all
+        <ScaledPressable onPress={onClearAll} hitSlop={6}>
+          <Text style={{ fontSize: 13, color: FILTER_COLORS.primary, fontWeight: '700' }}>
+            Clear All
           </Text>
         </ScaledPressable>
       </Animated.ScrollView>

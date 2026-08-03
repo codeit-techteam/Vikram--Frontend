@@ -1,5 +1,6 @@
 import { ACTIVE_ORDER_STATUSES } from '@constants/orderStatus';
 import type { Order, OrderStatus } from '@/types/order';
+import { buildCustomerTimeline, getCustomerStatusLabel } from '@utils/customerOrderStatus';
 
 const STATUS_RANK: Record<OrderStatus, number> = {
   pending: 10,
@@ -115,29 +116,37 @@ export function mergeOrderState(
 
 /** Delivered orders must not surface ETA / track / active expected delivery. */
 export function normalizeDeliveredFields(order: Order): Order {
+  const statusLabel = getCustomerStatusLabel(order.status);
+  const timeline = buildCustomerTimeline(order.status, {
+    createdAt: order.createdAt,
+    deliveredAt: order.deliveredAt ?? order.updatedAt,
+  });
+
   if (order.status !== 'delivered' && order.status !== 'refunded') {
     return {
       ...order,
+      statusLabel,
+      timeline,
       tracking: ACTIVE_ORDER_STATUSES.includes(order.status)
-        ? order.tracking
+        ? {
+            ...(order.tracking ?? { currentStep: order.status, steps: timeline }),
+            currentStep: order.status,
+            steps: timeline,
+          }
         : undefined,
     };
   }
 
-  const timeline = order.timeline?.map((step, index, arr) => ({
-    ...step,
-    done: true,
-    active: false,
-    // Keep last step visually complete (no pulse) when delivered.
-    ...(index === arr.length - 1 ? { done: true, active: false } : null),
-  }));
-
   return {
     ...order,
+    statusLabel,
     expectedDelivery: undefined,
     tracking: undefined,
     canCancel: false,
-    timeline: timeline ?? order.timeline,
+    timeline,
     deliveredAt: order.deliveredAt ?? order.updatedAt,
+    deliveryOtp: null,
+    deliveryOtpGenerated: false,
+    deliveryOtpVerified: true,
   };
 }

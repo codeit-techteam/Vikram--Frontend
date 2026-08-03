@@ -191,32 +191,30 @@ export const OrderProducts = memo(function OrderProducts({
                 {product.brand}
               </Text>
             ) : null}
-            {product.sku ? (
-              <Text style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
-                SKU: {product.sku}
-              </Text>
-            ) : null}
             {product.variant ? (
               <Text style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
                 {product.variant}
               </Text>
             ) : null}
-            <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6 }}>
-              Qty: {product.quantity} {product.unit}
-            </Text>
             <View
               style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
-                marginTop: 8,
+                alignItems: 'flex-end',
+                marginTop: 10,
               }}>
-              <Text style={{ fontSize: 12, color: theme.textMuted }}>
-                Unit: ₹{product.unitPrice.toLocaleString('en-IN')}
-                {product.gst != null ? ` · GST ${product.gst}%` : ''}
+              <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                Qty: {product.quantity}
+                {product.unit ? ` ${product.unit}` : ''}
               </Text>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primary }}>
-                ₹{product.totalPrice.toLocaleString('en-IN')}
-              </Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 12, color: theme.textMuted }}>
+                  ₹{product.unitPrice.toLocaleString('en-IN')} each
+                </Text>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary, marginTop: 2 }}>
+                  ₹{product.totalPrice.toLocaleString('en-IN')}
+                </Text>
+              </View>
             </View>
           </View>
         </View>

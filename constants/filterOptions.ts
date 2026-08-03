@@ -5,38 +5,24 @@ import type {
   CategoryFilterConfig,
   FilterChip,
   FilterKey,
+  PricePresetOption,
   QuickFilterKey,
   SortOption,
 } from '@/types/filter.types';
 
+/** Quick chips — always Brand → Grade → Price (Filters button is separate). */
 export const FILTER_CHIPS: FilterChip[] = [
-  { key: 'grade', label: 'Grade', icon: 'layers-outline' },
-  { key: 'eta', label: 'ETA', icon: 'time-outline' },
   { key: 'brand', label: 'Brand', icon: 'business-outline' },
+  { key: 'grade', label: 'Grade', icon: 'layers-outline' },
   { key: 'priceRange', label: 'Price', icon: 'pricetag-outline' },
-  { key: 'availability', label: 'Availability', icon: 'checkmark-circle-outline' },
 ];
 
-export const ETA_OPTIONS = [
-  'Under 30 mins',
-  '30–60 mins',
-  'Today',
-  'Tomorrow',
-] as const;
-
-export const AVAILABILITY_OPTIONS = [
-  'In Stock',
-  'Limited Stock',
-  'Out of Stock',
-] as const;
-
-export const DEFAULT_AVAILABILITY: string[] = ['In Stock'];
-
-export const PRICE_PRESETS: { label: string; range: [number, number] }[] = [
-  { label: 'Under ₹500', range: [0, 500] },
-  { label: '₹500–₹1000', range: [500, 1000] },
-  { label: '₹1000–₹5000', range: [1000, 5000] },
-  { label: '₹5000+', range: [5000, 100000] },
+/** Absolute retail-style presets shown in the Price section. */
+export const ABSOLUTE_PRICE_PRESETS: PricePresetOption[] = [
+  { id: 'under-500', label: 'Under ₹500', range: [0, 500] },
+  { id: '500-1000', label: '₹500–₹1000', range: [500, 1000] },
+  { id: '1000-5000', label: '₹1000–₹5000', range: [1000, 5000] },
+  { id: '5000-plus', label: 'Above ₹5000', range: [5000, Number.POSITIVE_INFINITY] },
 ];
 
 export const DISCOUNT_OPTIONS: { label: string; value: number | null }[] = [
@@ -58,9 +44,35 @@ export const SORT_OPTIONS: { key: SortOption; label: string }[] = [
   { key: 'rating', label: 'Customer Rating' },
 ];
 
+/** @deprecated Use ABSOLUTE_PRICE_PRESETS */
+export const PRICE_PRESETS = ABSOLUTE_PRICE_PRESETS.map((p) => ({
+  label: p.label,
+  range: [
+    p.range[0],
+    p.range[1] === Number.POSITIVE_INFINITY ? 100000 : p.range[1],
+  ] as [number, number],
+}));
+
+/**
+ * Context-aware grade catalogs. Only grades present in the current product
+ * list are shown; these act as ordered fallbacks / preferred labels.
+ */
 const GRADES_BY_CATEGORY: Record<string, string[]> = {
-  cement: ['OPC 43', 'OPC 53', 'PPC', 'OPC43', 'OPC53'],
-  steel: ['Fe415', 'Fe500', 'Fe550', 'Fe600'],
+  cement: ['PPC', 'OPC 43', 'OPC 53', 'Premium', 'Industrial'],
+  steel: [
+    'Fe 415',
+    'Fe 500',
+    'Fe 550',
+    'Fe 600',
+    '8mm',
+    '10mm',
+    '12mm',
+    '16mm',
+    '20mm',
+  ],
+  paint: ['1L', '4L', '10L'],
+  paints: ['1L', '4L', '10L'],
+  adhesives: ['250ml', '500ml', '1L', '4L'],
   sand: ['Zone 1', 'Zone 2', 'Fine'],
   bricks: ['Class A', 'Class B', 'Grade 2'],
   'grey-fill-sand': ['G1', 'G2', 'G3', 'Premium'],
@@ -68,27 +80,11 @@ const GRADES_BY_CATEGORY: Record<string, string[]> = {
   aggregates: ['Standard', 'Fine', 'Coarse'],
 };
 
-/** Quick chips per category. Advanced Filter sheet still includes relevant sections. */
-const CHIPS_BY_CATEGORY: Record<string, QuickFilterKey[]> = {
-  cement: ['brand', 'priceRange', 'availability'],
-  steel: ['brand', 'grade', 'priceRange', 'eta'],
-  bricks: ['brand', 'priceRange', 'availability'],
-  sand: ['brand', 'priceRange', 'availability'],
-  'grey-fill-sand': ['brand', 'priceRange', 'availability'],
-  'stone-chips': ['brand', 'grade', 'priceRange'],
-  aggregates: ['brand', 'grade', 'priceRange'],
-  adhesives: ['brand', 'priceRange', 'availability'],
-  'wall-repair': ['brand', 'priceRange', 'availability'],
-  waterproofing: ['brand', 'priceRange', 'availability'],
-  'quick-repair': ['brand', 'priceRange', 'availability'],
-  putty: ['brand', 'priceRange', 'availability'],
-};
+/** Always Brand → Grade → Price on the listing bar. */
+const DEFAULT_CHIPS: QuickFilterKey[] = ['brand', 'grade', 'priceRange'];
 
-const DEFAULT_CHIPS: QuickFilterKey[] = [
-  'brand',
-  'priceRange',
-  'availability',
-];
+/** Full-sheet sections — Brand, Grade, Price only. */
+const DEFAULT_SECTIONS: FilterKey[] = ['brand', 'grade', 'priceRange'];
 
 const KNOWN_BRANDS = [
   'UltraTech',
@@ -100,6 +96,7 @@ const KNOWN_BRANDS = [
   'Birla White',
   'Birla',
   'TATA',
+  'TATA Tiscon',
   'JSW',
   'Jindal',
   'Fevicol',
@@ -117,48 +114,12 @@ function normalizeCategoryKey(categoryId: string): string {
   return (categoryId || '').toLowerCase().trim();
 }
 
-export function getVisibleChips(categoryId: string): QuickFilterKey[] {
-  const key = normalizeCategoryKey(categoryId);
-  return CHIPS_BY_CATEGORY[key] ?? DEFAULT_CHIPS;
+export function getVisibleChips(_categoryId: string): QuickFilterKey[] {
+  return [...DEFAULT_CHIPS];
 }
 
-export function getAdvancedSections(categoryId: string): FilterKey[] {
-  const chips = getVisibleChips(categoryId);
-  const sections: FilterKey[] = [];
-  const order: FilterKey[] = [
-    'brand',
-    'priceRange',
-    'availability',
-    'eta',
-    'grade',
-    'discount',
-    'bulkPricing',
-    'sort',
-  ];
-
-  for (const key of order) {
-    if (key === 'discount' || key === 'bulkPricing' || key === 'sort') {
-      sections.push(key);
-      continue;
-    }
-    if (chips.includes(key as QuickFilterKey)) {
-      sections.push(key);
-      continue;
-    }
-    // Include grade/eta in advanced when category has meaningful options
-    if (key === 'grade') {
-      const grades = GRADES_BY_CATEGORY[normalizeCategoryKey(categoryId)];
-      if (grades && grades.length > 0 && grades[0] !== 'Standard') {
-        sections.push(key);
-      }
-    }
-    if (key === 'eta' && chips.includes('eta')) {
-      sections.push(key);
-    }
-  }
-
-  // Ensure unique while preserving order
-  return [...new Set(sections)];
+export function getAdvancedSections(_categoryId: string): FilterKey[] {
+  return [...DEFAULT_SECTIONS];
 }
 
 export function extractDeliveryMinutes(product: Product): number | null {
@@ -182,45 +143,6 @@ export function extractDeliveryMinutes(product: Product): number | null {
   return null;
 }
 
-export function extractEtaBucket(product: Product): string | null {
-  const minutes = extractDeliveryMinutes(product);
-  if (minutes != null) {
-    if (minutes <= 30) return 'Under 30 mins';
-    if (minutes <= 60) return '30–60 mins';
-    if (minutes <= 24 * 60) return 'Today';
-    if (minutes <= 48 * 60) return 'Tomorrow';
-  }
-
-  const text = [product.deliveryMessage, product.deliveryETA, product.badge]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  if (!text) return null;
-  if (text.includes('tomorrow') || text.includes('next day')) return 'Tomorrow';
-  if (
-    text.includes('same day') ||
-    text.includes('today') ||
-    text.includes('2-3') ||
-    text.includes('2–3')
-  ) {
-    return text.includes('2-3') || text.includes('2–3') ? 'Tomorrow' : 'Today';
-  }
-  if (text.includes('90 min') || text.includes('60 min') || text.includes('1 hour')) {
-    return '30–60 mins';
-  }
-  if (text.includes('30 min') || text.includes('20 min') || text.includes('15 min')) {
-    return 'Under 30 mins';
-  }
-
-  return null;
-}
-
-/** @deprecated Use extractEtaBucket */
-export function extractEtaFromBadge(badge: string): string | null {
-  return extractEtaBucket({ badge } as Product);
-}
-
 export function extractBrandFromProduct(product: Product, _categoryId?: string): string {
   const explicit = product.brand?.trim();
   if (explicit) return explicit;
@@ -237,21 +159,17 @@ export function normalizeGrade(productGrade: string, categoryId: string): string
   const raw = (productGrade || '').trim();
   if (!raw) return '';
 
-  const grades = GRADES_BY_CATEGORY[normalizeCategoryKey(categoryId)] ?? [];
+  const key = normalizeCategoryKey(categoryId);
+  const grades = GRADES_BY_CATEGORY[key] ?? [];
+
   const direct = grades.find(
     (g) =>
       g.toLowerCase() === raw.toLowerCase() ||
       raw.toLowerCase().includes(g.toLowerCase()) ||
       g.toLowerCase().includes(raw.toLowerCase()),
   );
-  if (direct) {
-    // Prefer canonical display form
-    if (direct === 'OPC43') return 'OPC 43';
-    if (direct === 'OPC53') return 'OPC 53';
-    return direct;
-  }
+  if (direct) return direct;
 
-  const key = normalizeCategoryKey(categoryId);
   if (key === 'cement') {
     if (raw === '53' || /opc\s*53/i.test(raw)) return 'OPC 53';
     if (raw === '43' || /opc\s*43/i.test(raw)) return 'OPC 43';
@@ -259,30 +177,22 @@ export function normalizeGrade(productGrade: string, categoryId: string): string
   }
 
   if (key === 'steel') {
+    const mm = raw.match(/(\d+)\s*mm/i);
+    if (mm) return `${mm[1]}mm`;
     const fe = raw.match(/fe\s*(\d+)/i);
-    if (fe) return `Fe${fe[1]}`;
+    if (fe) return `Fe ${fe[1]}`;
+  }
+
+  if (key === 'paint' || key === 'paints' || key === 'adhesives') {
+    const vol = raw.match(/(\d+(?:\.\d+)?)\s*(ml|l|litre|liter)s?/i);
+    if (vol) {
+      const n = vol[1];
+      const unit = vol[2].toLowerCase().startsWith('m') ? 'ml' : 'L';
+      return `${n}${unit}`;
+    }
   }
 
   return raw;
-}
-
-export function statusToAvailability(product: Product): string {
-  const status = (product.status || '').toUpperCase();
-  const stock = product.stockLeft ?? product.availableStock;
-
-  if (
-    status.includes('OUT') ||
-    product.isAvailable === false ||
-    (stock != null && stock <= 0)
-  ) {
-    return 'Out of Stock';
-  }
-
-  if (status.includes('LIMITED') || (stock != null && stock > 0 && stock <= 10)) {
-    return 'Limited Stock';
-  }
-
-  return 'In Stock';
 }
 
 export function computePriceBounds(products: Product[]): [number, number] {
@@ -292,6 +202,23 @@ export function computePriceBounds(products: Product[]): [number, number] {
   const min = Math.floor(Math.min(...prices) / 100) * 100;
   const max = Math.ceil(Math.max(...prices) / 100) * 100;
   return [Math.max(0, min - 200), Math.max(max + 500, min + 500)];
+}
+
+/**
+ * Absolute presets for the Price filter. Catalog-aware upper bound for ₹5000+.
+ * Presets that cannot match any product are still shown (counts will be 0).
+ */
+export function buildPricePresets(
+  _products: Product[],
+  bounds: [number, number],
+): PricePresetOption[] {
+  return ABSOLUTE_PRICE_PRESETS.map((preset) => {
+    const max =
+      preset.range[1] === Number.POSITIVE_INFINITY
+        ? Math.max(bounds[1], 5000)
+        : preset.range[1];
+    return { ...preset, range: [preset.range[0], max] as [number, number] };
+  });
 }
 
 export function getBrandsWithCounts(
@@ -322,29 +249,36 @@ export function getGradesFromProducts(
   for (const product of products) {
     const grade = normalizeGrade(product.grade, categoryId);
     if (grade) found.add(grade);
+
+    // Also mine diameter / pack size from name + spec for steel/paint/adhesives
+    const key = normalizeCategoryKey(categoryId);
+    if (key === 'steel') {
+      const mm = `${product.name} ${product.spec ?? ''}`.match(/(\d+)\s*mm/i);
+      if (mm) found.add(`${mm[1]}mm`);
+    }
+    if (key === 'paint' || key === 'paints' || key === 'adhesives') {
+      const vol = `${product.name} ${product.spec ?? ''}`.match(
+        /(\d+(?:\.\d+)?)\s*(ml|l|litre|liter)s?/i,
+      );
+      if (vol) {
+        const unit = vol[2].toLowerCase().startsWith('m') ? 'ml' : 'L';
+        found.add(`${vol[1]}${unit}`);
+      }
+    }
   }
 
-  const fallback = (GRADES_BY_CATEGORY[normalizeCategoryKey(categoryId)] ?? [])
-    .filter((g) => g !== 'OPC43' && g !== 'OPC53')
-    .map((g) => (g === 'OPC43' ? 'OPC 43' : g === 'OPC53' ? 'OPC 53' : g));
+  const preferred = GRADES_BY_CATEGORY[normalizeCategoryKey(categoryId)] ?? [];
 
-  if (found.size === 0) return fallback;
+  if (found.size === 0) {
+    // No product grades yet (still loading) — return empty so UI doesn't flash options
+    return products.length === 0 ? [] : preferred;
+  }
 
-  const ordered = fallback.filter((g) => found.has(g));
+  const ordered = preferred.filter((g) => found.has(g));
   for (const g of found) {
     if (!ordered.includes(g)) ordered.push(g);
   }
   return ordered;
-}
-
-export function getEtaOptionsFromProducts(products: Product[]): string[] {
-  const found = new Set<string>();
-  for (const product of products) {
-    const bucket = extractEtaBucket(product);
-    if (bucket) found.add(bucket);
-  }
-  const ordered = ETA_OPTIONS.filter((o) => found.has(o));
-  return ordered.length > 0 ? [...ordered] : [...ETA_OPTIONS];
 }
 
 export function getCategoryFilterConfig(
@@ -352,15 +286,13 @@ export function getCategoryFilterConfig(
   products: Product[],
 ): CategoryFilterConfig {
   const priceBounds = computePriceBounds(products);
-  const visibleChips = getVisibleChips(categoryId);
 
   return {
     grades: getGradesFromProducts(products, categoryId),
     brands: getBrandsWithCounts(products, categoryId),
     priceBounds,
-    etaOptions: getEtaOptionsFromProducts(products),
-    availabilityOptions: [...AVAILABILITY_OPTIONS],
-    visibleChips,
+    pricePresets: buildPricePresets(products, priceBounds),
+    visibleChips: getVisibleChips(categoryId),
     advancedSections: getAdvancedSections(categoryId),
   };
 }
@@ -371,9 +303,12 @@ export function formatPriceRangeLabel(
   bounds: [number, number],
 ): string {
   const formatK = (n: number) => {
+    if (!Number.isFinite(n)) return '∞';
     if (n >= 1000) return `₹${Math.round(n / 100) / 10}K`.replace('.0K', 'K');
     return `₹${n.toLocaleString('en-IN')}`;
   };
+
+  if (min > max) return 'Price';
 
   const isDefault = min <= bounds[0] && max >= bounds[1];
   if (isDefault) return 'Price';
@@ -399,50 +334,137 @@ export function getChipLabel(
       if (selected.length === 1) return selected[0];
       return `Grade (${selected.length})`;
     }
-    case 'eta':
-      return activeFilters.eta ?? 'ETA';
     case 'brand': {
       const selected = activeFilters.brand;
       if (selected.length === 0) return 'Brand';
       if (selected.length === 1) return selected[0];
       return `Brand (${selected.length})`;
     }
-    case 'priceRange':
+    case 'priceRange': {
+      if (activeFilters.pricePresets.length === 1) {
+        return (
+          config.pricePresets.find((p) => p.id === activeFilters.pricePresets[0])
+            ?.label ?? 'Price'
+        );
+      }
+      if (activeFilters.pricePresets.length > 1) {
+        return `Price (${activeFilters.pricePresets.length})`;
+      }
       return formatPriceRangeLabel(
         activeFilters.priceRange[0],
         activeFilters.priceRange[1],
         config.priceBounds,
       );
-    case 'availability': {
-      if (isDefaultAvailability(activeFilters.availability)) return 'Availability';
-      const selected = activeFilters.availability;
-      if (selected.length === 1) return selected[0];
-      return `Avail (${selected.length})`;
     }
     default:
       return key;
   }
 }
 
-export function isDefaultAvailability(availability: string[]): boolean {
-  return (
-    availability.length === DEFAULT_AVAILABILITY.length &&
-    DEFAULT_AVAILABILITY.every((a) => availability.includes(a))
-  );
-}
-
-export function createDefaultFilters(bounds: [number, number]): ActiveFilters {
+export function createDefaultFilters(bounds: [number, number] = [0, 5000]): ActiveFilters {
   return {
     search: '',
     grade: [],
-    eta: null,
     brand: [],
     priceRange: [...bounds] as [number, number],
-    availability: [...DEFAULT_AVAILABILITY],
+    pricePresets: [],
     discount: null,
     bulkPricing: null,
     sort: 'recommended',
   };
+}
+
+/**
+ * Reconcile persisted / in-memory filters with the latest catalog price bounds.
+ *
+ * This runs synchronously (same render as products arriving) so we never flash
+ * a stale "Under ₹5K" price filter against high-priced catalogs like Steel.
+ */
+export function reconcileFiltersWithBounds(
+  filters: ActiveFilters,
+  bounds: [number, number],
+  options?: { productsReady?: boolean },
+): ActiveFilters {
+  const next = cloneFilters(filters);
+  const productsReady = options?.productsReady ?? true;
+
+  // Until products load, never treat price as an intentional filter
+  if (!productsReady) {
+    next.priceRange = [...bounds] as [number, number];
+    next.pricePresets = [];
+    return next;
+  }
+
+  if (next.pricePresets.length > 0) {
+    // Presets drive filtering; keep slider at full catalog bounds
+    next.priceRange = [...bounds] as [number, number];
+    return next;
+  }
+
+  const [lo, hi] = next.priceRange;
+
+  // Inverted / empty
+  if (lo > hi) {
+    next.priceRange = [...bounds] as [number, number];
+    return next;
+  }
+
+  // Stale placeholder (e.g. [0, 5000] while Steel bounds start at ~60k)
+  // or any range that does not overlap the catalog at all.
+  const noOverlap = hi < bounds[0] || lo > bounds[1];
+  const looksLikePlaceholder =
+    lo === 0 && hi === 5000 && (bounds[0] > 5000 || bounds[1] > 5000);
+  const isFullPreviousDefault =
+    lo <= 0 && hi >= 5000 && hi <= 10000 && bounds[1] > hi;
+
+  if (noOverlap || looksLikePlaceholder || isFullPreviousDefault) {
+    next.priceRange = [...bounds] as [number, number];
+    return next;
+  }
+
+  // Clamp an intentional custom range into current bounds
+  const clampedLo = Math.max(bounds[0], Math.min(lo, bounds[1]));
+  const clampedHi = Math.min(bounds[1], Math.max(hi, bounds[0]));
+  next.priceRange =
+    clampedLo <= clampedHi
+      ? ([clampedLo, clampedHi] as [number, number])
+      : ([...bounds] as [number, number]);
+
+  return next;
+}
+
+/**
+ * Normalize persisted / legacy filter shapes (strips removed Availability, ETA, etc.).
+ */
+export function normalizeFilters(
+  raw: Partial<ActiveFilters> & {
+    eta?: string[] | string | null;
+    availability?: string[];
+  },
+  bounds: [number, number],
+): ActiveFilters {
+  let priceRange: [number, number] = Array.isArray(raw.priceRange)
+    ? ([...raw.priceRange] as [number, number])
+    : ([...bounds] as [number, number]);
+
+  if (priceRange[0] > priceRange[1]) {
+    priceRange = [...bounds] as [number, number];
+  }
+
+  return reconcileFiltersWithBounds(
+    {
+      search: typeof raw.search === 'string' ? raw.search : '',
+      grade: Array.isArray(raw.grade) ? [...raw.grade] : [],
+      brand: Array.isArray(raw.brand) ? [...raw.brand] : [],
+      priceRange,
+      pricePresets: Array.isArray(raw.pricePresets) ? [...raw.pricePresets] : [],
+      discount: raw.discount ?? null,
+      bulkPricing: raw.bulkPricing ?? null,
+      sort: raw.sort ?? 'recommended',
+    },
+    bounds,
+    { productsReady: bounds[1] > 5000 || bounds[0] > 0 || true },
+  );
 }
 
 export function countActiveFilters(
@@ -451,13 +473,11 @@ export function countActiveFilters(
 ): number {
   let count = 0;
   count += filters.grade.length;
-  if (filters.eta) count += 1;
   count += filters.brand.length;
-  if (filters.priceRange[0] > bounds[0] || filters.priceRange[1] < bounds[1]) {
+  if (filters.pricePresets.length > 0) {
+    count += filters.pricePresets.length;
+  } else if (isPriceRangeActive(filters, bounds)) {
     count += 1;
-  }
-  if (!isDefaultAvailability(filters.availability)) {
-    count += filters.availability.length;
   }
   if (filters.discount != null) count += 1;
   if (filters.bulkPricing != null) count += 1;
@@ -470,7 +490,12 @@ export function isPriceRangeActive(
   filters: ActiveFilters,
   bounds: [number, number],
 ): boolean {
-  return filters.priceRange[0] > bounds[0] || filters.priceRange[1] < bounds[1];
+  if (filters.pricePresets.length > 0) return true;
+  const [min, max] = filters.priceRange;
+  if (min > max) return false;
+  // Stale / non-overlapping ranges are NOT active filters
+  if (max < bounds[0] || min > bounds[1]) return false;
+  return min > bounds[0] || max < bounds[1];
 }
 
 export function matchesSearch(product: Product, query: string): boolean {
@@ -496,79 +521,176 @@ export function matchesSearch(product: Product, query: string): boolean {
   return haystack.includes(q);
 }
 
+function productMatchesPrice(
+  price: number,
+  filters: ActiveFilters,
+  config: CategoryFilterConfig,
+): boolean {
+  if (filters.pricePresets.length > 0) {
+    return filters.pricePresets.some((id) => {
+      const preset = config.pricePresets.find((p) => p.id === id);
+      if (!preset) return false;
+      const [lo, hi] = preset.range;
+      const upper = Number.isFinite(hi) ? hi : Number.POSITIVE_INFINITY;
+      return price >= lo && price <= upper;
+    });
+  }
+
+  if (!isPriceRangeActive(filters, config.priceBounds)) return true;
+
+  const [min, max] = filters.priceRange;
+  if (min > max) return true;
+  return price >= min && price <= max;
+}
+
+type FilterDimension =
+  | 'search'
+  | 'grade'
+  | 'brand'
+  | 'price'
+  | 'discount'
+  | 'bulkPricing';
+
+function matchesDimension(
+  product: Product,
+  filters: ActiveFilters,
+  config: CategoryFilterConfig,
+  categoryId: string,
+  dimension: FilterDimension,
+): boolean {
+  switch (dimension) {
+    case 'search':
+      return matchesSearch(product, filters.search);
+    case 'grade': {
+      if (filters.grade.length === 0) return true;
+      const productGrade = normalizeGrade(product.grade, categoryId);
+      const nameSpec = `${product.name} ${product.spec ?? ''}`;
+      return filters.grade.some((g) => {
+        if (productGrade.toLowerCase() === g.toLowerCase()) return true;
+        return nameSpec.toLowerCase().includes(g.toLowerCase());
+      });
+    }
+    case 'brand': {
+      if (filters.brand.length === 0) return true;
+      const productBrand = extractBrandFromProduct(product, categoryId);
+      return filters.brand.some(
+        (b) => productBrand.toLowerCase() === b.toLowerCase(),
+      );
+    }
+    case 'price':
+      return productMatchesPrice(product.retailPriceValue, filters, config);
+    case 'discount': {
+      if (filters.discount == null) return true;
+      return (product.discountPercent ?? 0) >= filters.discount;
+    }
+    case 'bulkPricing': {
+      if (filters.bulkPricing == null) return true;
+      const hasBulk =
+        (product.bulkPricing?.length ?? 0) > 0 ||
+        product.bulkPriceValue > 0 ||
+        product.bulkThreshold > 0;
+      return filters.bulkPricing ? hasBulk : !hasBulk;
+    }
+    default:
+      return true;
+  }
+}
+
+const PIPELINE: FilterDimension[] = [
+  'search',
+  'grade',
+  'brand',
+  'price',
+  'discount',
+  'bulkPricing',
+];
+
+/**
+ * Always derive from the original product list — never mutate or re-filter
+ * an already-filtered array.
+ *
+ * Pipeline: Search → Grade → Brand → Price → Discount → Bulk → Sort
+ */
 export function applyProductFilters(
   products: Product[],
   filters: ActiveFilters,
   config: CategoryFilterConfig,
   categoryId: string,
+  options?: { skipSort?: boolean; excludeDimension?: FilterDimension },
 ): Product[] {
-  let result = products.filter((product) => {
-    if (!matchesSearch(product, filters.search)) return false;
+  const result = products.filter((product) =>
+    PIPELINE.every((dimension) => {
+      if (options?.excludeDimension === dimension) return true;
+      return matchesDimension(product, filters, config, categoryId, dimension);
+    }),
+  );
 
-    if (filters.grade.length > 0) {
-      const productGrade = normalizeGrade(product.grade, categoryId);
-      if (
-        !filters.grade.some(
-          (g) => productGrade.toLowerCase() === g.toLowerCase(),
-        )
-      ) {
-        return false;
-      }
-    }
+  if (options?.skipSort) return result;
+  return sortProducts(result, filters.sort);
+}
 
-    if (filters.eta) {
-      const productEta = extractEtaBucket(product);
-      if (productEta !== filters.eta) return false;
-    }
-
-    if (filters.brand.length > 0) {
-      const productBrand = extractBrandFromProduct(product, categoryId);
-      if (
-        !filters.brand.some(
-          (b) => productBrand.toLowerCase() === b.toLowerCase(),
-        )
-      ) {
-        return false;
-      }
-    }
-
-    if (isPriceRangeActive(filters, config.priceBounds)) {
-      const price = product.retailPriceValue;
-      if (price < filters.priceRange[0] || price > filters.priceRange[1]) {
-        return false;
-      }
-    }
-
-    if (filters.availability.length > 0) {
-      const availability = statusToAvailability(product);
-      if (!filters.availability.includes(availability)) return false;
-    }
-
-    if (filters.discount != null) {
-      const discount = product.discountPercent ?? 0;
-      if (discount < filters.discount) return false;
-    }
-
-    if (filters.bulkPricing === true) {
-      const hasBulk =
-        (product.bulkPricing?.length ?? 0) > 0 ||
-        product.bulkPriceValue > 0 ||
-        product.bulkThreshold > 0;
-      if (!hasBulk) return false;
-    }
-    if (filters.bulkPricing === false) {
-      const hasBulk =
-        (product.bulkPricing?.length ?? 0) > 0 ||
-        product.bulkPriceValue > 0 ||
-        product.bulkThreshold > 0;
-      if (hasBulk) return false;
-    }
-
-    return true;
+/**
+ * Facet counts for a dimension, respecting all other active draft filters.
+ */
+export function computeFacetCounts(
+  products: Product[],
+  filters: ActiveFilters,
+  config: CategoryFilterConfig,
+  categoryId: string,
+  dimension: 'brand' | 'grade' | 'price' | 'discount',
+): Record<string, number> {
+  const base = applyProductFilters(products, filters, config, categoryId, {
+    skipSort: true,
+    excludeDimension:
+      dimension === 'price'
+        ? 'price'
+        : dimension === 'discount'
+          ? 'discount'
+          : dimension,
   });
 
-  result = sortProducts(result, filters.sort);
-  return result;
+  const counts: Record<string, number> = {};
+
+  if (dimension === 'brand') {
+    for (const product of base) {
+      const brand = extractBrandFromProduct(product, categoryId);
+      counts[brand] = (counts[brand] ?? 0) + 1;
+    }
+  } else if (dimension === 'grade') {
+    for (const product of base) {
+      const grade = normalizeGrade(product.grade, categoryId);
+      if (grade) counts[grade] = (counts[grade] ?? 0) + 1;
+      // Diameter / pack from name
+      const key = normalizeCategoryKey(categoryId);
+      if (key === 'steel') {
+        const mm = `${product.name} ${product.spec ?? ''}`.match(/(\d+)\s*mm/i);
+        if (mm) {
+          const label = `${mm[1]}mm`;
+          counts[label] = (counts[label] ?? 0) + 1;
+        }
+      }
+    }
+  } else if (dimension === 'price') {
+    for (const preset of config.pricePresets) {
+      const [lo, hi] = preset.range;
+      const upper = Number.isFinite(hi) ? hi : Number.POSITIVE_INFINITY;
+      counts[preset.id] = base.filter(
+        (p) => p.retailPriceValue >= lo && p.retailPriceValue <= upper,
+      ).length;
+    }
+  } else if (dimension === 'discount') {
+    for (const option of DISCOUNT_OPTIONS) {
+      if (option.value == null) {
+        counts['any'] = base.length;
+      } else {
+        counts[String(option.value)] = base.filter(
+          (p) => (p.discountPercent ?? 0) >= option.value!,
+        ).length;
+      }
+    }
+  }
+
+  return counts;
 }
 
 export function sortProducts(products: Product[], sort: SortOption): Product[] {
@@ -619,7 +741,11 @@ export function sortProducts(products: Product[], sort: SortOption): Product[] {
 }
 
 /** Map UI filters → API query params for future server-side filtering. */
-export function filtersToQueryParams(filters: ActiveFilters, bounds: [number, number]) {
+export function filtersToQueryParams(
+  filters: ActiveFilters,
+  bounds: [number, number],
+  config?: CategoryFilterConfig,
+) {
   const params: {
     search?: string;
     brand?: string;
@@ -635,16 +761,13 @@ export function filtersToQueryParams(filters: ActiveFilters, bounds: [number, nu
   if (filters.brand.length === 1) params.brand = filters.brand[0];
   if (filters.grade.length === 1) params.grade = filters.grade[0];
 
-  if (!isDefaultAvailability(filters.availability) && filters.availability.length === 1) {
-    const map: Record<string, string> = {
-      'In Stock': 'IN STOCK',
-      'Limited Stock': 'LIMITED STOCK',
-      'Out of Stock': 'OUT OF STOCK',
-    };
-    params.status = map[filters.availability[0]] ?? filters.availability[0];
-  }
-
-  if (isPriceRangeActive(filters, bounds)) {
+  if (filters.pricePresets.length === 1 && config) {
+    const preset = config.pricePresets.find((p) => p.id === filters.pricePresets[0]);
+    if (preset) {
+      params.minPrice = preset.range[0];
+      if (Number.isFinite(preset.range[1])) params.maxPrice = preset.range[1];
+    }
+  } else if (isPriceRangeActive(filters, bounds) && filters.pricePresets.length === 0) {
     params.minPrice = filters.priceRange[0];
     params.maxPrice = filters.priceRange[1];
   }
@@ -678,7 +801,34 @@ export function cloneFilters(filters: ActiveFilters): ActiveFilters {
     ...filters,
     grade: [...filters.grade],
     brand: [...filters.brand],
-    availability: [...filters.availability],
+    pricePresets: [...filters.pricePresets],
     priceRange: [...filters.priceRange] as [number, number],
   };
 }
+
+/** Resolve a preset selection into a display label for active chips. */
+export function getPricePresetLabel(
+  presetId: string,
+  config: CategoryFilterConfig,
+): string {
+  return config.pricePresets.find((p) => p.id === presetId)?.label ?? presetId;
+}
+
+function filtersEqual(a: ActiveFilters, b: ActiveFilters): boolean {
+  return (
+    a.search === b.search &&
+    a.sort === b.sort &&
+    a.discount === b.discount &&
+    a.bulkPricing === b.bulkPricing &&
+    a.priceRange[0] === b.priceRange[0] &&
+    a.priceRange[1] === b.priceRange[1] &&
+    a.grade.length === b.grade.length &&
+    a.grade.every((g, i) => g === b.grade[i]) &&
+    a.brand.length === b.brand.length &&
+    a.brand.every((g, i) => g === b.brand[i]) &&
+    a.pricePresets.length === b.pricePresets.length &&
+    a.pricePresets.every((g, i) => g === b.pricePresets[i])
+  );
+}
+
+export { filtersEqual };

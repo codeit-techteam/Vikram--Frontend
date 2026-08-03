@@ -112,6 +112,11 @@ export interface Order {
   timeline: TimelineStep[];
   deliveredEarly?: boolean;
   loyaltyPointsEarned?: number;
+  /** Present when rider has reached and OTP is active (customer-facing). */
+  deliveryOtp?: string | null;
+  deliveryOtpGenerated?: boolean;
+  deliveryOtpVerified?: boolean;
+  driverReachedAt?: string | null;
 }
 
 export interface OrdersPage {

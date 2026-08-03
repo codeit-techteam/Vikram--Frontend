@@ -1,24 +1,24 @@
 import { memo } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { ORDER_STATUS_BADGES } from '@constants/orderStatus';
+import { getCustomerStatusLabel } from '@utils/customerOrderStatus';
 import type { OrderStatus } from '@/types/order';
 
 interface OrderStatusBadgeProps {
   status: OrderStatus;
-  /** Prefer backend statusLabel when present */
+  /** Ignored — customer labels are always derived from status. */
   label?: string;
   compact?: boolean;
 }
 
 export const OrderStatusBadge = memo(function OrderStatusBadge({
   status,
-  label,
   compact = false,
 }: OrderStatusBadgeProps) {
   const config = ORDER_STATUS_BADGES[status] ?? ORDER_STATUS_BADGES.processing;
-  const displayLabel = label?.trim() || config.label;
+  const displayLabel = getCustomerStatusLabel(status);
 
   return (
     <Animated.View
@@ -66,7 +66,7 @@ export function EnRouteBadge() {
         paddingVertical: 4,
         borderRadius: 20,
       }}>
-      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FEB623' }}>En Route</Text>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: '#E5A01F' }}>En Route</Text>
     </Animated.View>
   );
 }

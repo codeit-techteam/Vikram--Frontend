@@ -189,12 +189,6 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
         />
         <ProductBulkPrice pricing={pricing} variant="inline" />
 
-        {minOrder > 1 ? (
-          <Text style={styles.minOrder}>
-            Minimum {minOrder} {product.unit}
-          </Text>
-        ) : null}
-
         <View style={styles.actions}>
           <QuantityControls
             quantity={cartQty}
@@ -270,12 +264,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#888',
     fontWeight: '500',
-  },
-  minOrder: {
-    marginTop: 4,
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8B6914',
   },
   actions: {
     marginTop: 8,

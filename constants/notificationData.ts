@@ -107,9 +107,9 @@ export const NOTIFICATIONS: AppNotification[] = [
   {
     id: 'n4',
     type: 'logistics',
-    label: 'LOGISTICS UPDATE',
-    title: 'Order #BJW-882 Out for Delivery',
-    body: '50 Bags UltraTech Cement dispatched. Arriving at Site B-4 by 4:15 PM today.',
+    label: 'ORDER UPDATE',
+    title: 'Out for Delivery',
+    body: 'Your order is out for delivery.',
     time: '1d ago',
     unread: true,
     action: { label: 'Track Order', variant: 'outline', route: '/(tabs)/orders' },

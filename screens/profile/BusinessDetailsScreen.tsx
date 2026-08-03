@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { RemoveGstBottomSheet } from '@components/gst/RemoveGstBottomSheet';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useTranslation } from '@store/languageStore';
 import { useGstStore } from '@store/gstStore';
+import { useUserStore } from '@store/userStore';
 import { safeGoBack } from '@utils/navigation';
 import { borderRadius, theme } from '@constants/theme';
 
@@ -19,12 +21,12 @@ import type { GstValidationResult } from '@/types/gst';
 export function BusinessDetailsScreen() {
   const { t } = useTranslation();
   const details = useGstStore((s) => s.details);
-  const verified = useGstStore((s) => s.verified);
   const loading = useGstStore((s) => s.loading);
   const fetchGST = useGstStore((s) => s.fetchGST);
   const removeGST = useGstStore((s) => s.removeGST);
   const saveGST = useGstStore((s) => s.saveGST);
   const updateGST = useGstStore((s) => s.updateGST);
+  const businessType = useUserStore((s) => s.user.businessType);
 
   const [sheetVisible, setSheetVisible] = useState(false);
   const [removeSheetVisible, setRemoveSheetVisible] = useState(false);
@@ -47,6 +49,7 @@ export function BusinessDetailsScreen() {
       } else {
         await saveGST(payload);
       }
+      setSheetVisible(false);
     },
     [details, saveGST, updateGST],
   );
@@ -58,14 +61,16 @@ export function BusinessDetailsScreen() {
     safeGoBack('/(tabs)/account');
   };
 
+  const hasGst = Boolean(details?.gstNumber);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
       <BackHeader title={t('businessDetailsTitle')} onBack={() => safeGoBack('/(tabs)/account')} />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {details && verified ? (
+        {hasGst && details ? (
           <>
-            <BusinessDetailsCard details={details} />
+            <BusinessDetailsCard details={details} businessType={businessType} />
 
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
               <ScaledPressable
@@ -78,7 +83,7 @@ export function BusinessDetailsScreen() {
                   alignItems: 'center',
                 }}>
                 <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
-                  {t('editGst')}
+                  {t('editDetails')}
                 </Text>
               </ScaledPressable>
               <ScaledPressable
@@ -98,6 +103,26 @@ export function BusinessDetailsScreen() {
                 </Text>
               </ScaledPressable>
             </View>
+
+            <ScaledPressable
+              onPress={() => router.push('/account/gst-compliance' as never)}
+              style={{
+                marginTop: 12,
+                borderRadius: borderRadius.lg,
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.white,
+                paddingVertical: 14,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 8,
+              }}>
+              <Ionicons name="document-text-outline" size={18} color={theme.primary} />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>
+                View GST Certificate
+              </Text>
+            </ScaledPressable>
           </>
         ) : (
           <View
@@ -129,7 +154,7 @@ export function BusinessDetailsScreen() {
                 textAlign: 'center',
                 marginBottom: 8,
               }}>
-              {t('noGstAdded')}
+              {t('businessDetails')}
             </Text>
             <Text
               style={{
@@ -139,7 +164,7 @@ export function BusinessDetailsScreen() {
                 lineHeight: 20,
                 marginBottom: 24,
               }}>
-              {t('noGstAddedSubtitle')}
+              Complete your GST details to receive GST invoices and business benefits.
             </Text>
             <ScaledPressable
               onPress={() => setSheetVisible(true)}

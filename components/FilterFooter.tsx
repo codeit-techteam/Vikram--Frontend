@@ -16,6 +16,7 @@ interface FilterFooterProps {
   onReset: () => void;
   onApply: () => void;
   applyLabel?: string;
+  resetLabel?: string;
   showCount?: boolean;
   /** When false, sheet-level bottomInset handles safe area */
   safeAreaBottom?: boolean;
@@ -52,7 +53,8 @@ export function FilterFooter({
   resultCount,
   onReset,
   onApply,
-  applyLabel = 'Show Results',
+  applyLabel = 'Apply Filters',
+  resetLabel = 'Clear All',
   showCount = true,
   safeAreaBottom = true,
 }: FilterFooterProps) {
@@ -87,7 +89,7 @@ export function FilterFooter({
           justifyContent: 'center',
         }}>
         <Text style={{ fontSize: 15, fontWeight: '700', color: FILTER_COLORS.primary }}>
-          Reset
+          {resetLabel}
         </Text>
       </ScaledPressable>
 
@@ -110,7 +112,9 @@ export function FilterFooter({
         {showCount ? (
           <>
             <AnimatedResultCount count={resultCount} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>)</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+              {` ${resultCount === 1 ? 'Product' : 'Products'})`}
+            </Text>
           </>
         ) : null}
       </ScaledPressable>

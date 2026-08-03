@@ -1,4 +1,4 @@
-export type GstStatus = 'none' | 'pending' | 'verified';
+export type GstStatus = 'none' | 'pending' | 'verified' | 'failed';
 
 /** Checkout GST UI state — drives all GST-related UI on checkout */
 export type GstUiState = 'NOT_ADDED' | 'VERIFYING' | 'VERIFIED' | 'FAILED' | 'LOADING';
@@ -10,6 +10,9 @@ export interface GstDetails {
   state: string;
   pan: string;
   status: GstStatus;
+  businessType?: string;
+  updatedAt?: string;
+  certificateUrl?: string | null;
 }
 
 export interface GstValidationResult extends GstDetails {

@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 
-import {
-  getDefaultOrderQuantity,
-  getMinOrderQuantity,
-} from '@constants/catalogVariantHelpers';
+import { getDefaultOrderQuantity } from '@constants/catalogVariantHelpers';
 import type { Product, ProductVariant } from '@/types/catalog';
 
 interface VariantSheetState {
@@ -51,7 +48,8 @@ export const useVariantStore = create<VariantSheetState>((set, get) => ({
 
   setQuantity: (qty) => {
     const { product } = get();
-    const min = product ? getMinOrderQuantity(product) : 1;
+    // Sheets always allow starting from 1; backend minOrder is enforced on submit.
+    const min = 1;
     const max = product?.maxOrder;
     let next = Math.max(min, Math.floor(qty));
     if (typeof max === 'number') next = Math.min(max, next);
@@ -64,3 +62,4 @@ export const useVariantStore = create<VariantSheetState>((set, get) => ({
     return product.productVariants?.find((v) => v.id === selectedVariantId) ?? null;
   },
 }));
+

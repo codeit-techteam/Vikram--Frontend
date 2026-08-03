@@ -10,7 +10,7 @@ import { ActiveOrderProgress } from '@components/orders/OrderTimeline';
 import { EnRouteBadge, OrderStatusBadge } from '@components/orders/OrderStatusBadge';
 import { OrderProductPreview } from '@components/orders/OrderProducts';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { STATUS_PROGRESS_INDEX } from '@constants/orderStatus';
+import { STATUS_PROGRESS_INDEX, isActiveStatus } from '@constants/orderStatus';
 import type { Order } from '@/types/order';
 import { formatINR } from '@utils/formatCurrency';
 import { formatDateKey } from '@utils/orderDateHelpers';
@@ -65,7 +65,7 @@ function OrderCardShell({
             paddingBottom: 8,
           }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: theme.textMuted }}>
-            Order ID: {order.orderNumber}{' '}
+            Order #{order.orderNumber}{' '}
             <Text style={{ color: '#BBB' }}>{formatDateKey(order.createdAt)}</Text>
           </Text>
           <Ionicons name="chevron-forward" size={18} color="#CCC" />
@@ -89,6 +89,7 @@ export const ActiveOrderCard = memo(function ActiveOrderCard(props: OrderCardBas
           : null;
 
   const progressIndex = STATUS_PROGRESS_INDEX[order.status] ?? 0;
+  const showEnRoute = order.status === 'out_for_delivery';
 
   return (
     <OrderCardShell
@@ -124,7 +125,11 @@ export const ActiveOrderCard = memo(function ActiveOrderCard(props: OrderCardBas
               </Text>
             )}
           </View>
-          {order.status === 'out_for_delivery' ? <EnRouteBadge /> : <OrderStatusBadge status={order.status} label={order.statusLabel} compact />}
+          {showEnRoute ? (
+            <EnRouteBadge />
+          ) : (
+            <OrderStatusBadge status={order.status} compact />
+          )}
         </View>
         <ActiveOrderProgress currentIndex={progressIndex} />
         <View style={{ marginTop: 12 }}>
@@ -257,7 +262,7 @@ export const CancelledOrderCard = memo(function CancelledOrderCard(props: OrderC
               </Text>
             ) : null}
           </View>
-          <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
+          <OrderStatusBadge status={order.status} compact />
         </View>
         {order.refund ? (
           <View
@@ -301,58 +306,10 @@ export const CancelledOrderCard = memo(function CancelledOrderCard(props: OrderC
   );
 });
 
-export const DefaultOrderCard = memo(function DefaultOrderCard(props: OrderCardBaseProps) {
-  const { order } = props;
-
-  return (
-    <OrderCardShell
-      {...props}
-      footer={
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-          <OrderCardActions {...props} />
-        </View>
-      }>
-      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
-              {order.expectedDelivery ? `Expected: ${order.expectedDelivery}` : 'Processing'}
-            </Text>
-          </View>
-          <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
-        </View>
-        <View style={{ marginTop: 12 }}>
-          <OrderProductPreview products={order.products} />
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: 8,
-            paddingTop: 10,
-            borderTopWidth: 1,
-            borderTopColor: '#F5F5F5',
-          }}>
-          <Text style={{ fontSize: 13, color: theme.textSecondary }}>
-            {order.products.length} item{order.products.length > 1 ? 's' : ''}
-          </Text>
-          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
-            {formatINR(order.grandTotal, false)}
-          </Text>
-        </View>
-      </View>
-    </OrderCardShell>
-  );
-});
-
 export const OrderCard = memo(function OrderCard(props: OrderCardBaseProps) {
   const { order } = props;
 
-  if (
-    order.status === 'out_for_delivery' ||
-    order.status === 'ready_for_dispatch' ||
-    (order.status === 'processing' && order.tracking)
-  ) {
+  if (isActiveStatus(order.status)) {
     return <ActiveOrderCard {...props} />;
   }
 
@@ -364,5 +321,5 @@ export const OrderCard = memo(function OrderCard(props: OrderCardBaseProps) {
     return <CancelledOrderCard {...props} />;
   }
 
-  return <DefaultOrderCard {...props} />;
+  return <ActiveOrderCard {...props} />;
 });

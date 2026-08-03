@@ -11,7 +11,7 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
@@ -89,15 +89,20 @@ export default function ProductListingScreen() {
     filteredProducts,
     draftFilteredCount,
     activeCount,
+    filtersReady,
     setSearch,
     clearFilter,
     clearAll,
     applyDraft,
-    resetDraft,
+    clearDraftAndApply,
     syncDraft,
     setDraft,
     updateFilters,
-  } = useFilterState({ products, categoryId: slug || 'cement' });
+  } = useFilterState({
+    products,
+    categoryId: slug || 'cement',
+    isLoadingProducts: isLoading,
+  });
 
   // Prefetch remaining pages so client-side filters cover the full catalog
   useEffect(() => {
@@ -135,15 +140,21 @@ export default function ProductListingScreen() {
       });
       return;
     }
-    if (key === 'availability' && value) {
+    if (key === 'pricePresets' && value) {
       updateFilters({
         ...activeFilters,
-        availability: activeFilters.availability.filter((a) => a !== value),
+        pricePresets: activeFilters.pricePresets.filter((id) => id !== value),
       });
       return;
     }
-    clearFilter(key);
+    if (key === 'priceRange') {
+      clearFilter('priceRange');
+      return;
+    }
+    clearFilter(key as keyof typeof activeFilters);
   };
+
+  const showActiveSummary = filtersReady && activeCount > 0;
 
   const listHeader = useMemo(
     () => (
@@ -183,14 +194,27 @@ export default function ProductListingScreen() {
           onClearChip={clearFilter}
         />
 
-        <View className="mx-5 mt-3">
-          <Text className="text-sm font-semibold text-text-secondary">
-            {filteredProducts.length}{' '}
-            {filteredProducts.length === 1 ? 'Product Found' : 'Products Found'}
-          </Text>
-        </View>
+        {!isLoading ? (
+          <View className="mx-5 mt-3">
+            <Text className="text-sm font-semibold text-text-secondary">
+              {filteredProducts.length}{' '}
+              {filteredProducts.length === 1 ? 'Product Found' : 'Products Found'}
+            </Text>
+          </View>
+        ) : (
+          <View className="mx-5 mt-3">
+            <View
+              style={{
+                height: 14,
+                width: 120,
+                borderRadius: 4,
+                backgroundColor: '#F0F0F0',
+              }}
+            />
+          </View>
+        )}
 
-        {activeCount > 0 ? (
+        {showActiveSummary ? (
           <ActiveFilterSummaryBar
             activeFilters={activeFilters}
             config={config}
@@ -202,11 +226,12 @@ export default function ProductListingScreen() {
     ),
     [
       activeFilters,
-      activeCount,
+      showActiveSummary,
       clearAll,
       clearFilter,
       config,
       filteredProducts.length,
+      isLoading,
       setSearch,
       t,
     ],
@@ -222,6 +247,11 @@ export default function ProductListingScreen() {
     }
     return <MaterialExpertCTA onPress={() => expertSheetRef.current?.expand()} />;
   }, [isFetchingNextPage]);
+
+  const showEmptyState =
+    !isLoading &&
+    !error &&
+    filteredProducts.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -250,7 +280,7 @@ export default function ProductListingScreen() {
         <Animated.View
           key="product-grid-skeleton"
           entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(200)}
+          exiting={FadeOut.duration(150)}
           style={{ flex: 1 }}>
           {listHeader}
           <ProductGridSkeleton />
@@ -260,7 +290,7 @@ export default function ProductListingScreen() {
       ) : (
         <Animated.View
           key="product-grid"
-          entering={FadeIn.duration(300)}
+          entering={FadeIn.duration(200)}
           style={{ flex: 1 }}>
           <FlatList
             data={filteredProducts}
@@ -278,17 +308,16 @@ export default function ProductListingScreen() {
             }
             onEndReached={loadMore}
             onEndReachedThreshold={0.4}
-            renderItem={({ item, index }: { item: Product; index: number }) => (
-              <Animated.View
-                entering={FadeInDown.delay(Math.min(index, 8) * 40).duration(300)}>
-                <ProductGridCard product={item} categoryId={slug} categoryName={title} />
-              </Animated.View>
+            renderItem={({ item }: { item: Product }) => (
+              <ProductGridCard product={item} categoryId={slug} categoryName={title} />
             )}
             ListEmptyComponent={
-              <ProductsEmptyState
-                hasActiveFilters={activeCount > 0 || Boolean(activeFilters.search.trim())}
-                onResetFilters={clearAll}
-              />
+              showEmptyState ? (
+                <ProductsEmptyState
+                  hasActiveFilters={activeCount > 0 || Boolean(activeFilters.search.trim())}
+                  onResetFilters={clearAll}
+                />
+              ) : null
             }
             ListFooterComponent={renderFooter}
             removeClippedSubviews
@@ -305,11 +334,12 @@ export default function ProductListingScreen() {
         draft={draftFilters}
         config={config}
         products={products}
+        categoryId={slug || 'cement'}
         resultCount={draftFilteredCount}
         onChange={setDraft}
         onApply={applyDraft}
-        onReset={resetDraft}
-        onClearAll={resetDraft}
+        onReset={clearDraftAndApply}
+        onClearAll={clearDraftAndApply}
       />
 
       <QuickFilterSheet
@@ -317,10 +347,10 @@ export default function ProductListingScreen() {
         draft={draftFilters}
         config={config}
         products={products}
+        categoryId={slug || 'cement'}
         resultCount={draftFilteredCount}
         onChange={setDraft}
         onApply={applyDraft}
-        onClearSection={clearFilter}
       />
 
       <MaterialExpertSheet ref={expertSheetRef} />

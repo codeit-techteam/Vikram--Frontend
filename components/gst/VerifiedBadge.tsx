@@ -11,7 +11,7 @@ import { theme } from '@constants/theme';
 
 type VerifiedBadgeProps = {
   label?: string;
-  variant?: 'verified' | 'enabled' | 'available' | 'pending';
+  variant?: 'verified' | 'enabled' | 'available' | 'pending' | 'failed';
   compact?: boolean;
   animate?: boolean;
 };
@@ -21,7 +21,7 @@ const VARIANTS = {
     bg: `${theme.success}18`,
     color: theme.success,
     icon: 'checkmark-circle' as const,
-    defaultLabel: 'Verified',
+    defaultLabel: '✔ Verified',
   },
   enabled: {
     bg: `${theme.success}18`,
@@ -40,6 +40,12 @@ const VARIANTS = {
     color: theme.warning,
     icon: 'time-outline' as const,
     defaultLabel: 'Pending',
+  },
+  failed: {
+    bg: `${theme.error}15`,
+    color: theme.error,
+    icon: 'close-circle' as const,
+    defaultLabel: 'Failed',
   },
 };
 

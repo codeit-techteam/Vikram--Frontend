@@ -30,6 +30,13 @@ export interface OrderMaterial {
   total: number;
   gstRate: number;
   gstAmount: number;
+  quantity?: number;
+  unitPrice?: number;
+  bulkApplied?: boolean;
+  vehicleType?: string;
+  estimatedWeight?: number;
+  deliveryMode?: string;
+  eta?: string;
 }
 
 export interface LastOrderedProduct extends CartItem {

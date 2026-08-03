@@ -21,11 +21,16 @@ export function ProductBulkPrice({
 
   if (!pricing.hasBulk) return null;
 
+  const savePerUnit = Math.max(0, pricing.sellingPrice - pricing.bulkPrice);
+  const tierLabel =
+    pricing.bulkLabel ||
+    `Bulk Price (${pricing.bulkThreshold}+)`;
+
   if (variant === 'inline') {
     return (
       <View style={styles.inline}>
         <Text style={styles.inlineLabel} numberOfLines={1}>
-          {pricing.bulkLabel || t('bulkPricingTitle')}
+          {tierLabel} {formatINR(pricing.bulkPrice, false)}
         </Text>
       </View>
     );
@@ -33,16 +38,17 @@ export function ProductBulkPrice({
 
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
-      <Text style={[styles.title, compact && styles.titleCompact]}>{t('bulkPricingTitle')}</Text>
-      {(pricing.bulkTiers.length > 0 ? pricing.bulkTiers : [
-        { minQty: pricing.bulkThreshold, price: pricing.bulkPrice, label: pricing.bulkLabel },
-      ]).map((tier) => (
-        <Text
-          key={`${tier.minQty}-${tier.price}`}
-          style={[styles.threshold, compact && styles.thresholdCompact]}>
-          {tier.label || `Buy ${tier.minQty}+`} · {formatINR(tier.price, false)}/{pricing.unit}
+      <Text style={[styles.title, compact && styles.titleCompact]}>
+        {t('bulkPricingTitle')}
+      </Text>
+      <Text style={[styles.threshold, compact && styles.thresholdCompact]}>
+        {tierLabel} · {formatINR(pricing.bulkPrice, false)}/{pricing.unit}
+      </Text>
+      {savePerUnit > 0 ? (
+        <Text style={[styles.save, compact && styles.saveCompact]}>
+          Save {formatINR(savePerUnit, false)} per {pricing.unit.toLowerCase()}
         </Text>
-      ))}
+      ) : null}
     </View>
   );
 }
@@ -58,20 +64,14 @@ const styles = StyleSheet.create({
   inlineLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#B8860B',
+    color: '#2E7D32',
     letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  inlineValue: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#666',
   },
   card: {
     marginTop: 10,
-    backgroundColor: '#FFF8E8',
+    backgroundColor: '#E8F5E9',
     borderWidth: 1,
-    borderColor: '#F0E0B0',
+    borderColor: '#A5D6A7',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#888',
+    color: '#2E7D32',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
     marginBottom: 2,
@@ -95,19 +95,19 @@ const styles = StyleSheet.create({
   },
   threshold: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   thresholdCompact: {
     fontSize: 11,
   },
-  price: {
+  save: {
     marginTop: 2,
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1A1A1A',
-  },
-  priceCompact: {
     fontSize: 12,
+    fontWeight: '600',
+    color: '#1B5E20',
+  },
+  saveCompact: {
+    fontSize: 10,
   },
 });

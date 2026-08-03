@@ -24,6 +24,8 @@ import { useDeliveryStore } from '@store/deliveryStore';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 
 export const HOME_HEADER_SCROLL_RANGE = 72;
+/** Fits "Delivering to" + site name + site meta (e.g. Office · Kalyani). */
+const ADDRESS_EXPANDED_HEIGHT = 56;
 
 interface HomeCollapsibleHeaderProps {
   scrollY: SharedValue<number>;
@@ -94,7 +96,7 @@ function HomeCollapsibleHeaderComponent({
     height: interpolate(
       scrollY.value,
       [0, HOME_HEADER_SCROLL_RANGE],
-      [40, 0],
+      [ADDRESS_EXPANDED_HEIGHT, 0],
       Extrapolation.CLAMP,
     ),
     opacity: interpolate(
@@ -175,17 +177,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 6,
     paddingHorizontal: 4,
-    minHeight: 36,
   },
   addressCol: {
     flex: 1,
     minWidth: 0,
+    justifyContent: 'center',
   },
   eyebrow: {
     fontSize: 10,
     fontWeight: '600',
     color: theme.textSecondary,
-    lineHeight: 12,
+    lineHeight: 13,
   },
   titleRow: {
     flexDirection: 'row',

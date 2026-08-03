@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -277,7 +277,10 @@ export default function LoginScreen() {
                 { key: 'termsLink' as const, label: t('termsLink') },
               ] as const
             ).map((link) => (
-              <TouchableOpacity key={link.key} onPress={() => {}} activeOpacity={0.7}>
+              <TouchableOpacity
+                key={link.key}
+                onPress={() => router.push('/account/terms' as Href)}
+                activeOpacity={0.7}>
                 <Text
                   style={{
                     fontSize: 13,

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import type { ActiveFilters } from '@/types/filter.types';
-import { cloneFilters } from '@constants/filterOptions';
+import { cloneFilters, createDefaultFilters, normalizeFilters } from '@constants/filterOptions';
 
 interface CategoryFilterStoreState {
   byCategory: Record<string, ActiveFilters>;
@@ -27,7 +27,9 @@ export const useCategoryFilterStore = create<CategoryFilterStoreState>((set, get
   getCategoryFilters: (categoryId) => {
     if (!categoryId) return undefined;
     const stored = get().byCategory[categoryId];
-    return stored ? cloneFilters(stored) : undefined;
+    if (!stored) return undefined;
+    const bounds = stored.priceRange ?? [0, 5000];
+    return normalizeFilters(stored, bounds as [number, number]);
   },
 
   clearCategoryFilters: (categoryId) => {
@@ -41,3 +43,8 @@ export const useCategoryFilterStore = create<CategoryFilterStoreState>((set, get
 
   clearAll: () => set({ byCategory: {} }),
 }));
+
+/** Helper for tests / resets */
+export function emptyCategoryFilters(): ActiveFilters {
+  return createDefaultFilters([0, 5000]);
+}

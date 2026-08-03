@@ -10,10 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FilterFooter } from '@components/FilterFooter';
 import { FilterSections } from '@components/FilterSections';
 import { ScaledPressable } from '@components/ScaledPressable';
-import {
-  createDefaultFilters,
-  isDefaultAvailability,
-} from '@constants/filterOptions';
 import { getQuickFilterSnapPoints } from '@constants/filterSnapPoints';
 import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
 import type {
@@ -32,41 +28,34 @@ interface QuickFilterSheetProps {
   draft: ActiveFilters;
   config: CategoryFilterConfig;
   products: Product[];
+  categoryId: string;
   resultCount: number;
   onChange: (draft: ActiveFilters) => void;
   onApply: () => void;
-  onClearSection: (key: QuickFilterKey) => void;
 }
 
 const FILTER_TITLES: Record<QuickFilterKey, string> = {
   grade: 'Grade',
-  eta: 'ETA',
   brand: 'Brands',
   priceRange: 'Price',
-  availability: 'Availability',
 };
 
 function clearSectionFromDraft(
   draft: ActiveFilters,
   key: QuickFilterKey,
   bounds: [number, number],
-) {
+): ActiveFilters {
   const next = { ...draft };
   switch (key) {
     case 'grade':
       next.grade = [];
-      break;
-    case 'eta':
-      next.eta = null;
       break;
     case 'brand':
       next.brand = [];
       break;
     case 'priceRange':
       next.priceRange = [...bounds] as [number, number];
-      break;
-    case 'availability':
-      next.availability = [...createDefaultFilters(bounds).availability];
+      next.pricePresets = [];
       break;
   }
   return next;
@@ -80,21 +69,21 @@ function isSectionActive(
   switch (key) {
     case 'grade':
       return draft.grade.length > 0;
-    case 'eta':
-      return draft.eta !== null;
     case 'brand':
       return draft.brand.length > 0;
     case 'priceRange':
-      return draft.priceRange[0] > bounds[0] || draft.priceRange[1] < bounds[1];
-    case 'availability':
-      return !isDefaultAvailability(draft.availability);
+      return (
+        draft.pricePresets.length > 0 ||
+        draft.priceRange[0] > bounds[0] ||
+        draft.priceRange[1] < bounds[1]
+      );
     default:
       return false;
   }
 }
 
 export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheetProps>(
-  ({ draft, config, products, resultCount, onChange, onApply, onClearSection }, ref) => {
+  ({ draft, config, products, categoryId, resultCount, onChange, onApply }, ref) => {
     const sheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const [activeKey, setActiveKey] = useState<QuickFilterKey>('brand');
@@ -120,7 +109,7 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
           {...props}
           disappearsOnIndex={-1}
           appearsOnIndex={0}
-          opacity={0.5}
+          opacity={0.55}
           pressBehavior="close"
         />
       ),
@@ -129,16 +118,29 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
 
     const displayTitle = FILTER_TITLES[activeKey];
     const hasSelection = isSectionActive(draft, activeKey, config.priceBounds);
+    const isPrice = activeKey === 'priceRange';
 
     const handleClear = () => {
       onChange(clearSectionFromDraft(draft, activeKey, config.priceBounds));
-      onClearSection(activeKey);
     };
 
     const handleApply = () => {
       onApply();
       sheetRef.current?.close();
     };
+
+    const sectionContent = (
+      <FilterSections
+        draft={draft}
+        onChange={onChange}
+        config={config}
+        products={products}
+        categoryId={categoryId}
+        visibleSections={[activeKey]}
+        matchingCount={resultCount}
+        compact
+      />
+    );
 
     return (
       <BottomSheet
@@ -147,6 +149,14 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        animateOnMount
+        animationConfigs={{
+          damping: 22,
+          stiffness: 220,
+          mass: 0.8,
+          overshootClamping: false,
+          energyThreshold: 0.01,
+        }}
         backdropComponent={renderBackdrop}
         bottomInset={insets.bottom}
         keyboardBehavior="extend"
@@ -174,38 +184,43 @@ export const QuickFilterSheet = forwardRef<QuickFilterSheetRef, QuickFilterSheet
               borderBottomWidth: 0.5,
               borderBottomColor: FILTER_COLORS.divider,
             }}>
-            <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: FILTER_COLORS.text }}>
+            <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: FILTER_COLORS.text }}>
               {displayTitle}
             </Text>
-            {hasSelection && (
+            {hasSelection ? (
               <ScaledPressable onPress={handleClear}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: FILTER_COLORS.primary }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: FILTER_COLORS.primary }}>
                   Clear
                 </Text>
               </ScaledPressable>
-            )}
+            ) : null}
           </View>
 
-          <BottomSheetScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              flexGrow: 1,
-              paddingHorizontal: FILTER_SPACING.lg + 4,
-              paddingTop: FILTER_SPACING.lg,
-              paddingBottom: FILTER_SPACING.sm,
-            }}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            keyboardShouldPersistTaps="handled">
-            <FilterSections
-              draft={draft}
-              onChange={onChange}
-              config={config}
-              products={products}
-              visibleSections={[activeKey]}
-              compact
-            />
-          </BottomSheetScrollView>
+          {isPrice ? (
+            <View
+              style={{
+                flex: 1,
+                paddingHorizontal: FILTER_SPACING.lg + 4,
+                paddingTop: FILTER_SPACING.md,
+                paddingBottom: FILTER_SPACING.sm,
+              }}>
+              {sectionContent}
+            </View>
+          ) : (
+            <BottomSheetScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingHorizontal: FILTER_SPACING.lg + 4,
+                paddingTop: FILTER_SPACING.lg,
+                paddingBottom: FILTER_SPACING.sm,
+              }}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              keyboardShouldPersistTaps="handled">
+              {sectionContent}
+            </BottomSheetScrollView>
+          )}
 
           <FilterFooter
             resultCount={resultCount}

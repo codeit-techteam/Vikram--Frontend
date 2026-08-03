@@ -99,6 +99,8 @@ export interface ApiProduct {
   maxOrder?: number | null;
   incrementStep?: number;
   defaultQuantity?: number;
+  /** Optional unit weight in kg for logistics estimates */
+  weightPerUnit?: number | null;
   hasVariants: boolean;
   defaultVariantId?: string | null;
   variantCount?: number;

@@ -9,6 +9,9 @@ interface ProductSelectionSummaryProps {
   quantity: number;
   unit: string;
   total: number;
+  deliveryMode?: string;
+  unitPrice?: number;
+  savings?: number;
 }
 
 export function ProductSelectionSummary({
@@ -17,6 +20,9 @@ export function ProductSelectionSummary({
   quantity,
   unit,
   total,
+  deliveryMode,
+  unitPrice,
+  savings,
 }: ProductSelectionSummaryProps) {
   return (
     <Animated.View
@@ -29,9 +35,16 @@ export function ProductSelectionSummary({
       {variantLabel ? <SummaryRow label="Variant" value={variantLabel} /> : null}
       <SummaryRow label="Quantity" value={String(quantity)} />
       <SummaryRow label="Unit" value={unit} />
+      {deliveryMode ? <SummaryRow label="Delivery Mode" value={deliveryMode} /> : null}
+      {unitPrice != null ? (
+        <SummaryRow label="Price" value={formatINR(unitPrice, false)} />
+      ) : null}
+      {savings != null && savings > 0 ? (
+        <SummaryRow label="Savings" value={formatINR(savings, false)} />
+      ) : null}
       <View className="mt-2 border-t border-border pt-3">
         <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-bold text-text">Total</Text>
+          <Text className="text-sm font-bold text-text">Subtotal</Text>
           <Text className="text-xl font-extrabold text-primary">{formatINR(total, false)}</Text>
         </View>
       </View>

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { resolveVehicleForQuantity } from '@constants/deliveryVehicles';
 import { useEtaStore } from '@store/etaStore';
 
 export interface CartItem {
@@ -24,6 +25,14 @@ export interface CartItem {
   variantLabel?: string;
   hubId?: string;
   etaMinutes?: number;
+  /** Effective unit price after bulk rules at add time */
+  appliedPrice?: number;
+  bulkApplied?: boolean;
+  vehicleType?: string;
+  deliveryMode?: string;
+  eta?: string;
+  weightPerUnitKg?: number;
+  estimatedWeightKg?: number;
 }
 
 export type CartAddResult = 'added' | 'quantity_updated';
@@ -44,6 +53,31 @@ export function getEffectivePrice(item: CartItem): number {
 
 export function getLineTotal(item: CartItem): number {
   return item.quantity * getEffectivePrice(item);
+}
+
+/** Refresh bulk + logistics snapshots when quantity changes. */
+function withQuantityDerivedFields(item: CartItem, quantity: number): CartItem {
+  const bulkApplied =
+    item.bulkThreshold > 0 &&
+    quantity >= item.bulkThreshold &&
+    item.bulkPrice > 0 &&
+    item.bulkPrice < item.unitPrice;
+  const appliedPrice = bulkApplied ? item.bulkPrice : item.unitPrice;
+  const vehicle = resolveVehicleForQuantity(quantity);
+  const weightPerUnitKg = item.weightPerUnitKg;
+  return {
+    ...item,
+    quantity,
+    appliedPrice,
+    bulkApplied,
+    vehicleType: vehicle.type,
+    deliveryMode: vehicle.label,
+    eta: vehicle.etaLabel,
+    estimatedWeightKg:
+      weightPerUnitKg != null
+        ? Math.round(weightPerUnitKg * quantity * 100) / 100
+        : item.estimatedWeightKg,
+  };
 }
 
 function resolveProductId(item: CartItem): string {
@@ -186,7 +220,9 @@ export const useCartStore = create<CartState>()(
         }
         set((state) => ({
           cartBumpVersion: state.cartBumpVersion + 1,
-          items: state.items.map((i) => (i.id === id ? { ...i, quantity: qty } : i)),
+          items: state.items.map((i) =>
+            i.id === id ? withQuantityDerivedFields(i, qty) : i,
+          ),
         }));
       },
 

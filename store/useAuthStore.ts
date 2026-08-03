@@ -321,6 +321,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           state: gstObj?.jurisdiction?.split('–')[0]?.trim() ?? '',
           pan: gstObj?.pan ?? profile.panNumber ?? '',
           status: gstObj?.verified ? 'verified' : 'pending',
+          businessType: profile.businessType ?? '',
+          updatedAt: gstObj?.verifiedAt ?? undefined,
         };
         useGstStore.getState().setFromProfile(details);
       } else {

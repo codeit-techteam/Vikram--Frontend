@@ -1,11 +1,10 @@
 import { memo, useCallback } from 'react';
-import { Alert, Linking, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { CANCELLABLE_STATUSES } from '@constants/orderStatus';
 import type { Order } from '@/types/order';
 import { borderRadius, theme } from '@constants/theme';
 
@@ -20,9 +19,7 @@ interface OrderCardActionsProps {
 export const OrderCardActions = memo(function OrderCardActions({
   order,
   onReorder,
-  onCancel,
   isReordering,
-  isCancelling,
 }: OrderCardActionsProps) {
   const handleTrack = useCallback(async () => {
     await Haptics.selectionAsync();
@@ -39,21 +36,16 @@ export const OrderCardActions = memo(function OrderCardActions({
     onReorder?.(order.id);
   }, [order.id, onReorder]);
 
-  const handleCancel = useCallback(() => {
-    Alert.alert('Cancel Order', 'Are you sure you want to cancel this order?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, Cancel',
-        style: 'destructive',
-        onPress: () => onCancel?.(order.id),
+  const handleViewInvoice = useCallback(async () => {
+    await Haptics.selectionAsync();
+    router.push({
+      pathname: '/invoice/[invoiceId]',
+      params: {
+        invoiceId: order.invoiceId || order.invoiceNumber || order.id,
+        orderId: order.id,
       },
-    ]);
-  }, [order.id, onCancel]);
-
-  const handleContactDriver = useCallback(() => {
-    const phone = order.driver?.phone ?? order.tracking?.driver?.phone;
-    if (phone) Linking.openURL(`tel:${phone}`);
-  }, [order.driver, order.tracking?.driver?.phone]);
+    });
+  }, [order.id, order.invoiceId, order.invoiceNumber]);
 
   const actions = getActionsForStatus(order.status);
 
@@ -61,9 +53,6 @@ export const OrderCardActions = memo(function OrderCardActions({
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
       {actions.includes('track') ? (
         <ActionButton label="Track Order" primary onPress={handleTrack} icon="navigate-outline" />
-      ) : null}
-      {actions.includes('contact') ? (
-        <ActionButton label="Contact Driver" onPress={handleContactDriver} icon="call-outline" />
       ) : null}
       {actions.includes('details') ? (
         <ActionButton
@@ -86,16 +75,7 @@ export const OrderCardActions = memo(function OrderCardActions({
         />
       ) : null}
       {actions.includes('invoice') ? (
-        <ActionButton label="Invoice" onPress={handleDetails} icon="document-outline" />
-      ) : null}
-      {actions.includes('cancel') && CANCELLABLE_STATUSES.includes(order.status) ? (
-        <ActionButton
-          label={isCancelling ? 'Cancelling…' : 'Cancel Order'}
-          destructive
-          onPress={handleCancel}
-          icon="close-circle-outline"
-          disabled={isCancelling}
-        />
+        <ActionButton label="Invoice" onPress={handleViewInvoice} icon="document-outline" />
       ) : null}
     </View>
   );
@@ -105,19 +85,17 @@ function getActionsForStatus(status: Order['status']): string[] {
   switch (status) {
     case 'out_for_delivery':
     case 'ready_for_dispatch':
-      return ['track', 'contact'];
+    case 'pending':
+    case 'confirmed':
+    case 'processing':
+    case 'packed':
+      return ['track'];
     case 'delivered':
     case 'refunded':
       return ['details', 'reorder', 'invoice'];
     case 'cancelled':
     case 'payment_failed':
       return ['details', 'reorder'];
-    case 'confirmed':
-    case 'pending':
-      return ['details', 'cancel'];
-    case 'processing':
-    case 'packed':
-      return ['details', 'track'];
     default:
       return ['details'];
   }

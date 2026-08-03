@@ -4,14 +4,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { VerifiedBadge } from '@components/gst/VerifiedBadge';
 import { borderRadius, theme } from '@constants/theme';
 import type { GstDetails } from '@/types/gst';
+import { formatInvoiceDate, maskPan } from '@utils/invoiceAdapters';
 
 type BusinessDetailsCardProps = {
   details: GstDetails;
+  businessType?: string;
   gstLabel?: string;
   businessNameLabel?: string;
   addressLabel?: string;
   stateLabel?: string;
   statusLabel?: string;
+  panLabel?: string;
+  businessTypeLabel?: string;
+  updatedLabel?: string;
 };
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -40,20 +45,43 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function statusVariant(status: GstDetails['status']): 'verified' | 'pending' | 'failed' {
+  if (status === 'verified') return 'verified';
+  if (status === 'failed') return 'failed';
+  return 'pending';
+}
+
+function statusLabelFor(status: GstDetails['status']): string {
+  if (status === 'verified') return '✔ GST Verified';
+  if (status === 'failed') return 'Verification Failed';
+  return 'Pending';
+}
+
 export function BusinessDetailsCard({
   details,
-  gstLabel = 'GST Number',
+  businessType,
+  gstLabel = 'GSTIN',
   businessNameLabel = 'Business Name',
   addressLabel = 'Registered Address',
   stateLabel = 'State',
-  statusLabel = 'Verification Status',
+  statusLabel = 'Status',
+  panLabel = 'PAN',
+  businessTypeLabel = 'Business Type',
+  updatedLabel = 'Updated',
 }: BusinessDetailsCardProps) {
+  const typeValue = businessType || details.businessType || '';
+
   return (
     <View
       style={{
         borderRadius: borderRadius.lg,
         borderWidth: 1,
-        borderColor: `${theme.success}30`,
+        borderColor:
+          details.status === 'verified'
+            ? `${theme.success}30`
+            : details.status === 'failed'
+              ? `${theme.error}30`
+              : theme.border,
         backgroundColor: theme.white,
         padding: 16,
         shadowColor: '#000',
@@ -79,12 +107,15 @@ export function BusinessDetailsCard({
         </Text>
       </View>
 
+      <DetailRow label={businessNameLabel} value={details.businessName || '—'} />
       <DetailRow label={gstLabel} value={details.gstNumber} />
-      <DetailRow label={businessNameLabel} value={details.businessName} />
+      {details.pan ? <DetailRow label={panLabel} value={maskPan(details.pan)} /> : null}
+      {typeValue ? <DetailRow label={businessTypeLabel} value={typeValue} /> : null}
       {details.registeredAddress ? (
         <DetailRow label={addressLabel} value={details.registeredAddress} />
       ) : null}
       {details.state ? <DetailRow label={stateLabel} value={details.state} /> : null}
+
       <View
         style={{
           marginTop: 14,
@@ -103,8 +134,15 @@ export function BusinessDetailsCard({
           }}>
           {statusLabel}
         </Text>
-        <VerifiedBadge variant="verified" label="Verified" />
+        <VerifiedBadge
+          variant={statusVariant(details.status)}
+          label={statusLabelFor(details.status)}
+        />
       </View>
+
+      {details.updatedAt ? (
+        <DetailRow label={updatedLabel} value={formatInvoiceDate(details.updatedAt)} />
+      ) : null}
     </View>
   );
 }

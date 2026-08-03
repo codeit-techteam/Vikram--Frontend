@@ -10,6 +10,10 @@ import type {
   TimelineStep,
 } from '@/types/order';
 import type { Order as LegacyOrder, OrderStatus as LegacyOrderStatus } from '@store/orderStore';
+import {
+  buildCustomerTimeline,
+  getCustomerStatusLabel,
+} from '@utils/customerOrderStatus';
 
 const LEGACY_STATUS_MAP: Record<LegacyOrderStatus, OrderStatus> = {
   processing: 'processing',
@@ -20,17 +24,21 @@ const LEGACY_STATUS_MAP: Record<LegacyOrderStatus, OrderStatus> = {
   cancelled: 'cancelled',
 };
 
+/**
+ * Backend → frontend status.
+ * PICKING maps to packed (customer: Packed). DRIVER_ASSIGNED → out_for_delivery.
+ */
 const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
   PENDING: 'pending',
   CONFIRMED: 'confirmed',
   HUB_ASSIGNED: 'confirmed',
   AWAITING_HUB_ALLOCATION: 'pending',
   ACCEPTED_BY_HUB: 'processing',
-  PICKING: 'processing',
+  PICKING: 'packed',
   PROCESSING: 'processing',
   PACKED: 'packed',
   READY_FOR_DISPATCH: 'ready_for_dispatch',
-  DRIVER_ASSIGNED: 'ready_for_dispatch',
+  DRIVER_ASSIGNED: 'out_for_delivery',
   OUT_FOR_DELIVERY: 'out_for_delivery',
   DISPATCHED: 'out_for_delivery',
   DELIVERED: 'delivered',
@@ -57,102 +65,12 @@ function mapBackendStatus(status: unknown): OrderStatus {
   return BACKEND_STATUS_MAP[key] ?? BACKEND_STATUS_MAP[key.toUpperCase()] ?? 'pending';
 }
 
-/** Fallback labels when API omits statusLabel (e.g. place-order timeline). */
-const BACKEND_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Order Placed',
-  CONFIRMED: 'Confirmed',
-  HUB_ASSIGNED: 'Hub Assigned',
-  AWAITING_HUB_ALLOCATION: 'Awaiting Hub Allocation',
-  ACCEPTED_BY_HUB: 'Preparing Order',
-  PICKING: 'Preparing Order',
-  PROCESSING: 'Preparing Order',
-  PACKED: 'Packed',
-  READY_FOR_DISPATCH: 'Packed',
-  DRIVER_ASSIGNED: 'Out for Delivery',
-  OUT_FOR_DELIVERY: 'Out For Delivery',
-  DISPATCHED: 'Out For Delivery',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
-};
-
-function backendStatusLabel(status: unknown): string | undefined {
-  if (!status) return undefined;
-  const key = String(status).toUpperCase();
-  return BACKEND_STATUS_LABELS[key];
-}
-
-function buildDefaultTimeline(status: OrderStatus): TimelineStep[] {
-  const steps = [
-    { key: 'placed', label: 'Order Placed' },
-    { key: 'confirmed', label: 'Confirmed' },
-    { key: 'packed', label: 'Packed' },
-    { key: 'dispatched', label: 'Dispatched' },
-    { key: 'out_for_delivery', label: 'Out For Delivery' },
-    { key: 'delivered', label: 'Delivered' },
-  ];
-
-  const statusIndex: Record<OrderStatus, number> = {
-    pending: 0,
-    confirmed: 1,
-    processing: 1,
-    packed: 2,
-    ready_for_dispatch: 3,
-    out_for_delivery: 4,
-    delivered: 5,
-    cancelled: 0,
-    payment_failed: 0,
-    refunded: 5,
-  };
-
-  const current = statusIndex[status];
-
-  return steps.map((step, index) => ({
-    ...step,
-    done: index < current,
-    active: index === current,
-  }));
-}
-
 function buildTimeline(order: LegacyOrder, status: OrderStatus): TimelineStep[] {
-  if (order.timeline?.length) {
-    return order.timeline.map((step, index) => ({
-      key: `step-${index}`,
-      label: step.label,
-      time: step.time,
-      done: step.done,
-      active: step.active,
-    }));
-  }
-
-  const steps = [
-    { key: 'placed', label: 'Order Placed' },
-    { key: 'confirmed', label: 'Confirmed' },
-    { key: 'packed', label: 'Packed' },
-    { key: 'dispatched', label: 'Dispatched' },
-    { key: 'out_for_delivery', label: 'Out For Delivery' },
-    { key: 'delivered', label: 'Delivered' },
-  ];
-
-  const statusIndex: Record<OrderStatus, number> = {
-    pending: 0,
-    confirmed: 1,
-    processing: 1,
-    packed: 2,
-    ready_for_dispatch: 3,
-    out_for_delivery: 4,
-    delivered: 5,
-    cancelled: 0,
-    payment_failed: 0,
-    refunded: 5,
-  };
-
-  const current = statusIndex[status];
-
-  return steps.map((step, index) => ({
-    ...step,
-    done: index < current,
-    active: index === current,
-  }));
+  // Never surface legacy/hub operational timeline labels to customers.
+  return buildCustomerTimeline(status, {
+    createdAt: order.createdAt?.toISOString?.() ?? undefined,
+    deliveredAt: order.deliveredAt?.toISOString?.() ?? undefined,
+  });
 }
 
 function mapProducts(order: LegacyOrder): OrderProduct[] {
@@ -408,40 +326,6 @@ function formatEta(value: unknown): string | undefined {
   return raw;
 }
 
-function mapApiTimeline(
-  rawTimeline: Record<string, unknown>[],
-  orderStatus?: OrderStatus,
-): TimelineStep[] {
-  const lastIndex = rawTimeline.length - 1;
-  const terminal =
-    orderStatus === 'delivered' ||
-    orderStatus === 'cancelled' ||
-    orderStatus === 'refunded';
-  return rawTimeline.map((entry, index) => ({
-    key: String(entry.id ?? `timeline-${index}`),
-    label: String(
-      entry.message ??
-        entry.statusLabel ??
-        entry.label ??
-        backendStatusLabel(entry.status) ??
-        entry.status ??
-        'Update',
-    ),
-    time: entry.time
-      ? String(entry.time)
-      : entry.createdAt
-        ? new Date(String(entry.createdAt)).toLocaleString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : undefined,
-    done: terminal || index < lastIndex,
-    active: !terminal && index === lastIndex,
-  }));
-}
-
 function mapPaymentStatus(raw: unknown): Order['paymentStatus'] {
   const normalized = String(raw ?? 'pending').toLowerCase();
   switch (normalized) {
@@ -460,28 +344,25 @@ function mapPaymentStatus(raw: unknown): Order['paymentStatus'] {
 
 export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const status = mapBackendStatus(raw.status ?? raw.orderStatus);
-  const statusLabel =
-    (raw.statusLabel ? String(raw.statusLabel) : undefined) ??
-    backendStatusLabel(raw.status ?? raw.orderStatus);
+  const statusLabel = getCustomerStatusLabel(status);
   const payment = (raw.payment ?? {}) as Record<string, unknown>;
   const addressRaw = (raw.address ??
     raw.shippingAddress ??
     raw.deliveryAddress ??
     {}) as Record<string, unknown>;
   const customer = (raw.customer ?? {}) as Record<string, unknown>;
-  const hub = (raw.hub ?? {}) as Record<string, unknown>;
   const products = mapApiProducts(raw).map((product) => ({
     ...product,
     delivered: status === 'delivered' ? true : product.delivered,
   }));
   const driver = mapApiDriver(raw);
-  const rawTimeline = Array.isArray(raw.timeline)
-    ? (raw.timeline as Record<string, unknown>[])
-    : [];
-  const timeline =
-    rawTimeline.length > 0
-      ? mapApiTimeline(rawTimeline, status)
-      : buildDefaultTimeline(status);
+  const createdAt = String(raw.createdAt ?? new Date().toISOString());
+  const deliveredAt = raw.deliveredAt
+    ? String(raw.deliveredAt)
+    : raw.deliveryCompletedAt
+      ? String(raw.deliveryCompletedAt)
+      : undefined;
+  const timeline = buildCustomerTimeline(status, { createdAt, deliveredAt });
 
   const line1 = String(addressRaw.line1 ?? addressRaw.address ?? '');
   const line2 = addressRaw.line2 ? String(addressRaw.line2) : '';
@@ -508,20 +389,28 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     (Number.isFinite(explicitVersion) ? explicitVersion : undefined) ??
     (updatedAt ? Date.parse(updatedAt) || undefined : undefined);
 
+  const deliveryOtp =
+    raw.deliveryOtp != null && String(raw.deliveryOtp).trim()
+      ? String(raw.deliveryOtp).trim()
+      : null;
+  const deliveryOtpGenerated = Boolean(
+    raw.deliveryOtpGenerated ?? raw.deliveryOtpGeneratedAt ?? deliveryOtp,
+  );
+  const deliveryOtpVerified = Boolean(raw.deliveryOtpVerified);
+  const driverReachedAt = raw.driverReachedAt
+    ? String(raw.driverReachedAt)
+    : null;
+
   return {
     id: String(raw.id ?? ''),
     orderNumber: String(raw.orderNumber ?? raw.id ?? ''),
     status,
     statusLabel,
-    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+    createdAt,
     updatedAt,
     version,
     expectedDelivery,
-    deliveredAt: raw.deliveredAt
-      ? String(raw.deliveredAt)
-      : raw.deliveryCompletedAt
-        ? String(raw.deliveryCompletedAt)
-        : undefined,
+    deliveredAt,
     products,
     subtotal: Number(raw.subtotal ?? 0),
     discount: Number(raw.discountAmount ?? raw.discount ?? 0),
@@ -570,5 +459,9 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     loyaltyPointsEarned: raw.loyaltyPointsEarned
       ? Number(raw.loyaltyPointsEarned)
       : undefined,
+    deliveryOtp,
+    deliveryOtpGenerated,
+    deliveryOtpVerified,
+    driverReachedAt,
   };
 }

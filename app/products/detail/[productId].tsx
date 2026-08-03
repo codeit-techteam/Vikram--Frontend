@@ -37,7 +37,6 @@ import { ProductDetailSkeleton } from '@components/catalog/CatalogSkeletons';
 import { getCarouselImages } from '@constants/catalogData';
 import {
   getProductSkuUnit,
-  getMinOrderQuantity,
   getVariantById,
   getVariantDisplayUnit,
   productHasStructuredVariants,
@@ -56,6 +55,7 @@ import {
   getProductPricing,
   getStockLeft,
 } from '@utils/productPricing';
+import { computeQuantityPricing } from '@utils/quantityPricing';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 
 export default function ProductDetailScreen() {
@@ -129,23 +129,25 @@ export default function ProductDetailScreen() {
     setLocalQty(
       lineQty > 0
         ? lineQty
-        : Math.max(1, product.minOrder ?? 1),
+        : 1,
     );
   }, [product?.id, selectedVariantId, hasVariants, product]);
-
-  const minOrder = product ? getMinOrderQuantity(product) : 1;
 
   const pricing = useMemo(
     () => (product ? getProductPricing(product, selectedVariant) : null),
     [product, selectedVariant],
   );
 
-  const unitPrice = pricing?.sellingPrice ?? 0;
-  const subtotal = localQty * unitPrice;
-  const gstRate = (product?.gst ?? 18) / 100;
-  const gst = subtotal * gstRate;
+  const quote = useMemo(() => {
+    if (!product || !pricing) return null;
+    return computeQuantityPricing(product, localQty, selectedVariant, pricing);
+  }, [product, pricing, localQty, selectedVariant]);
+
+  const unitPrice = quote?.appliedUnitPrice ?? pricing?.sellingPrice ?? 0;
+  const subtotal = quote?.subtotalBeforeGst ?? localQty * unitPrice;
+  const gst = quote?.gstAmount ?? subtotal * ((product?.gst ?? 18) / 100);
   const logistics = deliveryType === 'priority' ? 250 : 0;
-  const estimatedTotal = subtotal + gst + logistics;
+  const estimatedTotal = (quote?.estimatedTotal ?? subtotal + gst) + logistics;
 
   const priceUnitLabel = hasVariants
     ? getVariantDisplayUnit(selectedVariant) || selectedVariant?.label || skuUnit
@@ -386,11 +388,24 @@ export default function ProductDetailScreen() {
               </View>
               <ProductBulkPrice pricing={pricing} />
 
+              <View className="mt-4 rounded-card border border-border bg-trust p-4">
+                <Text className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                  Order Quantity
+                </Text>
+                <Text className="mt-2 text-sm leading-5 text-text">
+                  Choose any quantity from 1 {product.unit.toLowerCase()} onwards.
+                </Text>
+                <Text className="mt-1 text-sm leading-5 text-text-secondary">
+                  Bulk pricing automatically applies on eligible quantities.
+                  Vehicle is assigned automatically based on order size.
+                </Text>
+              </View>
+
               <View className="mt-5 flex-row items-center justify-between">
                 <ProductQuantitySelector
                   quantity={localQty}
                   onChange={setLocalQty}
-                  min={minOrder}
+                  min={1}
                   max={product.maxOrder}
                   step={product.incrementStep ?? 1}
                   size="lg"
@@ -401,12 +416,30 @@ export default function ProductDetailScreen() {
                 </Animated.View>
               </View>
 
+              {quote ? (
+                <View className="mt-3 flex-row items-center gap-2 rounded-lg bg-trust px-3 py-2">
+                  <Text className="text-base">{quote.vehicle.emoji}</Text>
+                  <View className="flex-1">
+                    <Text className="text-sm font-bold text-text">{quote.modeTitle}</Text>
+                    <Text className="text-xs text-text-secondary">{quote.deliveryMessage}</Text>
+                  </View>
+                  {quote.bulkApplied ? (
+                    <Text className="text-xs font-extrabold" style={{ color: '#2E7D32' }}>
+                      Bulk Applied
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+
               <ProductSelectionSummary
                 productName={localizedName}
                 variantLabel={selectedVariant?.label}
                 quantity={localQty}
                 unit={hasVariants ? skuUnit : product.unit}
                 total={subtotal}
+                deliveryMode={quote?.deliveryMode}
+                unitPrice={unitPrice}
+                savings={quote?.bulkDiscountAmount}
               />
             </>
           ) : (

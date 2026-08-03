@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingHorizontal: 4,
     minHeight: 44,
+    height: 44,
   },
   stepperFullWidth: {
     alignSelf: 'stretch',
@@ -150,10 +151,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   btnCapsule: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     minWidth: 44,
-    minHeight: 40,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

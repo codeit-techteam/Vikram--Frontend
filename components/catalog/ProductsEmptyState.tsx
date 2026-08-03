@@ -21,11 +21,11 @@ export function ProductsEmptyState({
         <Ionicons name="cube-outline" size={48} color="#FEB623" />
       </View>
       <Text style={styles.title}>
-        {hasActiveFilters ? 'No Products Found' : t('noProductsFound')}
+        {hasActiveFilters ? 'No products match these filters.' : t('noProductsFound')}
       </Text>
       {hasActiveFilters ? (
         <>
-          <Text style={styles.subtitle}>Try removing filters</Text>
+          <Text style={styles.subtitle}>Try removing one or more filters.</Text>
           {onResetFilters ? (
             <ScaledPressable onPress={onResetFilters} style={styles.resetButton} scaleTo={0.97}>
               <Text style={styles.resetText}>Reset Filters</Text>
@@ -40,7 +40,7 @@ export function ProductsEmptyState({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 40,
     paddingHorizontal: 24,
   },
   illustration: {
@@ -63,9 +63,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888888',
     textAlign: 'center',
+    lineHeight: 20,
   },
   resetButton: {
-    marginTop: 16,
+    marginTop: 18,
     height: 44,
     paddingHorizontal: 20,
     borderRadius: 12,

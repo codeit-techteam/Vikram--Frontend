@@ -233,6 +233,9 @@ function ProductGridCardComponent({
           </Text>
         ) : null}
         <View style={styles.priceRow}>
+          {pricing.hasBulk ? (
+            <Text style={styles.startsFrom}>Starts from </Text>
+          ) : null}
           <Text style={styles.price}>{formatINR(pricing.sellingPrice, false)}</Text>
           <Text style={styles.unit}>/{pricing.unit}</Text>
           {pricing.originalPrice > pricing.sellingPrice ? (
@@ -250,9 +253,9 @@ function ProductGridCardComponent({
             {variantLabel}
           </Text>
         ) : null}
-        {minOrder > 1 ? (
-          <Text style={styles.minOrder} numberOfLines={1}>
-            Minimum {minOrder} {pricing.unit}
+        {pricing.hasBulk ? (
+          <Text style={styles.bulkHint} numberOfLines={1}>
+            Bulk Price ({pricing.bulkThreshold}+) {formatINR(pricing.bulkPrice, false)}
           </Text>
         ) : null}
         {rating != null ? (
@@ -364,6 +367,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 3,
   },
+  startsFrom: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#888',
+  },
   price: {
     fontSize: 16,
     fontWeight: '800',
@@ -399,11 +407,11 @@ const styles = StyleSheet.create({
     color: '#777',
     fontWeight: '500',
   },
-  minOrder: {
+  bulkHint: {
     marginTop: 2,
     fontSize: 11,
-    fontWeight: '600',
-    color: '#8B6914',
+    fontWeight: '700',
+    color: '#2E7D32',
   },
   rating: {
     marginTop: 3,

@@ -4,18 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInLeft } from 'react-native-reanimated';
 
 import { PulseDot } from '@components/orders/PulseDot';
-import { TIMELINE_STEPS } from '@constants/orderStatus';
+import { CUSTOMER_PROGRESS_STEPS } from '@utils/customerOrderStatus';
 import type { OrderStatus, TimelineStep } from '@/types/order';
+import { buildCustomerTimeline } from '@utils/customerOrderStatus';
 import { borderRadius, theme } from '@constants/theme';
 
 interface OrderTimelineProps {
   steps: TimelineStep[];
   animated?: boolean;
+  title?: string;
 }
 
 export const OrderTimeline = memo(function OrderTimeline({
   steps,
   animated = true,
+  title = 'ORDER STATUS',
 }: OrderTimelineProps) {
   return (
     <View
@@ -34,7 +37,7 @@ export const OrderTimeline = memo(function OrderTimeline({
           color: theme.textMuted,
           marginBottom: 4,
         }}>
-        ORDER STATUS
+        {title}
       </Text>
       {steps.map((step, index) => {
         const content = (
@@ -58,15 +61,7 @@ export const OrderTimeline = memo(function OrderTimeline({
                 </View>
               )}
               {index < steps.length - 1 ? (
-                <View
-                  style={{
-                    width: 2,
-                    flex: 1,
-                    minHeight: 32,
-                    marginTop: 4,
-                    backgroundColor: step.done ? theme.success : theme.border,
-                  }}
-                />
+                <TimelineConnector done={Boolean(step.done)} />
               ) : null}
             </View>
             <View style={{ flex: 1, paddingBottom: index < steps.length - 1 ? 8 : 0 }}>
@@ -74,7 +69,11 @@ export const OrderTimeline = memo(function OrderTimeline({
                 style={{
                   fontSize: 14,
                   fontWeight: '700',
-                  color: step.active ? theme.primary : step.done ? theme.textPrimary : theme.textMuted,
+                  color: step.active
+                    ? theme.primaryDark
+                    : step.done
+                      ? theme.textPrimary
+                      : theme.textMuted,
                 }}>
                 {step.label}
               </Text>
@@ -91,7 +90,7 @@ export const OrderTimeline = memo(function OrderTimeline({
           return (
             <Animated.View
               key={`${step.key}-${index}`}
-              entering={FadeInLeft.delay(index * 120).duration(300)}>
+              entering={FadeInLeft.delay(index * 80).duration(300)}>
               {content}
             </Animated.View>
           );
@@ -103,26 +102,26 @@ export const OrderTimeline = memo(function OrderTimeline({
   );
 });
 
-export function buildTimelineFromStatus(status: OrderStatus, times?: string[]): TimelineStep[] {
-  const statusOrder: OrderStatus[] = [
-    'pending',
-    'confirmed',
-    'packed',
-    'ready_for_dispatch',
-    'out_for_delivery',
-    'delivered',
-  ];
-
-  const currentIndex = statusOrder.indexOf(
-    status === 'processing' ? 'confirmed' : status === 'refunded' ? 'delivered' : status,
+function TimelineConnector({ done }: { done: boolean }) {
+  return (
+    <View
+      style={{
+        width: 2,
+        flex: 1,
+        minHeight: 32,
+        marginTop: 4,
+        backgroundColor: done ? theme.success : theme.border,
+      }}
+    />
   );
+}
 
-  return TIMELINE_STEPS.map((step, index) => ({
-    key: step.key,
-    label: step.label,
-    time: times?.[index],
-    done: index < currentIndex,
-    active: index === currentIndex,
+export function buildTimelineFromStatus(status: OrderStatus, times?: string[]): TimelineStep[] {
+  const steps = buildCustomerTimeline(status);
+  if (!times?.length) return steps;
+  return steps.map((step, index) => ({
+    ...step,
+    time: times[index] ?? step.time,
   }));
 }
 
@@ -133,12 +132,12 @@ interface ActiveProgressProps {
 export const ActiveOrderProgress = memo(function ActiveOrderProgress({
   currentIndex,
 }: ActiveProgressProps) {
-  const steps = ['Confirmed', 'Packed', 'Out For Delivery', 'Delivered'];
+  const steps = CUSTOMER_PROGRESS_STEPS;
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
-      {steps.map((label, index) => (
-        <View key={label} style={{ flex: 1, alignItems: 'center' }}>
+      {steps.map((step, index) => (
+        <View key={step.key} style={{ flex: 1, alignItems: 'center' }}>
           <View
             style={{
               width: 22,
@@ -172,7 +171,7 @@ export const ActiveOrderProgress = memo(function ActiveOrderProgress({
               marginTop: 4,
               textAlign: 'center',
             }}>
-            {label}
+            {step.label}
           </Text>
           {index < steps.length - 1 ? (
             <View

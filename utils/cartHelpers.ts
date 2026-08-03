@@ -12,6 +12,7 @@ import {
 import type { Product } from '@/types/catalog';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 import type { CartItem } from '@store/cartStore';
+import { computeQuantityPricing } from '@utils/quantityPricing';
 
 export interface CartItemOptions {
   variantId?: string;
@@ -57,6 +58,8 @@ export function productToCartItem(
     ? getVariantDisplayUnit(variant) || getProductSkuUnit(product)
     : product.unit;
 
+  const quote = computeQuantityPricing(product, quantity, hasVariant ? variant : null);
+
   return {
     id: cartId,
     productId: product.id,
@@ -76,6 +79,13 @@ export function productToCartItem(
     variantLabel: hasVariant ? variant.label : undefined,
     hubId: options?.hubId,
     etaMinutes: options?.etaMinutes,
+    appliedPrice: quote.appliedUnitPrice,
+    bulkApplied: quote.bulkApplied,
+    vehicleType: quote.vehicleType,
+    deliveryMode: quote.deliveryMode,
+    eta: quote.eta,
+    weightPerUnitKg: quote.weightPerUnitKg,
+    estimatedWeightKg: quote.estimatedWeightKg,
   };
 }
 

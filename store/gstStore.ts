@@ -6,6 +6,8 @@ import {
   saveGST,
   updateGST,
 } from '@services/gst.service';
+import { updateProfile } from '@services/customer.api';
+import { useUserStore } from '@store/userStore';
 import type { GstDetails, GstUiState, GstValidationResult, SaveGstPayload } from '@/types/gst';
 
 interface GstState {
@@ -55,6 +57,14 @@ const initialState = {
   loading: false,
 };
 
+function uiStateFromDetails(details: GstDetails | null): GstUiState {
+  if (!details?.gstNumber) return 'NOT_ADDED';
+  if (details.status === 'verified') return 'VERIFIED';
+  if (details.status === 'failed') return 'FAILED';
+  if (details.status === 'pending') return 'VERIFYING';
+  return 'NOT_ADDED';
+}
+
 function mapDetails(details: GstDetails | null): Pick<
   GstState,
   | 'details'
@@ -73,8 +83,49 @@ function mapDetails(details: GstDetails | null): Pick<
     businessAddress: details?.registeredAddress ?? null,
     verified,
     checkoutInvoiceEnabled: verified,
-    uiState: verified ? 'VERIFIED' : 'NOT_ADDED',
+    uiState: uiStateFromDetails(details),
   };
+}
+
+function syncUserFromGst(details: GstDetails | null) {
+  if (!details) {
+    useUserStore.getState().updateUser({
+      gstNumber: '',
+      pan: '',
+      jurisdiction: '',
+      gstVerifiedAt: '',
+      complianceScore: 0,
+    });
+    return;
+  }
+
+  useUserStore.getState().updateUser({
+    gstNumber: details.gstNumber,
+    company: details.businessName || useUserStore.getState().user.company,
+    pan: details.pan,
+    jurisdiction: details.state,
+    registeredAddress: details.registeredAddress || useUserStore.getState().user.registeredAddress,
+    businessType: details.businessType || useUserStore.getState().user.businessType,
+    gstVerifiedAt:
+      details.status === 'verified'
+        ? details.updatedAt
+          ? new Date(details.updatedAt).toLocaleString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : new Date().toLocaleString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+        : '',
+    complianceScore: details.status === 'verified' ? 100 : details.status === 'pending' ? 40 : 0,
+  });
 }
 
 export const useGstStore = create<GstState>((set, get) => ({
@@ -85,6 +136,7 @@ export const useGstStore = create<GstState>((set, get) => ({
     try {
       const details = await fetchGST();
       set({ ...mapDetails(details), isLoading: false, loading: false, validationError: null });
+      if (details) syncUserFromGst(details);
     } catch {
       set({ isLoading: false, loading: false, uiState: 'NOT_ADDED' });
     }
@@ -102,23 +154,37 @@ export const useGstStore = create<GstState>((set, get) => ({
       state: result.state,
       pan: result.pan,
       status: result.status,
+      businessType: result.businessType,
+      updatedAt: result.updatedAt ?? new Date().toISOString(),
+      certificateUrl: result.certificateUrl,
     };
     set({ ...mapDetails(details), validationError: null });
+    syncUserFromGst(details);
   },
 
   saveGST: async (payload) => {
     set({ isLoading: true, loading: true, uiState: 'LOADING' });
     try {
       const details = await saveGST(payload);
+      const enriched: GstDetails = {
+        ...details,
+        updatedAt: details.updatedAt ?? new Date().toISOString(),
+        businessType: details.businessType ?? useUserStore.getState().user.businessType,
+      };
       set({
-        ...mapDetails(details),
+        ...mapDetails(enriched),
         isLoading: false,
         loading: false,
         validationError: null,
-        uiState: 'VERIFIED',
       });
+      syncUserFromGst(enriched);
     } catch {
-      set({ isLoading: false, loading: false, uiState: 'FAILED', validationError: 'Failed to save GST' });
+      set({
+        isLoading: false,
+        loading: false,
+        uiState: 'FAILED',
+        validationError: 'Failed to save GST',
+      });
     }
   },
 
@@ -130,15 +196,25 @@ export const useGstStore = create<GstState>((set, get) => ({
     set({ isLoading: true, loading: true, uiState: 'LOADING' });
     try {
       const details = await updateGST(payload);
+      const enriched: GstDetails = {
+        ...details,
+        updatedAt: details.updatedAt ?? new Date().toISOString(),
+        businessType: details.businessType ?? useUserStore.getState().user.businessType,
+      };
       set({
-        ...mapDetails(details),
+        ...mapDetails(enriched),
         isLoading: false,
         loading: false,
         validationError: null,
-        uiState: 'VERIFIED',
       });
+      syncUserFromGst(enriched);
     } catch {
-      set({ isLoading: false, loading: false, uiState: 'FAILED', validationError: 'Failed to update GST' });
+      set({
+        isLoading: false,
+        loading: false,
+        uiState: 'FAILED',
+        validationError: 'Failed to update GST',
+      });
     }
   },
 
@@ -150,7 +226,17 @@ export const useGstStore = create<GstState>((set, get) => ({
     set({ isLoading: true, loading: true, uiState: 'LOADING' });
     try {
       await deleteGST();
+      try {
+        await updateProfile({
+          gstNumber: '',
+          gstVerified: false,
+          panNumber: '',
+        });
+      } catch {
+        // ignore profile clear failures
+      }
       set({ ...initialState });
+      syncUserFromGst(null);
     } finally {
       set({ isLoading: false, loading: false });
     }

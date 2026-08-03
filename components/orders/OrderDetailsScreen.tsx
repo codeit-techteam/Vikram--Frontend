@@ -1,14 +1,17 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { BackHeader } from '@components/BackHeader';
 import { DownloadInvoiceCard } from '@components/gst/DownloadInvoiceCard';
+import { CurrentStatusCard } from '@components/orders/CurrentStatusCard';
 import { DeliveryAddress } from '@components/orders/DeliveryAddress';
+import { DeliveryOtpSheet } from '@components/orders/DeliveryOtpSheet';
 import { OrderDetailSkeleton } from '@components/orders/OrderSkeleton';
 import { OrderProducts } from '@components/orders/OrderProducts';
 import { OrderStatusBadge } from '@components/orders/OrderStatusBadge';
@@ -20,16 +23,28 @@ import { CANCELLABLE_STATUSES, isActiveStatus } from '@constants/orderStatus';
 import { useOrder } from '@hooks/useOrder';
 import { useReorder } from '@hooks/useReorder';
 import { useGstStore } from '@store/gstStore';
-import { useUserStore } from '@store/userStore';
 import { safeGoBack } from '@utils/navigation';
 import { formatDateKey } from '@utils/orderDateHelpers';
+import {
+  buildCustomerTimeline,
+  getCustomerStatusLabel,
+  shouldShowDeliveryOtp,
+} from '@utils/customerOrderStatus';
 import { theme, borderRadius } from '@constants/theme';
+
+function formatDeliveredLabel(deliveredAt?: string) {
+  if (!deliveredAt) return null;
+  const date = new Date(deliveredAt);
+  if (Number.isNaN(date.getTime())) return formatDateKey(deliveredAt);
+  const day = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return `${day}  ·  ${time}`;
+}
 
 export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const gstDetails = useGstStore((s) => s.details);
   const hasGst = useGstStore((s) => s.verified);
-  const customerName = useUserStore((s) => s.user.name);
   const {
     order,
     isLoading,
@@ -39,6 +54,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   } = useOrder(orderId);
   const { reorder, isReordering } = useReorder();
   const [downloading, setDownloading] = useState(false);
+  const [otpDismissed, setOtpDismissed] = useState(false);
 
   const handleDownloadInvoice = useCallback(async () => {
     if (!orderId) return;
@@ -64,6 +80,18 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
     }
   }, [orderId, downloadInvoicePdf]);
 
+  const handleViewInvoice = useCallback(async () => {
+    if (!orderId) return;
+    await Haptics.selectionAsync();
+    router.push({
+      pathname: '/invoice/[invoiceId]',
+      params: {
+        invoiceId: order?.invoiceId || order?.invoiceNumber || orderId,
+        orderId,
+      },
+    });
+  }, [orderId, order?.invoiceId, order?.invoiceNumber]);
+
   const handleReorder = useCallback(async () => {
     if (!orderId) return;
     await reorder(orderId);
@@ -87,6 +115,12 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
     router.push(`/orders/details/${orderId}`);
   }, [orderId]);
 
+  useEffect(() => {
+    if (order?.deliveryOtpVerified) {
+      setOtpDismissed(true);
+    }
+  }, [order?.deliveryOtpVerified]);
+
   if (isLoading && !order) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
@@ -108,6 +142,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   }
 
   const showTrack = isActiveStatus(order.status);
+  const isDelivered = order.status === 'delivered' || order.status === 'refunded';
   const canCancel =
     typeof order.canCancel === 'boolean'
       ? order.canCancel
@@ -117,6 +152,15 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
     : order.invoiceNumber
       ? `Invoice ${order.invoiceNumber}`
       : 'Available after delivery';
+  const timeline = buildCustomerTimeline(order.status, {
+    createdAt: order.createdAt,
+    deliveredAt: order.deliveredAt,
+  });
+  const showOtp =
+    !otpDismissed &&
+    shouldShowDeliveryOtp(order) &&
+    order.status === 'out_for_delivery';
+  const partnerAssigned = Boolean(order.driver?.name || order.tracking?.driver?.name);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bgMain }} edges={['top']}>
@@ -135,7 +179,8 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
         }
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 16 }}>
-        <View
+        <Animated.View
+          entering={FadeIn.duration(300)}
           style={{
             borderRadius: borderRadius.lg,
             backgroundColor: theme.white,
@@ -145,27 +190,39 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
           }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 12, color: theme.textMuted }}>
-              Order ID: {order.orderNumber}
+              Order #{order.orderNumber}
             </Text>
-            <OrderStatusBadge status={order.status} label={order.statusLabel} compact />
+            <OrderStatusBadge status={order.status} compact />
           </View>
           <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
             Placed on {formatDateKey(order.createdAt)}
-            {customerName ? ` · Placed by ${customerName}` : ''}
           </Text>
-          {order.status === 'delivered' || order.status === 'refunded' ? (
+          {isDelivered ? (
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.success, marginTop: 8 }}>
               Delivered
               {order.deliveredAt ? ` on ${formatDateKey(order.deliveredAt)}` : ''}
             </Text>
           ) : order.expectedDelivery ? (
-            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.primary, marginTop: 8 }}>
-              Expected delivery: {order.expectedDelivery}
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.primaryDark, marginTop: 8 }}>
+              Estimated Delivery: {order.expectedDelivery}
             </Text>
-          ) : null}
-        </View>
+          ) : (
+            <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary, marginTop: 8 }}>
+              {getCustomerStatusLabel(order.status)}
+            </Text>
+          )}
+        </Animated.View>
 
-        <OrderTimeline steps={order.timeline} />
+        <CurrentStatusCard
+          status={order.status}
+          estimatedMinutes={order.tracking?.estimatedMinutes}
+          estimatedArrival={order.expectedDelivery ?? order.tracking?.estimatedArrival}
+          partnerAssigned={partnerAssigned}
+          isDelivered={isDelivered}
+          deliveredAtLabel={formatDeliveredLabel(order.deliveredAt)}
+        />
+
+        <OrderTimeline steps={timeline} />
 
         <View>
           <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary, marginBottom: 12 }}>
@@ -180,7 +237,7 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
           discount={order.discount}
           couponDiscount={order.couponDiscount}
           deliveryCharge={order.deliveryCharge}
-          platformFee={order.platformFee}
+          platformFee={0}
           grandTotal={order.grandTotal}
           savings={order.savings}
         />
@@ -196,6 +253,27 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             isDownloading={downloading}
             downloadLabel="Download GST Invoice"
           />
+        ) : null}
+
+        {(isDelivered || order.invoiceNumber) ? (
+          <ScaledPressable
+            onPress={handleViewInvoice}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              backgroundColor: theme.white,
+              borderRadius: borderRadius.md,
+              paddingVertical: 14,
+              borderWidth: 1,
+              borderColor: theme.primary,
+            }}>
+            <Ionicons name="document-text-outline" size={18} color={theme.primary} />
+            <Text style={{ fontSize: 15, fontWeight: '800', color: theme.primary }}>
+              View Invoice
+            </Text>
+          </ScaledPressable>
         ) : null}
 
         <PaymentSection
@@ -297,6 +375,12 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <DeliveryOtpSheet
+        visible={showOtp}
+        otp={order.deliveryOtp}
+        onClose={() => setOtpDismissed(true)}
+      />
     </SafeAreaView>
   );
 });

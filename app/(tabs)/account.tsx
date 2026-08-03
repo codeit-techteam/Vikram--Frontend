@@ -20,7 +20,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CollapsibleSection } from '@components/account/CollapsibleSection';
 import { ProfileSiteSheet } from '@components/account/ProfileSiteSheet';
@@ -29,13 +28,16 @@ import { DrawerShell } from '@components/DrawerShell';
 import { InitialsAvatar } from '@components/InitialsAvatar';
 import { ScaledPressable } from '@components/ScaledPressable';
 import type { ProfileSite } from '@store/deliveryStore';
+import { VerifiedBadge } from '@components/gst/VerifiedBadge';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { useGstStore } from '@store/gstStore';
 import { useTranslation } from '@store/languageStore';
 import { useUserStore } from '@store/userStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { updateProfile } from '@services/customer.api';
 import { formatSiteType } from '@services/sites.api';
 import { useSites, useSiteMutations } from '@hooks/useSites';
+import { formatInvoiceDate, maskPan } from '@utils/invoiceAdapters';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
@@ -48,13 +50,19 @@ const QUICK_LINKS = [
   { key: 'history', icon: 'time-outline' as const, route: '/orders/history' },
   { key: 'invoices', icon: 'document-text-outline' as const, route: '/account/invoices' },
   { key: 'loyalty', icon: 'diamond-outline' as const, route: '/account/loyalty' },
-  { key: 'privacy', icon: 'shield-checkmark-outline' as const, route: '/account/privacy' },
+  {
+    key: 'terms',
+    icon: 'reader-outline' as const,
+    route: '/account/terms',
+    subtitleKey: 'termsConditionsSubtitle' as const,
+  },
 ] as const;
 
 export default function AccountScreen() {
   const { t, language, setLanguage } = useTranslation();
   const user = useUserStore((st) => st.user);
   const setAvatar = useUserStore((st) => st.setAvatar);
+  const gstDetails = useGstStore((st) => st.details);
   const profileSites = useDeliveryStore((st) => st.profileSites);
   const updateProfileSite = useDeliveryStore((st) => st.updateProfileSite);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
@@ -241,18 +249,91 @@ export default function AccountScreen() {
           {!showGuestState && (
             <>
               {/* Business Details */}
-              <ScaledPressable
-                onPress={() => router.push('/account/business-details' as Href)}
-                className="mb-4 flex-row items-center rounded-card border border-border bg-surface px-4 py-4 shadow-sm">
-                <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-info/10">
-                  <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
+              {gstDetails?.gstNumber ? (
+                <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
+                  <View className="mb-3 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <View className="h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+                        <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
+                      </View>
+                      <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
+                    </View>
+                    <VerifiedBadge
+                      compact
+                      variant={
+                        gstDetails.status === 'verified'
+                          ? 'verified'
+                          : gstDetails.status === 'failed'
+                            ? 'failed'
+                            : 'pending'
+                      }
+                      label={
+                        gstDetails.status === 'verified'
+                          ? '✔ Verified'
+                          : gstDetails.status === 'failed'
+                            ? 'Failed'
+                            : 'Pending'
+                      }
+                    />
+                  </View>
+
+                  <Text className="text-base font-bold text-text">
+                    {gstDetails.businessName || user.company || '—'}
+                  </Text>
+
+                  <View className="mt-3 gap-2">
+                    <AccountDetailRow label="GSTIN" value={gstDetails.gstNumber} />
+                    {gstDetails.pan ? (
+                      <AccountDetailRow label="PAN" value={maskPan(gstDetails.pan)} />
+                    ) : null}
+                    {(gstDetails.businessType || user.businessType) ? (
+                      <AccountDetailRow
+                        label="Business Type"
+                        value={gstDetails.businessType || user.businessType}
+                      />
+                    ) : null}
+                    {gstDetails.state ? (
+                      <AccountDetailRow label="State" value={gstDetails.state} />
+                    ) : null}
+                    {gstDetails.updatedAt ? (
+                      <AccountDetailRow
+                        label="Updated"
+                        value={formatInvoiceDate(gstDetails.updatedAt)}
+                      />
+                    ) : null}
+                  </View>
+
+                  <View className="mt-4 flex-row gap-2">
+                    <ScaledPressable
+                      onPress={() => router.push('/account/business-details' as Href)}
+                      className="h-11 flex-1 items-center justify-center rounded-pill bg-primary">
+                      <Text className="text-sm font-bold text-onPrimary">{t('editDetails')}</Text>
+                    </ScaledPressable>
+                    <ScaledPressable
+                      onPress={() => router.push('/account/gst-compliance' as Href)}
+                      className="h-11 flex-1 items-center justify-center rounded-pill border border-border bg-background">
+                      <Text className="text-sm font-bold text-text">View Certificate</Text>
+                    </ScaledPressable>
+                  </View>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
-                  <Text className="text-xs text-text-secondary">{t('manageGstDetails')}</Text>
+              ) : (
+                <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
+                  <View className="mb-2 flex-row items-center gap-2">
+                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+                      <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
+                    </View>
+                    <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
+                  </View>
+                  <Text className="text-sm leading-5 text-text-secondary">
+                    Complete your GST details to receive GST invoices and business benefits.
+                  </Text>
+                  <ScaledPressable
+                    onPress={() => router.push('/account/business-details' as Href)}
+                    className="mt-4 h-11 items-center justify-center rounded-pill bg-primary">
+                    <Text className="text-sm font-bold text-onPrimary">{t('addGstDetails')}</Text>
+                  </ScaledPressable>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#CCCCCC" />
-              </ScaledPressable>
+              )}
 
               {/* Saved Delivery Sites */}
               <CollapsibleSection
@@ -357,7 +438,7 @@ export default function AccountScreen() {
 
           {/* Quick Links */}
           <View className={`overflow-hidden rounded-card border border-border bg-surface ${showGuestState ? '' : 'mb-4'}`}>
-            {(showGuestState ? QUICK_LINKS.filter((l) => l.key === 'privacy') : QUICK_LINKS).map(
+            {(showGuestState ? QUICK_LINKS.filter((l) => l.key === 'terms') : QUICK_LINKS).map(
               (link, i, arr) => (
                 <ScaledPressable
                   key={link.key}
@@ -370,17 +451,26 @@ export default function AccountScreen() {
                     }
                     router.push(link.route as Href);
                   }}
-                  className={`flex-row items-center px-4 py-4 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}>
+                  className={`flex-row items-center px-4 py-4 ${
+                    i < arr.length - 1 || !showGuestState ? 'border-b border-border' : ''
+                  }`}>
                   <Ionicons name={link.icon} size={20} color="#666666" />
-                  <Text className="ml-3 flex-1 text-sm text-text">
-                    {link.key === 'history'
-                      ? t('orderHistoryMenu')
-                      : link.key === 'invoices'
-                        ? t('invoices')
-                        : link.key === 'loyalty'
-                          ? t('loyaltyWallet')
-                          : t('privacySecurity')}
-                  </Text>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-sm text-text">
+                      {link.key === 'history'
+                        ? t('orderHistoryMenu')
+                        : link.key === 'invoices'
+                          ? t('invoices')
+                          : link.key === 'loyalty'
+                            ? t('loyaltyWallet')
+                            : t('termsConditions')}
+                    </Text>
+                    {'subtitleKey' in link && link.subtitleKey ? (
+                      <Text className="mt-0.5 text-xs text-text-secondary">
+                        {t(link.subtitleKey)}
+                      </Text>
+                    ) : null}
+                  </View>
                   <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
                 </ScaledPressable>
               ),
@@ -404,36 +494,6 @@ export default function AccountScreen() {
               </ScaledPressable>
             </View>
           )}
-
-          {/* Payment Methods */}
-          {!showGuestState && (
-            <View className="rounded-card border border-border bg-surface p-4">
-              <View className="mb-3 flex-row items-center gap-2">
-                <View className="h-8 w-8 items-center justify-center rounded-lg bg-info/15">
-                  <Ionicons name="card-outline" size={18} color="#2196F3" />
-                </View>
-                <Text className="text-base font-bold text-text">{t('paymentMethods')}</Text>
-              </View>
-              {user.company || user.gstNumber ? (
-                <View className="flex-row items-center justify-between border-b border-border py-3">
-                  <Text className="text-sm text-text">
-                    {user.company
-                      ? `${user.company}${user.gstNumber ? ' (GST Reg)' : ''}`
-                      : `GST ${user.gstNumber}`}
-                  </Text>
-                  <View className="rounded bg-success/15 px-2 py-0.5">
-                    <Text className="text-[10px] font-bold text-success">PRIMARY</Text>
-                  </View>
-                </View>
-              ) : null}
-              <ScaledPressable
-                onPress={() => router.push('/account/payment-methods')}
-                className="flex-row items-center justify-between py-3">
-                <Text className="text-sm text-text">Manage payment methods</Text>
-                <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
-              </ScaledPressable>
-            </View>
-          )}
         </ScrollView>
 
       {!showGuestState ? (
@@ -451,6 +511,15 @@ export default function AccountScreen() {
       ) : null}
       </Animated.View>
     </DrawerShell>
+  );
+}
+
+function AccountDetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row items-start justify-between gap-3">
+      <Text className="text-[11px] font-semibold uppercase text-text-secondary">{label}</Text>
+      <Text className="flex-1 text-right text-sm font-semibold text-text">{value}</Text>
+    </View>
   );
 }
 

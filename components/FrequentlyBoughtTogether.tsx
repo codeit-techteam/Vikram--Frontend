@@ -7,7 +7,6 @@ import * as Haptics from 'expo-haptics';
 import { QuantityControls } from '@components/QuantityControls';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { getProductById } from '@constants/catalogData';
-import { getMinOrderQuantity } from '@constants/catalogVariantHelpers';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 import { useCartFeedbackStore } from '@store/cartFeedbackStore';
 import { useCartStore } from '@store/cartStore';
@@ -28,7 +27,6 @@ function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const showFeedback = useCartFeedbackStore((s) => s.showFeedback);
   const catalogProduct = getProductById(item.id);
-  const minOrder = catalogProduct ? getMinOrderQuantity(catalogProduct) : 1;
 
   const cartQty = useCartStore(
     (s) => s.items.find((i) => i.id === item.id || i.productId === item.id)?.quantity ?? 0,
@@ -41,10 +39,10 @@ function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
     }
     void (async () => {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const outcome = upsertItem({ ...frequentItemToCartItem(item), quantity: minOrder });
+      const outcome = upsertItem({ ...frequentItemToCartItem(item), quantity: 1 });
       showFeedback({ outcome });
     })();
-  }, [catalogProduct, item, minOrder, openSheet, showFeedback, upsertItem]);
+  }, [catalogProduct, item, openSheet, showFeedback, upsertItem]);
 
   const handleIncrement = useCallback(() => {
     if (catalogProduct) {
@@ -56,8 +54,8 @@ function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
 
   const handleDecrement = useCallback(() => {
     const next = cartQty - 1;
-    updateQuantity(item.id, next < minOrder ? 0 : next);
-  }, [cartQty, item.id, minOrder, updateQuantity]);
+    updateQuantity(item.id, next < 1 ? 0 : next);
+  }, [cartQty, item.id, updateQuantity]);
 
   return (
     <View style={{ width: CARD_WIDTH }} className="rounded-card border border-border bg-surface p-3">
