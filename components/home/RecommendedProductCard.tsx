@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 
 import { QuantityControls } from '@components/QuantityControls';
 import { ProductBulkPrice } from '@components/product/ProductBulkPrice';
+import { ProductImage } from '@components/product/ProductImage';
 import { ProductPrice } from '@components/product/ProductPrice';
 import { ProductRating } from '@components/product/ProductRating';
 import { ProductStock } from '@components/product/ProductStock';
@@ -155,10 +155,10 @@ export function RecommendedProductCard({ product, width }: RecommendedProductCar
     <View style={[styles.card, { width }]}>
       <View style={styles.imageSection}>
         <ScaledPressable onPress={openDetail} style={styles.imagePressable} scaleTo={0.99}>
-          <Image
+          <ProductImage
             source={getProductImageSource(product)}
-            style={styles.image}
-            contentFit="contain"
+            padding={12}
+            borderRadius={14}
             recyclingKey={product.slug || product.id}
           />
         </ScaledPressable>
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   imageSection: {
     height: IMAGE_HEIGHT,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: CARD_RADIUS,
     borderTopRightRadius: CARD_RADIUS,
     overflow: 'hidden',
@@ -248,10 +248,6 @@ const styles = StyleSheet.create({
   imagePressable: {
     flex: 1,
     width: '100%',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
   },
   badgeRow: {
     position: 'absolute',

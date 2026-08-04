@@ -106,13 +106,27 @@ export function frequentItemToCartItem(item: FrequentlyBoughtItem): CartItem {
   };
 }
 
-/** Returns the same image source used in catalog/detail — never a random category fallback. */
+/** Returns the same image source used in catalog/detail — prefer snapshot HTTPS URLs. */
 export function getCartItemImageSource(item: CartItem): ImageSourcePropType | null {
+  // Order/cart snapshots often already carry the R2 URL — use it first.
+  const snapshot =
+    (item.image && item.image.startsWith('http') ? item.image : null) ??
+    (item.imageSearch && item.imageSearch.startsWith('http')
+      ? item.imageSearch
+      : null);
+  if (snapshot) {
+    return resolveProductImageSource({
+      imageUrl: snapshot,
+      productName: item.productName ?? item.name,
+      categorySlug: normalizeCategorySlug(item.category),
+    });
+  }
+
   const productId = resolveCartProductId(item);
   const fromStore = useProductStore.getState().getProduct(productId);
-  if (fromStore?.imageUrl || fromStore?.slug) {
+  if (fromStore?.imageUrl) {
     return resolveProductImageSource({
-      imageUrl: fromStore.imageUrl ?? fromStore.imageSearch,
+      imageUrl: fromStore.imageUrl,
       productSlug: fromStore.slug,
       categorySlug: fromStore.categorySlug ?? normalizeCategorySlug(item.category),
       productName: fromStore.detailName ?? fromStore.name ?? item.productName ?? item.name,
@@ -120,9 +134,9 @@ export function getCartItemImageSource(item: CartItem): ImageSourcePropType | nu
   }
 
   const cached = useCatalogStore.getState().getCachedProduct(productId);
-  if (cached?.imageUrl || cached?.slug) {
+  if (cached?.imageUrl) {
     return resolveProductImageSource({
-      imageUrl: cached.imageUrl ?? cached.imageSearch,
+      imageUrl: cached.imageUrl,
       productSlug: cached.slug,
       categorySlug: cached.categorySlug ?? normalizeCategorySlug(item.category),
       productName: cached.detailName ?? cached.name ?? item.productName ?? item.name,
@@ -134,7 +148,6 @@ export function getCartItemImageSource(item: CartItem): ImageSourcePropType | nu
     imageRef && !isPlaceholderImageLabel(imageRef) ? imageRef : null;
 
   return resolveProductImageSource({
-    // Pass /assets/... paths through — not only remote http(s) URLs.
     imageUrl: usableImage,
     productSlug: looksLikeSlug(productId) ? productId : null,
     categorySlug: normalizeCategorySlug(item.category),

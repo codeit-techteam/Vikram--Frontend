@@ -215,7 +215,6 @@ export default function CartScreen() {
   const pointsApplied = useCartStore((s) => s.pointsApplied);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
-  const saveForLater = useCartStore((s) => s.saveForLater);
   const togglePoints = useCartStore((s) => s.togglePoints);
   const itemsTotal = useCartStore((s) => s.itemsTotal());
   const deliveryCharge = useCartStore((s) => s.deliveryCharge());
@@ -255,7 +254,6 @@ export default function CartScreen() {
                   item={item}
                   onUpdateQuantity={updateQuantity}
                   onRemove={removeItem}
-                  onSaveForLater={saveForLater}
                 />
               ))}
 

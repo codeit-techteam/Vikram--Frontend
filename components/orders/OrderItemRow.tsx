@@ -51,7 +51,7 @@ export function OrderItemRow({ item }: OrderItemRowProps) {
           borderWidth: 1,
           borderColor: '#F0F0F0',
         }}>
-        <CartItemImage item={item} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+        <CartItemImage item={item} style={{ width: '100%', height: '100%' }} padding={8} />
       </View>
 
       <View style={{ flex: 1 }}>

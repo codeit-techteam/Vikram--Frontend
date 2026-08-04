@@ -1,4 +1,16 @@
-export type CmsRedirectType = 'ROUTE' | 'PRODUCT' | 'CATEGORY' | 'EXTERNAL' | 'NONE';
+export type CmsRedirectType =
+  | 'ROUTE'
+  | 'PRODUCT'
+  | 'CATEGORY'
+  | 'EXTERNAL'
+  | 'NONE'
+  | 'OFFER'
+  | 'BRAND'
+  | 'SEARCH'
+  | 'WHATSAPP'
+  | 'BULK_INQUIRY'
+  | 'MEMBERSHIP'
+  | 'MATERIAL_EXPERT';
 
 export interface CmsBanner {
   id: string;
@@ -8,9 +20,14 @@ export interface CmsBanner {
   buttonAction: string | null;
   bannerType: string;
   imageUrl: string;
+  mobileUrl?: string | null;
+  tabletUrl?: string | null;
+  desktopUrl?: string | null;
   videoUrl: string | null;
   thumbnailUrl: string | null;
   badge: string | null;
+  ctaColor?: string | null;
+  backgroundColor?: string | null;
   priority: number;
   displayOrder: number;
   isActive: boolean;
@@ -32,6 +49,7 @@ export interface CmsAdvertisement {
   brandName: string;
   description: string | null;
   imageUrl: string;
+  logoUrl?: string | null;
   buttonText: string | null;
   redirectType: CmsRedirectType | string;
   redirectId: string | null;
@@ -86,13 +104,53 @@ export interface CmsHomeSection {
   layoutType: string | null;
 }
 
+export interface CmsOffer {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  discountLabel: string | null;
+  badge: string | null;
+  offerType: string;
+  displayOrder: number;
+  priority: number;
+  endsAt: string | null;
+}
+
+export interface CmsQuickAction {
+  id: string;
+  label: string;
+  iconUrl: string | null;
+  iconKey: string | null;
+  redirectType: CmsRedirectType | string;
+  redirectId: string | null;
+  displayOrder: number;
+}
+
+export interface CmsEmergencyBanner {
+  id: string;
+  title: string;
+  body: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  linkTarget: string | null;
+  dismissible: boolean;
+}
+
 export interface CmsHomeResponse {
   sections: CmsHomeSection[];
   banners: CmsBanner[];
+  heroBanners?: CmsBanner[];
   ads: CmsAdvertisement[];
+  brandAdvertisements?: CmsAdvertisement[];
   testimonials: CmsTestimonial[];
   promotions: CmsPromotion[];
   videoBanners: CmsBanner[];
+  heroVideo?: CmsBanner | null;
+  offers?: CmsOffer[];
+  quickActions?: CmsQuickAction[];
+  emergencyBanner?: CmsEmergencyBanner | null;
   emergencyDelivery: CmsPromotion | null;
   bulkProcurement: CmsPromotion | null;
   priorityExpress: CmsPromotion | null;

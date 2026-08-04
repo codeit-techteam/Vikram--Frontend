@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
@@ -17,16 +17,24 @@ import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { BrandSection } from '@components/filter-sections/BrandSection';
 import { GradeSection } from '@components/filter-sections/GradeSection';
 import { PriceRangeSection } from '@components/filter-sections/PriceRangeSection';
+import { FilterFooter } from '@components/FilterFooter';
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
   computeFacetCounts,
   countActiveFilters,
 } from '@constants/filterOptions';
-import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
+import {
+  FILTER_COLORS,
+  FILTER_LAYOUT,
+  FILTER_RADIUS,
+  FILTER_SPACING,
+  FILTER_SPRING,
+} from '@constants/filterTokens';
 import type {
   ActiveFilters,
   CategoryFilterConfig,
@@ -35,7 +43,8 @@ import type {
 import type { Product } from '@/types/catalog';
 
 export interface FilterBottomSheetRef {
-  open: () => void;
+  /** Open unified sheet; optionally jump to Brand / Grade / Price. */
+  open: (section?: FilterKey) => void;
   close: () => void;
 }
 
@@ -56,6 +65,8 @@ const SECTION_LABELS: Record<string, string> = {
   priceRange: 'Price',
   grade: 'Grade',
 };
+
+const SIDEBAR_SECTIONS: FilterKey[] = ['brand', 'grade', 'priceRange'];
 
 function sectionHasSelection(
   key: FilterKey,
@@ -78,7 +89,10 @@ function sectionHasSelection(
   }
 }
 
-export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSheetProps>(
+export const FilterBottomSheet = forwardRef<
+  FilterBottomSheetRef,
+  FilterBottomSheetProps
+>(
   (
     {
       draft,
@@ -95,12 +109,19 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
   ) => {
     const sheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
-    const snapPoints = useMemo(() => ['90%'], []);
-    const sections = config.advancedSections;
+    const snapPoints = useMemo(() => [FILTER_LAYOUT.snapPercent], []);
+    const sections = useMemo(
+      () =>
+        SIDEBAR_SECTIONS.filter((key) =>
+          config.advancedSections.includes(key),
+        ),
+      [config.advancedSections],
+    );
     const [activeSection, setActiveSection] = useState<FilterKey>(
       sections[0] ?? 'brand',
     );
     const [filterQuery, setFilterQuery] = useState('');
+    const [contentKey, setContentKey] = useState(0);
 
     useEffect(() => {
       if (!sections.includes(activeSection) && sections.length > 0) {
@@ -109,10 +130,17 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
     }, [sections, activeSection]);
 
     useImperativeHandle(ref, () => ({
-      open: () => {
+      open: (section?: FilterKey) => {
         setFilterQuery('');
-        setActiveSection(sections[0] ?? 'brand');
-        sheetRef.current?.snapToIndex(0);
+        const target =
+          section && sections.includes(section)
+            ? section
+            : (sections[0] ?? 'brand');
+        setActiveSection(target);
+        setContentKey((k) => k + 1);
+        requestAnimationFrame(() => {
+          sheetRef.current?.snapToIndex(0);
+        });
       },
       close: () => sheetRef.current?.close(),
     }));
@@ -123,7 +151,7 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
           {...props}
           disappearsOnIndex={-1}
           appearsOnIndex={0}
-          opacity={0.55}
+          opacity={0.5}
           pressBehavior="close"
         />
       ),
@@ -146,7 +174,6 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
     );
 
     const handleApply = () => {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onApply();
       sheetRef.current?.close();
     };
@@ -155,6 +182,18 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
       void Haptics.selectionAsync();
       onClearAll();
       sheetRef.current?.close();
+    };
+
+    const handleClose = () => {
+      sheetRef.current?.close();
+    };
+
+    const selectSection = (key: FilterKey) => {
+      if (key === activeSection) return;
+      void Haptics.selectionAsync();
+      setActiveSection(key);
+      setFilterQuery('');
+      setContentKey((k) => k + 1);
     };
 
     const sectionProps = { draft, onChange, config, products };
@@ -167,17 +206,14 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
               {...sectionProps}
               facetCounts={brandCounts}
               externalSearch={filterQuery}
+              hideSearch
             />
           );
         case 'grade':
           return <GradeSection {...sectionProps} facetCounts={gradeCounts} />;
         case 'priceRange':
           return (
-            <PriceRangeSection
-              {...sectionProps}
-              facetCounts={priceCounts}
-              matchingCount={resultCount}
-            />
+            <PriceRangeSection {...sectionProps} facetCounts={priceCounts} />
           );
         default:
           return null;
@@ -193,111 +229,134 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        enableDynamicSizing={false}
         animateOnMount
-        animationConfigs={{
-          damping: 22,
-          stiffness: 220,
-          mass: 0.8,
-          overshootClamping: false,
-          energyThreshold: 0.01,
-        }}
+        animationConfigs={FILTER_SPRING.sheet}
         backdropComponent={renderBackdrop}
-        bottomInset={insets.bottom}
-        keyboardBehavior="extend"
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
         handleIndicatorStyle={{
-          width: 36,
+          width: 40,
           height: 4,
-          backgroundColor: '#D1D1D1',
+          backgroundColor: '#D0D0D0',
         }}
         backgroundStyle={{
           backgroundColor: FILTER_COLORS.surface,
           borderTopLeftRadius: FILTER_RADIUS.sheet,
           borderTopRightRadius: FILTER_RADIUS.sheet,
-        }}>
+        }}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize">
         <View style={{ flex: 1 }}>
+          {/* Sticky header */}
           <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingHorizontal: FILTER_SPACING.lg,
-              paddingTop: FILTER_SPACING.sm,
+              paddingHorizontal: FILTER_SPACING.xl,
+              paddingTop: FILTER_SPACING.xs,
               paddingBottom: FILTER_SPACING.md,
+              borderBottomWidth: showSearch ? 0 : StyleSheet.hairlineWidth,
+              borderBottomColor: FILTER_COLORS.divider,
             }}>
-            <Text
+            <View
               style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: FILTER_COLORS.text,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                minHeight: 40,
               }}>
-              Filters
-            </Text>
-            {activeDraftCount > 0 ? (
-              <ScaledPressable onPress={handleClearAll} hitSlop={8}>
-                <Text
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: '800',
+                  color: FILTER_COLORS.text,
+                  letterSpacing: -0.3,
+                }}>
+                Filters
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {activeDraftCount > 0 ? (
+                  <ScaledPressable onPress={handleClearAll} hitSlop={8}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '700',
+                        color: FILTER_COLORS.primary,
+                      }}>
+                      Clear All
+                    </Text>
+                  </ScaledPressable>
+                ) : null}
+                <ScaledPressable
+                  onPress={handleClose}
+                  hitSlop={10}
+                  accessibilityLabel="Close filters"
                   style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: FILTER_COLORS.primary,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: FILTER_COLORS.surfaceMuted,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}>
-                  Clear All
-                </Text>
-              </ScaledPressable>
+                  <Ionicons name="close" size={20} color={FILTER_COLORS.text} />
+                </ScaledPressable>
+              </View>
+            </View>
+
+            {showSearch ? (
+              <View
+                style={{
+                  marginTop: FILTER_SPACING.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  height: 44,
+                  borderRadius: FILTER_RADIUS.input,
+                  borderWidth: 1,
+                  borderColor: FILTER_COLORS.border,
+                  paddingHorizontal: 12,
+                  backgroundColor: FILTER_COLORS.surfaceMuted,
+                }}>
+                <Ionicons
+                  name="search"
+                  size={16}
+                  color={FILTER_COLORS.textMuted}
+                />
+                <BottomSheetTextInput
+                  value={filterQuery}
+                  onChangeText={setFilterQuery}
+                  placeholder="Search brands"
+                  placeholderTextColor={FILTER_COLORS.textMuted}
+                  style={{
+                    flex: 1,
+                    marginLeft: 8,
+                    fontSize: 14,
+                    color: FILTER_COLORS.text,
+                    paddingVertical: 0,
+                  }}
+                />
+                {filterQuery.length > 0 ? (
+                  <ScaledPressable
+                    onPress={() => setFilterQuery('')}
+                    hitSlop={8}>
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color={FILTER_COLORS.textMuted}
+                    />
+                  </ScaledPressable>
+                ) : null}
+              </View>
             ) : null}
           </View>
 
-          {showSearch ? (
+          {/* Sidebar + content */}
+          <View style={{ flex: 1, flexDirection: 'row', minHeight: 0 }}>
             <View
               style={{
-                marginHorizontal: FILTER_SPACING.lg,
-                marginBottom: FILTER_SPACING.md,
-                flexDirection: 'row',
-                alignItems: 'center',
-                height: 44,
-                borderRadius: FILTER_RADIUS.input,
-                borderWidth: 1,
-                borderColor: FILTER_COLORS.border,
-                paddingHorizontal: 12,
-                backgroundColor: FILTER_COLORS.surfaceMuted,
-              }}>
-              <Ionicons name="search" size={16} color={FILTER_COLORS.textMuted} />
-              <BottomSheetTextInput
-                value={filterQuery}
-                onChangeText={setFilterQuery}
-                placeholder="Search Brand"
-                placeholderTextColor={FILTER_COLORS.textMuted}
-                style={{
-                  flex: 1,
-                  marginLeft: 8,
-                  fontSize: 14,
-                  color: FILTER_COLORS.text,
-                  paddingVertical: 0,
-                }}
-              />
-              {filterQuery.length > 0 ? (
-                <ScaledPressable onPress={() => setFilterQuery('')} hitSlop={8}>
-                  <Ionicons
-                    name="close-circle"
-                    size={18}
-                    color={FILTER_COLORS.textMuted}
-                  />
-                </ScaledPressable>
-              ) : null}
-            </View>
-          ) : null}
-
-          <View style={{ flex: 1, flexDirection: 'row' }}>
-            <ScrollView
-              style={{
-                width: 108,
-                backgroundColor: FILTER_COLORS.surfaceMuted,
+                width: FILTER_LAYOUT.sidebarWidth,
+                backgroundColor: FILTER_COLORS.sidebar,
                 borderRightWidth: 1,
                 borderRightColor: FILTER_COLORS.divider,
-              }}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 24 }}>
+              }}>
               {sections.map((key) => {
                 const active = activeSection === key;
                 const hasValue = sectionHasSelection(
@@ -308,15 +367,12 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
                 return (
                   <ScaledPressable
                     key={key}
-                    onPress={() => {
-                      void Haptics.selectionAsync();
-                      setActiveSection(key);
-                      setFilterQuery('');
-                    }}
+                    onPress={() => selectSection(key)}
                     scaleTo={0.98}
                     style={{
-                      paddingVertical: 18,
-                      paddingHorizontal: 12,
+                      minHeight: FILTER_LAYOUT.touchMin,
+                      paddingVertical: 16,
+                      paddingHorizontal: 10,
                       backgroundColor: active
                         ? FILTER_COLORS.surface
                         : 'transparent',
@@ -326,6 +382,7 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
                         : 'transparent',
                     }}>
                     <Text
+                      numberOfLines={1}
                       style={{
                         fontSize: 13,
                         fontWeight: active || hasValue ? '700' : '500',
@@ -340,7 +397,7 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
                     {hasValue ? (
                       <View
                         style={{
-                          marginTop: 4,
+                          marginTop: 5,
                           width: 6,
                           height: 6,
                           borderRadius: 3,
@@ -351,87 +408,59 @@ export const FilterBottomSheet = forwardRef<FilterBottomSheetRef, FilterBottomSh
                   </ScaledPressable>
                 );
               })}
-            </ScrollView>
+            </View>
 
             {isPrice ? (
               <View
                 style={{
                   flex: 1,
-                  paddingHorizontal: FILTER_SPACING.md,
-                  paddingTop: FILTER_SPACING.sm,
+                  minWidth: 0,
+                  paddingHorizontal: FILTER_SPACING.lg,
+                  paddingTop: FILTER_SPACING.md,
+                  paddingBottom: FILTER_SPACING.sm,
                 }}>
-                {renderActiveSection()}
+                <Animated.View
+                  key={`price-${contentKey}`}
+                  entering={FadeIn.duration(160)}
+                  exiting={FadeOut.duration(80)}
+                  style={{ flex: 1 }}>
+                  {renderActiveSection()}
+                </Animated.View>
               </View>
             ) : (
               <BottomSheetScrollView
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: 0 }}
                 contentContainerStyle={{
-                  paddingHorizontal: FILTER_SPACING.md,
-                  paddingTop: FILTER_SPACING.sm,
+                  paddingHorizontal: FILTER_SPACING.lg,
+                  paddingTop: FILTER_SPACING.md,
                   paddingBottom: FILTER_SPACING.xl,
                   flexGrow: 1,
                 }}
                 showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled">
-                {renderActiveSection()}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}>
+                <Animated.View
+                  key={`${activeSection}-${contentKey}`}
+                  entering={FadeIn.duration(160)}
+                  exiting={FadeOut.duration(80)}>
+                  {renderActiveSection()}
+                </Animated.View>
               </BottomSheetScrollView>
             )}
           </View>
 
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: FILTER_COLORS.divider,
-              paddingHorizontal: FILTER_SPACING.lg,
-              paddingTop: FILTER_SPACING.md,
-              paddingBottom: FILTER_SPACING.lg,
-              flexDirection: 'row',
-              gap: FILTER_SPACING.sm,
-              backgroundColor: FILTER_COLORS.surface,
-            }}>
-            <ScaledPressable
-              onPress={() => {
-                void Haptics.selectionAsync();
+          {/* Sticky action bar — sheet uses enablePanDownToClose; safe padding via insets */}
+          <View style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+            <FilterFooter
+              resultCount={resultCount}
+              onReset={() => {
                 onReset();
-                sheetRef.current?.close();
               }}
-              scaleTo={0.97}
-              style={{
-                flex: 1,
-                height: 52,
-                borderRadius: FILTER_RADIUS.card,
-                borderWidth: 1.5,
-                borderColor: FILTER_COLORS.primary,
-                backgroundColor: FILTER_COLORS.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: '700',
-                  color: FILTER_COLORS.primary,
-                }}>
-                Clear All
-              </Text>
-            </ScaledPressable>
-
-            <ScaledPressable
-              onPress={handleApply}
-              scaleTo={0.97}
-              style={{
-                flex: 1.35,
-                height: 52,
-                borderRadius: FILTER_RADIUS.card,
-                backgroundColor: FILTER_COLORS.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-              <Text
-                style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
-                Apply ({resultCount} {resultCount === 1 ? 'Product' : 'Products'})
-              </Text>
-            </ScaledPressable>
+              onApply={handleApply}
+              applyLabel="Apply"
+              resetLabel="Clear All"
+              safeAreaBottom={false}
+            />
           </View>
         </View>
       </BottomSheet>

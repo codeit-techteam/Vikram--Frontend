@@ -25,10 +25,6 @@ import {
   type FilterBottomSheetRef,
 } from '@components/FilterBottomSheet';
 import { FilterBar } from '@components/FilterBar';
-import {
-  QuickFilterSheet,
-  type QuickFilterSheetRef,
-} from '@components/QuickFilterSheet';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { MaterialExpertCTA, MaterialExpertSheet } from '@components/MaterialExpertSheet';
 import { ProductGridCard } from '@components/product/ProductGridCard';
@@ -43,7 +39,7 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { useProducts } from '@hooks/useProducts';
 import { useFilterState } from '@hooks/useFilterState';
 import { useTranslation } from '@store/languageStore';
-import type { QuickFilterKey } from '@/types/filter.types';
+import type { FilterKey, QuickFilterKey } from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
 import { normalizeCategoryDisplayName } from '@utils/categoryDisplay';
 
@@ -55,8 +51,7 @@ export default function ProductListingScreen() {
     categoryName: string;
   }>();
 
-  const fullSheetRef = useRef<FilterBottomSheetRef>(null);
-  const quickSheetRef = useRef<QuickFilterSheetRef>(null);
+  const filterSheetRef = useRef<FilterBottomSheetRef>(null);
   const expertSheetRef = useRef<BottomSheet>(null);
 
   const slug =
@@ -111,14 +106,9 @@ export default function ProductListingScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, isLoading, loadMore, products.length]);
 
-  const openQuickFilterSheet = (key: QuickFilterKey) => {
+  const openFilterSheet = (section?: QuickFilterKey | FilterKey) => {
     syncDraft();
-    quickSheetRef.current?.open(key);
-  };
-
-  const openFullFilterSheet = () => {
-    syncDraft();
-    fullSheetRef.current?.open();
+    filterSheetRef.current?.open(section);
   };
 
   const handleRemoveTag = (key: RemovableFilterKey, value?: string) => {
@@ -189,8 +179,8 @@ export default function ProductListingScreen() {
         <FilterBar
           activeFilters={activeFilters}
           config={config}
-          onChipPress={openQuickFilterSheet}
-          onOpenAll={openFullFilterSheet}
+          onChipPress={openFilterSheet}
+          onOpenAll={() => openFilterSheet()}
           onClearChip={clearFilter}
         />
 
@@ -330,7 +320,7 @@ export default function ProductListingScreen() {
       )}
 
       <FilterBottomSheet
-        ref={fullSheetRef}
+        ref={filterSheetRef}
         draft={draftFilters}
         config={config}
         products={products}
@@ -340,17 +330,6 @@ export default function ProductListingScreen() {
         onApply={applyDraft}
         onReset={clearDraftAndApply}
         onClearAll={clearDraftAndApply}
-      />
-
-      <QuickFilterSheet
-        ref={quickSheetRef}
-        draft={draftFilters}
-        config={config}
-        products={products}
-        categoryId={slug || 'cement'}
-        resultCount={draftFilteredCount}
-        onChange={setDraft}
-        onApply={applyDraft}
       />
 
       <MaterialExpertSheet ref={expertSheetRef} />

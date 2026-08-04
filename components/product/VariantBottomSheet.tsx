@@ -9,7 +9,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -24,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ProductImage } from '@components/product/ProductImage';
 import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
 import {
   getVariantCount,
@@ -104,13 +104,18 @@ function VariantBottomSheetComponent() {
   useEffect(() => {
     if (visible) {
       mounted.value = 1;
+      sheetY.value = SHEET_HEIGHT;
+      backdropOpacity.value = 0;
       backdropOpacity.value = withTiming(1, {
         duration: OPEN_MS,
         easing: Easing.out(Easing.cubic),
       });
-      sheetY.value = withTiming(0, {
-        duration: OPEN_MS,
-        easing: Easing.out(Easing.cubic),
+      // Native spring, no bounce — Blinkit-style sheet entrance
+      sheetY.value = withSpring(0, {
+        damping: 28,
+        stiffness: 320,
+        mass: 0.85,
+        overshootClamping: true,
       });
     }
   }, [visible, backdropOpacity, sheetY, mounted]);
@@ -287,11 +292,18 @@ function VariantBottomSheetComponent() {
             </View>
 
             <View style={styles.productRow}>
-              {imageSource ? (
-                <Image source={imageSource} style={styles.thumb} contentFit="cover" />
-              ) : (
-                <View style={[styles.thumb, styles.thumbPlaceholder]} />
-              )}
+              <Animated.View entering={FadeIn.duration(220)}>
+                <ProductImage
+                  source={imageSource}
+                  size={72}
+                  padding={8}
+                  borderRadius={16}
+                  backgroundColor="#FFFFFF"
+                  recyclingKey={product.slug || product.id}
+                  style={styles.thumb}
+                  showShadow
+                />
+              </Animated.View>
               <View style={styles.productMeta}>
                 {showBrand ? (
                   <Text style={styles.brand} numberOfLines={1}>
@@ -638,8 +650,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: HAIRLINE,
   },
@@ -647,7 +659,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   title: {
     fontSize: 18,
@@ -669,19 +681,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   thumb: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-    backgroundColor: SURFACE,
-  },
-  thumbPlaceholder: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: HAIRLINE,
   },
   productMeta: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 6,
   },
   brand: {
     fontSize: 11,
@@ -694,7 +700,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: DARK,
-    lineHeight: 21,
+    lineHeight: 22,
     letterSpacing: -0.2,
   },
   priceRow: {
@@ -705,7 +711,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   unitPrice: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     color: DARK,
     letterSpacing: -0.3,
@@ -857,18 +863,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: HAIRLINE,
-    backgroundColor: '#FFF',
+    borderColor: GOLD_BORDER,
+    backgroundColor: GOLD_SOFT,
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
   deliveryIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: GOLD_SOFT,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -882,7 +888,7 @@ const styles = StyleSheet.create({
     color: DARK,
   },
   deliveryEta: {
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 12,
     fontWeight: '600',
     color: MUTED,
@@ -891,11 +897,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: GOLD_SOFT,
-    borderRadius: 10,
+    backgroundColor: '#FFF',
+    borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: GOLD_BORDER,
-    paddingHorizontal: 9,
+    borderColor: GOLD,
+    paddingHorizontal: 10,
     paddingVertical: 6,
   },
   vehiclePillText: {
@@ -974,35 +980,37 @@ const styles = StyleSheet.create({
   breakdownCard: {
     borderRadius: 14,
     backgroundColor: SURFACE,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   breakdownTitle: {
     fontSize: 13,
     fontWeight: '800',
     color: DARK,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
+    minHeight: 22,
   },
   breakdownLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: MUTED,
   },
   breakdownValue: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: DARK,
   },
   breakdownBold: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: DARK,
+    letterSpacing: -0.2,
   },
   savingsValue: {
     color: GREEN,

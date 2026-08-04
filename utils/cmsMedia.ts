@@ -1,68 +1,33 @@
 import type { ImageSourcePropType } from 'react-native';
 import type { VideoSource } from 'expo-video';
 
-import { images } from '@constants/images';
-import { resolveCategoryImageSource } from '@utils/catalogPlaceholders';
+import { normalizeMediaUrl } from '@utils/media';
 
 /**
- * Maps CMS media references (local asset paths or future CDN URLs)
- * to React Native sources. Storage-agnostic — only the DB value changes later.
+ * CMS image resolver — remote CDN / R2 URLs only.
  */
-const VIDEO_PATH_MAP: Record<string, number> = {
-  'assets/videos/delivery-hero.mp4': require('../assets/videos/delivery-hero.mp4'),
-  '/assets/videos/delivery-hero.mp4': require('../assets/videos/delivery-hero.mp4'),
-  'assets/videos/landscape.mp4': require('../assets/videos/landscape.mp4'),
-  '/assets/videos/landscape.mp4': require('../assets/videos/landscape.mp4'),
-  'assets/videos/bricks.mp4': require('../assets/videos/bricks.mp4'),
-  '/assets/videos/bricks.mp4': require('../assets/videos/bricks.mp4'),
-  'assets/videos/unbeatable.mp4': require('../assets/videos/unbeatable.mp4'),
-  '/assets/videos/unbeatable.mp4': require('../assets/videos/unbeatable.mp4'),
-  'assets/hero-video.mp4': require('../assets/videos/delivery-hero.mp4'),
-  '/assets/hero-video.mp4': require('../assets/videos/delivery-hero.mp4'),
-};
-
-function normalizePath(path: string): string {
-  const trimmed = path.trim();
-  return trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
-}
-
-function isRemoteUrl(value: string): boolean {
-  return value.startsWith('http://') || value.startsWith('https://');
-}
-
 export function resolveCmsImageSource(
   path?: string | null,
-  fallbackSlug = 'aggregates',
 ): ImageSourcePropType {
-  if (!path) return resolveCategoryImageSource(fallbackSlug);
-  if (isRemoteUrl(path)) return { uri: path };
-
-  const withSlash = path.startsWith('/') ? path : `/${path}`;
-  const asAssets = withSlash.startsWith('/assets/')
-    ? withSlash
-    : `/assets/${normalizePath(path).replace(/^assets\//, '')}`;
-
-  return resolveCategoryImageSource(fallbackSlug, asAssets);
+  const url = normalizeMediaUrl(path);
+  if (url) return { uri: url };
+  return {
+    uri: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  };
 }
 
+/**
+ * CMS video resolver — only HTTPS (Cloudflare R2 / CDN) sources.
+ */
 export function resolveCmsVideoSource(path?: string | null): VideoSource | null {
-  if (!path) return null;
-  if (isRemoteUrl(path)) return { uri: path };
+  const url = normalizeMediaUrl(path);
+  return url ? { uri: url } : null;
+}
 
-  const key = path.trim();
-  if (VIDEO_PATH_MAP[key]) return VIDEO_PATH_MAP[key];
-
-  const normalized = normalizePath(key);
-  if (VIDEO_PATH_MAP[normalized]) return VIDEO_PATH_MAP[normalized];
-  if (VIDEO_PATH_MAP[`/${normalized}`]) return VIDEO_PATH_MAP[`/${normalized}`];
-
+export function resolveCmsVideoModule(_path?: string | null): number | null {
   return null;
 }
 
-export function resolveCmsVideoModule(path?: string | null): number | null {
-  const source = resolveCmsVideoSource(path);
-  return typeof source === 'number' ? source : null;
-}
-
-/** Hero/login-style remote banner fallback used by legacy static home. */
-export const CMS_DEFAULT_HERO_IMAGE = images.loginBanner;
+/** Empty placeholder — never use Unsplash/local marketing assets. */
+export const CMS_DEFAULT_HERO_IMAGE =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';

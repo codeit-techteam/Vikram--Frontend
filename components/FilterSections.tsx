@@ -74,7 +74,6 @@ export function FilterSections({
   products,
   categoryId = '',
   visibleSections,
-  matchingCount,
   compact,
 }: FilterSectionsProps) {
   const sections = visibleSections
@@ -112,13 +111,12 @@ export function FilterSections({
       case 'brand':
         return <BrandSection {...sectionProps} facetCounts={brandCounts} />;
       case 'priceRange':
-        return (
-          <PriceRangeSection
-            {...sectionProps}
-            facetCounts={priceCounts}
-            matchingCount={matchingCount}
-          />
-        );
+          return (
+            <PriceRangeSection
+              {...sectionProps}
+              facetCounts={priceCounts}
+            />
+          );
       default:
         return null;
     }

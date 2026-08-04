@@ -8,7 +8,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { useTranslation } from '@store/languageStore';
 import { CartItemImage } from '@components/cart/CartItemImage';
 import { ProductUnit } from '@components/product/ProductUnit';
 import {
@@ -17,20 +16,21 @@ import {
   type CartItem,
 } from '@store/cartStore';
 
+const GOLD = '#FEB623';
+const DARK = '#1A1A1A';
+const THUMB = 88;
+
 interface CartItemCardProps {
   item: CartItem;
   onUpdateQuantity: (id: string, qty: number) => void;
   onRemove: (id: string) => void;
-  onSaveForLater: (id: string) => void;
 }
 
 export function CartItemCard({
   item,
   onUpdateQuantity,
   onRemove,
-  onSaveForLater,
 }: CartItemCardProps) {
-  const { t } = useTranslation();
   const qtyOpacity = useSharedValue(1);
   const unitPrice = getEffectivePrice(item);
   const lineTotal = getLineTotal(item);
@@ -39,58 +39,77 @@ export function CartItemCard({
 
   const changeQty = async (delta: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    qtyOpacity.value = withSequence(withTiming(0, { duration: 80 }), withTiming(1, { duration: 150 }));
+    qtyOpacity.value = withSequence(
+      withTiming(0.35, { duration: 70 }),
+      withTiming(1, { duration: 140 }),
+    );
     onUpdateQuantity(item.id, item.quantity + delta);
   };
 
   return (
     <View style={styles.card}>
-      <View style={styles.imageWrap}>
-        <CartItemImage item={item} style={styles.image} contentFit="cover" />
-        <Pressable onPress={() => onRemove(item.id)} style={styles.deleteButton}>
-          <Ionicons name="trash-outline" size={18} color="#666" />
-        </Pressable>
-      </View>
+      <View style={styles.row}>
+        <CartItemImage
+          item={item}
+          size={THUMB}
+          padding={10}
+          borderRadius={12}
+          style={styles.thumb}
+        />
 
-      <View style={styles.content}>
-        <Text style={styles.name}>{item.name}</Text>
-        {item.variantLabel ? (
-          <View style={styles.variantRow}>
-            <Text style={styles.variantLabel}>Variant</Text>
-            <Text style={styles.variantValue}>{item.variantLabel}</Text>
-          </View>
-        ) : null}
-        <Text style={styles.description} numberOfLines={2}>
-          {item.description}
-        </Text>
-        <Text style={styles.price}>
-          ₹{unitPrice.toLocaleString('en-IN')}
-          <ProductUnit unit={item.unit} variant="price" />
-        </Text>
-
-        <View style={styles.controlsRow}>
-          <View style={styles.qtyControls}>
-            <Pressable onPress={() => changeQty(-1)} style={styles.qtyButton}>
-              <Text style={styles.qtySymbol}>−</Text>
-            </Pressable>
-            <Animated.Text style={[styles.qtyValue, qtyAnimStyle]}>{item.quantity}</Animated.Text>
-            <Pressable onPress={() => changeQty(1)} style={styles.qtyButton}>
-              <Text style={styles.qtySymbol}>+</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.subtotalWrap}>
-            <Text style={styles.subtotalLabel}>
-              <ProductUnit unit={item.unit} quantity={item.quantity} variant="qty" />
+        <View style={styles.content}>
+          <View style={styles.topRow}>
+            <Text style={styles.name} numberOfLines={2}>
+              {item.name}
             </Text>
-            <Text style={styles.subtotalValue}>₹{lineTotal.toLocaleString('en-IN')}</Text>
+            <Pressable
+              onPress={() => onRemove(item.id)}
+              hitSlop={10}
+              style={styles.deleteButton}
+              accessibilityRole="button"
+              accessibilityLabel="Remove item">
+              <Ionicons name="trash-outline" size={16} color="#888" />
+            </Pressable>
+          </View>
+
+          {item.variantLabel ? (
+            <View style={styles.variantRow}>
+              <Text style={styles.variantValue}>{item.variantLabel}</Text>
+            </View>
+          ) : null}
+
+          {item.description ? (
+            <Text style={styles.description} numberOfLines={1}>
+              {item.description}
+            </Text>
+          ) : null}
+
+          <Text style={styles.price}>
+            ₹{unitPrice.toLocaleString('en-IN')}
+            <ProductUnit unit={item.unit} variant="price" />
+          </Text>
+
+          <View style={styles.controlsRow}>
+            <View style={styles.qtyControls}>
+              <Pressable onPress={() => changeQty(-1)} style={styles.qtyButton} hitSlop={4}>
+                <Text style={styles.qtySymbol}>−</Text>
+              </Pressable>
+              <Animated.Text style={[styles.qtyValue, qtyAnimStyle]}>
+                {item.quantity}
+              </Animated.Text>
+              <Pressable onPress={() => changeQty(1)} style={styles.qtyButton} hitSlop={4}>
+                <Text style={styles.qtySymbol}>+</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.subtotalWrap}>
+              <Text style={styles.subtotalLabel}>
+                <ProductUnit unit={item.unit} quantity={item.quantity} variant="qty" />
+              </Text>
+              <Text style={styles.subtotalValue}>₹{lineTotal.toLocaleString('en-IN')}</Text>
+            </View>
           </View>
         </View>
-
-        <Pressable onPress={() => onSaveForLater(item.id)} style={styles.saveLater}>
-          <Ionicons name="bookmark-outline" size={14} color="#FEB623" />
-          <Text style={styles.saveLaterText}>{t('saveForLater')}</Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -102,99 +121,100 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
-    overflow: 'hidden',
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#F0F0F0',
   },
-  imageWrap: {
-    position: 'relative',
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
   },
-  image: {
-    width: '100%',
-    height: 160,
-  },
-  deleteButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 20,
-    padding: 6,
+  thumb: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#EEEEEE',
   },
   content: {
-    padding: 14,
+    flex: 1,
+    minWidth: 0,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  variantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-    backgroundColor: '#FFF8E8',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  variantLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#888',
-    textTransform: 'uppercase',
-  },
-  variantValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  description: {
-    fontSize: 13,
-    color: '#888',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  price: {
+    flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#FEB623',
-    marginBottom: 12,
+    color: DARK,
+    lineHeight: 20,
+  },
+  deleteButton: {
+    padding: 4,
+    marginTop: -2,
+  },
+  variantRow: {
+    marginTop: 6,
+    backgroundColor: '#FFF8E8',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  variantValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: DARK,
+  },
+  description: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#888',
+    lineHeight: 16,
+  },
+  price: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '700',
+    color: GOLD,
   },
   controlsRow: {
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderWidth: 1.5,
+    borderColor: GOLD,
     borderRadius: 10,
+    backgroundColor: '#FFF',
     overflow: 'hidden',
   },
   qtyButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
   qtySymbol: {
-    fontSize: 18,
-    color: '#1A1A1A',
-    fontWeight: '300',
+    fontSize: 16,
+    color: DARK,
+    fontWeight: '600',
   },
   qtyValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    paddingHorizontal: 8,
-    minWidth: 32,
+    fontSize: 14,
+    fontWeight: '800',
+    color: DARK,
+    paddingHorizontal: 6,
+    minWidth: 28,
     textAlign: 'center',
   },
   subtotalWrap: {
@@ -203,22 +223,12 @@ const styles = StyleSheet.create({
   subtotalLabel: {
     fontSize: 11,
     color: '#999',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   subtotalValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#1A1A1A',
-  },
-  saveLater: {
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  saveLaterText: {
-    fontSize: 13,
-    color: '#FEB623',
-    fontWeight: '500',
+    color: DARK,
+    marginTop: 1,
   },
 });

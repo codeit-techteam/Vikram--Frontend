@@ -40,16 +40,18 @@ export interface CmsTestimonialReviewView {
 }
 
 export function adaptHeroSlides(banners: CmsBanner[]): CmsHeroSlide[] {
-  return banners.map((b) => ({
-    id: b.id,
-    badge: b.badge ?? '2-Hour Delivery',
-    title: b.title,
-    shopNow: b.buttonText ?? 'Shop Now',
-    bulkInquiry: b.secondaryButtonText ?? 'Bulk Inquiry',
-    imageUrl: b.imageUrl,
-    linkTarget: b.linkTarget ?? b.linkUrl,
-    secondaryLinkTarget: b.secondaryLinkTarget ?? b.secondaryLinkUrl,
-  }));
+  return banners
+    .filter((b) => Boolean(b.imageUrl))
+    .map((b) => ({
+      id: b.id,
+      badge: b.badge ?? '',
+      title: b.title,
+      shopNow: b.buttonText ?? '',
+      bulkInquiry: b.secondaryButtonText ?? '',
+      imageUrl: b.imageUrl,
+      linkTarget: b.linkTarget ?? b.linkUrl,
+      secondaryLinkTarget: b.secondaryLinkTarget ?? b.secondaryLinkUrl,
+    }));
 }
 
 export function adaptTestimonialVideos(
@@ -63,7 +65,7 @@ export function adaptTestimonialVideos(
         id: t.id,
         video: video ?? { uri: t.videoUrl! },
         videoModule: typeof video === 'number' ? video : null,
-        thumbnail: resolveCmsImageSource(t.thumbnailUrl, 'cement'),
+        thumbnail: resolveCmsImageSource(t.thumbnailUrl),
         customerName: t.customerName,
         location: t.location ?? t.city ?? '',
         rating: t.rating,
@@ -109,12 +111,36 @@ export function navigateCmsRedirect(
         params: { categoryId: redirectId, categoryName: redirectId },
       } as Href);
       break;
-    case 'ROUTE':
+    case 'OFFER':
+      router.push(`/offers/${redirectId}` as Href);
+      break;
+    case 'SEARCH':
+      router.push({
+        pathname: '/(tabs)/catalog',
+        params: { q: redirectId },
+      } as Href);
+      break;
+    case 'MEMBERSHIP':
+      router.push((redirectId.startsWith('/') ? redirectId : '/membership') as Href);
+      break;
+    case 'BULK_INQUIRY':
+      router.push(
+        (redirectId.startsWith('/') ? redirectId : '/bulk-procurement') as Href,
+      );
+      break;
+    case 'MATERIAL_EXPERT':
+      router.push(
+        (redirectId.startsWith('/') ? redirectId : '/material-expert') as Href,
+      );
+      break;
+    case 'WHATSAPP':
     case 'EXTERNAL':
+    case 'BRAND':
+    case 'ROUTE':
       router.push(redirectId as Href);
       break;
     default:
-      if (redirectId.startsWith('/')) {
+      if (redirectId.startsWith('/') || redirectId.startsWith('http') || redirectId.startsWith('tel:')) {
         router.push(redirectId as Href);
       }
       break;

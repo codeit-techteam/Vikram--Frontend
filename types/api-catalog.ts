@@ -90,6 +90,8 @@ export interface ApiProduct {
   discountPercent?: number;
   gst: number;
   thumbnail?: string | null;
+  /** Alias of thumbnail — primary product image (R2 URL). */
+  imageUrl?: string | null;
   gallery?: string[];
   bulkPrice?: number | null;
   bulkThreshold: number;

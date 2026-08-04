@@ -9,9 +9,9 @@ import Animated, {
 
 import { FILTER_COLORS } from '@constants/filterTokens';
 
-const THUMB_SIZE = 24;
+const THUMB_SIZE = 28;
 const TRACK_HEIGHT = 4;
-const HIT_SLOP = 12;
+const HIT_SLOP = 14;
 
 interface DualRangeSliderProps {
   minBound: number;
@@ -75,9 +75,10 @@ export function DualRangeSlider({
     setTrackWidth(e.nativeEvent.layout.width);
   };
 
+  // Prefer horizontal pans so the bottom sheet can still dismiss vertically
   const lowGesture = Gesture.Pan()
-    .activeOffsetX([-6, 6])
-    .failOffsetY([-12, 12])
+    .activeOffsetX([-4, 4])
+    .failOffsetY([-16, 16])
     .onBegin(() => {
       dragging.value = 1;
       startLowX.value = lowX.value;
@@ -93,8 +94,8 @@ export function DualRangeSlider({
     });
 
   const highGesture = Gesture.Pan()
-    .activeOffsetX([-6, 6])
-    .failOffsetY([-12, 12])
+    .activeOffsetX([-4, 4])
+    .failOffsetY([-16, 16])
     .onBegin(() => {
       dragging.value = 1;
       startHighX.value = highX.value;
@@ -167,6 +168,7 @@ const styles = StyleSheet.create({
     marginLeft: -HIT_SLOP,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   thumb: {
     width: THUMB_SIZE,
@@ -176,9 +178,9 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
 });

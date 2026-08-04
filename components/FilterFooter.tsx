@@ -1,15 +1,23 @@
+import { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
+import {
+  FILTER_COLORS,
+  FILTER_LAYOUT,
+  FILTER_RADIUS,
+  FILTER_SPACING,
+  FILTER_SPRING,
+} from '@constants/filterTokens';
 
 interface FilterFooterProps {
   resultCount: number;
@@ -28,11 +36,11 @@ function AnimatedResultCount({ count }: { count: number }) {
 
   useEffect(() => {
     opacity.value = withSequence(
-      withTiming(0, { duration: 100 }),
+      withTiming(0, { duration: 80 }),
       withTiming(1, { duration: 100 }),
     );
     translateY.value = withSequence(
-      withTiming(-8, { duration: 100 }),
+      withTiming(-6, { duration: 80 }),
       withTiming(0, { duration: 100 }),
     );
   }, [count, opacity, translateY]);
@@ -43,7 +51,8 @@ function AnimatedResultCount({ count }: { count: number }) {
   }));
 
   return (
-    <Animated.Text style={[{ fontWeight: '700', color: '#FFFFFF', fontSize: 15 }, animStyle]}>
+    <Animated.Text
+      style={[{ fontWeight: '700', color: '#FFFFFF', fontSize: 15 }, animStyle]}>
       {count}
     </Animated.Text>
   );
@@ -53,7 +62,7 @@ export function FilterFooter({
   resultCount,
   onReset,
   onApply,
-  applyLabel = 'Apply Filters',
+  applyLabel = 'Apply',
   resetLabel = 'Clear All',
   showCount = true,
   safeAreaBottom = true,
@@ -61,7 +70,21 @@ export function FilterFooter({
   const insets = useSafeAreaInsets();
   const bottomPad = safeAreaBottom
     ? Math.max(insets.bottom, FILTER_SPACING.lg)
-    : FILTER_SPACING.lg;
+    : FILTER_SPACING.md;
+  const applyScale = useSharedValue(1);
+
+  const applyAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: applyScale.value }],
+  }));
+
+  const handleApply = () => {
+    applyScale.value = withSequence(
+      withSpring(0.96, FILTER_SPRING.press),
+      withSpring(1, FILTER_SPRING.press),
+    );
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onApply();
+  };
 
   return (
     <View
@@ -76,48 +99,71 @@ export function FilterFooter({
         backgroundColor: FILTER_COLORS.surface,
       }}>
       <ScaledPressable
-        onPress={onReset}
+        onPress={() => {
+          void Haptics.selectionAsync();
+          onReset();
+        }}
         scaleTo={0.97}
         style={{
-          width: '30%',
-          height: 52,
+          width: '32%',
+          maxWidth: 120,
+          height: FILTER_LAYOUT.footerHeight,
           borderRadius: FILTER_RADIUS.card,
           borderWidth: 1.5,
           borderColor: FILTER_COLORS.primary,
           backgroundColor: FILTER_COLORS.surface,
           alignItems: 'center',
           justifyContent: 'center',
+          paddingHorizontal: 8,
         }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: FILTER_COLORS.primary }}>
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 14, fontWeight: '700', color: FILTER_COLORS.primary }}>
           {resetLabel}
         </Text>
       </ScaledPressable>
 
-      <ScaledPressable
-        onPress={onApply}
-        scaleTo={0.97}
-        style={{
-          flex: 1,
-          height: 52,
-          borderRadius: FILTER_RADIUS.card,
-          backgroundColor: FILTER_COLORS.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-        }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
-          {applyLabel}
-          {showCount ? ' (' : ''}
-        </Text>
-        {showCount ? (
-          <>
-            <AnimatedResultCount count={resultCount} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
-              {` ${resultCount === 1 ? 'Product' : 'Products'})`}
-            </Text>
-          </>
-        ) : null}
-      </ScaledPressable>
+      <Animated.View style={[{ flex: 1, minWidth: 0 }, applyAnimStyle]}>
+        <ScaledPressable
+          onPress={handleApply}
+          scaleTo={0.98}
+          style={{
+            height: FILTER_LAYOUT.footerHeight,
+            borderRadius: FILTER_RADIUS.card,
+            backgroundColor: FILTER_COLORS.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            paddingHorizontal: 12,
+          }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: 15,
+              fontWeight: '700',
+              color: '#FFFFFF',
+              flexShrink: 1,
+            }}>
+            {applyLabel}
+            {showCount ? ' (' : ''}
+          </Text>
+          {showCount ? (
+            <>
+              <AnimatedResultCount count={resultCount} />
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 15,
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                  flexShrink: 1,
+                }}>
+                {` ${resultCount === 1 ? 'Product' : 'Products'})`}
+              </Text>
+            </>
+          ) : null}
+        </ScaledPressable>
+      </Animated.View>
     </View>
   );
 }

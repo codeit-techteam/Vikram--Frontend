@@ -58,8 +58,9 @@ export function CartIcon({
   useEffect(() => {
     if (cartBumpVersion === 0) return;
     cartScale.value = withSequence(
-      withSpring(1.2, { damping: 8, stiffness: 280 }),
-      withSpring(1, { damping: 12 }),
+      withSpring(1.32, { damping: 7, stiffness: 300 }),
+      withSpring(0.94, { damping: 11, stiffness: 260 }),
+      withSpring(1, { damping: 14, stiffness: 240, overshootClamping: true }),
     );
   }, [cartBumpVersion, cartScale]);
 

@@ -5,6 +5,7 @@ import { getProductGridCardWidth } from '@components/product/productGridLayout';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 
+import { ProductImage } from '@components/product/ProductImage';
 import { QuantityControls } from '@components/QuantityControls';
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
@@ -172,15 +173,15 @@ function ProductGridCardComponent({
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>
-      <ScaledPressable onPress={openDetail} style={styles.imageWrap}>
-        <Image
+      <ScaledPressable onPress={openDetail} style={styles.imageWrap} scaleTo={0.98}>
+        <ProductImage
           source={imageSource}
-          style={styles.image}
-          contentFit="contain"
+          padding={12}
+          borderRadius={12}
+          backgroundColor="#FFFFFF"
           recyclingKey={product.slug || product.id}
-          cachePolicy="memory-disk"
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-          transition={200}
+          showShadow
+          style={styles.productImage}
         />
         {product.brandLogoUrl ? (
           <ScaledPressable onPress={openBrand} style={styles.brandLogoHit}>
@@ -284,10 +285,12 @@ const styles = StyleSheet.create({
   imageWrap: {
     aspectRatio: 1,
     borderRadius: 12,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#EEEEEE',
   },
-  image: {
+  productImage: {
     width: '100%',
     height: '100%',
   },

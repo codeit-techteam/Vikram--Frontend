@@ -70,7 +70,7 @@ export function LastOrderCard({ item }: LastOrderCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.imageWrap}>
-        <CartItemImage item={item} style={styles.image} contentFit="cover" />
+        <CartItemImage item={item} style={styles.image} padding={10} />
       </View>
 
       <View style={styles.info}>

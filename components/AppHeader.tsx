@@ -78,8 +78,9 @@ function AppHeaderComponent({
   useEffect(() => {
     if (cartBumpVersion === 0) return;
     cartScale.value = withSequence(
-      withSpring(1.28, { damping: 6, stiffness: 320 }),
-      withSpring(1, { damping: 10, stiffness: 220 }),
+      withSpring(1.35, { damping: 6, stiffness: 340 }),
+      withSpring(0.92, { damping: 10, stiffness: 280 }),
+      withSpring(1, { damping: 12, stiffness: 240, overshootClamping: true }),
     );
   }, [cartBumpVersion, cartScale]);
 

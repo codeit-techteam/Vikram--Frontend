@@ -13,26 +13,19 @@ export function BulkProcurementCard({
   onKnowMore,
   promotion,
 }: BulkProcurementCardProps) {
+  if (!promotion) return null;
+
   const handlePress = async () => {
     await Haptics.selectionAsync();
     onKnowMore();
   };
 
-  const eyebrow = promotion?.description ?? 'Bulk Procurement';
-  const badge = promotion?.badge ?? 'Unlock';
-  const title = promotion?.title ?? 'Bulk Procurement Benefits';
-  const subtitle =
-    promotion?.subtitle ??
-    'Unlock exclusive benefits for large construction orders.';
-  const benefits = promotion?.benefits?.length
-    ? promotion.benefits
-    : [
-        'Unlock Discount up to 15%',
-        'International Trips',
-        'Lucky Draw',
-        'Loyalty Points',
-      ];
-  const buttonText = promotion?.buttonText ?? 'Unlock Benefits';
+  const eyebrow = promotion.description ?? 'Bulk Procurement';
+  const badge = promotion.badge ?? 'Unlock';
+  const title = promotion.title;
+  const subtitle = promotion.subtitle ?? '';
+  const benefits = promotion.benefits?.length ? promotion.benefits : [];
+  const buttonText = promotion.buttonText ?? 'Know More';
 
   return (
     <View style={styles.card}>

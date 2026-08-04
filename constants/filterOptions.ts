@@ -58,12 +58,14 @@ export const PRICE_PRESETS = ABSOLUTE_PRICE_PRESETS.map((p) => ({
  * list are shown; these act as ordered fallbacks / preferred labels.
  */
 const GRADES_BY_CATEGORY: Record<string, string[]> = {
-  cement: ['PPC', 'OPC 43', 'OPC 53', 'Premium', 'Industrial'],
+  cement: ['PPC', 'OPC 43', 'OPC 53', 'PSC', 'Premium', 'Industrial'],
   steel: [
     'Fe 415',
     'Fe 500',
     'Fe 550',
     'Fe 600',
+    '500D',
+    '550D',
     '8mm',
     '10mm',
     '12mm',
@@ -173,12 +175,15 @@ export function normalizeGrade(productGrade: string, categoryId: string): string
   if (key === 'cement') {
     if (raw === '53' || /opc\s*53/i.test(raw)) return 'OPC 53';
     if (raw === '43' || /opc\s*43/i.test(raw)) return 'OPC 43';
+    if (/psc/i.test(raw)) return 'PSC';
     if (/ppc/i.test(raw)) return 'PPC';
   }
 
   if (key === 'steel') {
     const mm = raw.match(/(\d+)\s*mm/i);
     if (mm) return `${mm[1]}mm`;
+    if (/500\s*d/i.test(raw)) return '500D';
+    if (/550\s*d/i.test(raw)) return '550D';
     const fe = raw.match(/fe\s*(\d+)/i);
     if (fe) return `Fe ${fe[1]}`;
   }

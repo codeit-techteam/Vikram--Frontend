@@ -67,7 +67,7 @@ export interface Product {
   badge: string;
   badgeColor?: string;
   image?: ImageSourcePropType;
-  /** Remote URL when storage is configured; null → local placeholder */
+  /** Cloudflare R2 public HTTPS URL (null if missing). */
   imageUrl?: string | null;
   brandLogoUrl?: string | null;
   imageSearch: string;

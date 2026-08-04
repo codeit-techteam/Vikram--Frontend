@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInLeft, FadeOutLeft } from 'react-native-reanimated';
 
 import { ScaledPressable } from '@components/ScaledPressable';
@@ -107,20 +108,19 @@ export function ActiveFilterSummaryBar({
                 height: 32,
                 paddingHorizontal: 12,
                 borderRadius: 16,
-                backgroundColor: FILTER_COLORS.primaryLight,
-                borderWidth: 1,
-                borderColor: 'rgba(254,182,35,0.35)',
+                backgroundColor: FILTER_COLORS.primary,
+                gap: 6,
               }}>
-              <Text style={{ fontSize: 13, color: FILTER_COLORS.text, fontWeight: '600' }}>
+              <Text
+                numberOfLines={1}
+                style={{ fontSize: 13, color: '#FFFFFF', fontWeight: '700' }}>
                 {tag.label}
               </Text>
               <ScaledPressable
                 onPress={() => onRemoveTag(tag.key, tag.value)}
                 hitSlop={8}
-                style={{ marginLeft: 6 }}>
-                <Text style={{ fontSize: 16, color: FILTER_COLORS.primary, lineHeight: 18 }}>
-                  ×
-                </Text>
+                accessibilityLabel={`Remove ${tag.label} filter`}>
+                <Ionicons name="close" size={14} color="#FFFFFF" />
               </ScaledPressable>
             </View>
           </Animated.View>

@@ -2,7 +2,6 @@ import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native
 import * as Haptics from 'expo-haptics';
 
 import type { CmsPromotion } from '@/types/cms';
-import { images } from '@constants/images';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
 
 interface EmergencyDeliveryCardProps {
@@ -16,22 +15,24 @@ export function EmergencyDeliveryCard({
 }: EmergencyDeliveryCardProps) {
   const { estimatedMinutes, deliveryMessage } = useDeliveryEta({ autoFetch: false });
 
+  if (!promotion) return null;
+
   const handlePress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     onOrderNow();
   };
 
-  const imageUri = promotion?.imageUrl || images.emergencyBanner;
+  const imageUri = promotion.imageUrl;
+  if (!imageUri) return null;
+
   const eta =
-    promotion?.badge ||
+    promotion.badge ||
     deliveryMessage ||
     (estimatedMinutes ? `Delivery in ${estimatedMinutes} mins` : null) ||
-    'Fast delivery';
-  const title = promotion?.title ?? 'Emergency Delivery';
-  const subtitle =
-    promotion?.subtitle ??
-    'Site running short? Get essential materials to your site fast — 24/7 logistics.';
-  const buttonText = promotion?.buttonText ?? 'Order Now';
+    '';
+  const title = promotion.title;
+  const subtitle = promotion.subtitle ?? '';
+  const buttonText = promotion.buttonText ?? 'Order Now';
 
   return (
     <Pressable onPress={handlePress} style={styles.wrap}>
@@ -41,11 +42,13 @@ export function EmergencyDeliveryCard({
         imageStyle={{ borderRadius: 16 }}>
         <View style={styles.overlay} />
         <View style={styles.content}>
-          <View style={styles.etaBadge}>
-            <Text style={styles.etaText}>{eta}</Text>
-          </View>
+          {eta ? (
+            <View style={styles.etaBadge}>
+              <Text style={styles.etaText}>{eta}</Text>
+            </View>
+          ) : null}
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           <View style={styles.button}>
             <Text style={styles.buttonText}>{buttonText}</Text>
           </View>

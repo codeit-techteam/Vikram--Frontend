@@ -49,7 +49,7 @@ export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarous
   };
 
   return (
-    <View style={{ height: 280 }}>
+    <View style={{ height: 280, backgroundColor: '#FFFFFF' }}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -61,12 +61,14 @@ export function ProductImageCarousel({ images, onMenuPress }: ProductImageCarous
         }}>
         {images.map((source, i) => (
           <ScaledPressable key={i} onPress={() => openGallery(i)}>
-            <Image
-              source={source}
-              style={{ width: SCREEN_WIDTH, height: 280 }}
-              contentFit="cover"
-              recyclingKey={`carousel-${i}`}
-            />
+                <Image
+                  source={source}
+                  style={{ width: SCREEN_WIDTH, height: 280 }}
+                  contentFit="contain"
+                  recyclingKey={`carousel-${i}`}
+                  cachePolicy="memory-disk"
+                  transition={200}
+                />
           </ScaledPressable>
         ))}
       </ScrollView>

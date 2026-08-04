@@ -14,14 +14,19 @@ import {
   FILTER_CHIPS,
   isPriceRangeActive,
 } from '@constants/filterOptions';
-import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
+import {
+  FILTER_COLORS,
+  FILTER_RADIUS,
+  FILTER_SPACING,
+  FILTER_SPRING,
+} from '@constants/filterTokens';
 import type {
   ActiveFilters,
   CategoryFilterConfig,
   QuickFilterKey,
 } from '@/types/filter.types';
 
-const CHIP_HEIGHT = 48;
+const CHIP_HEIGHT = 44;
 
 interface FilterBarProps {
   activeFilters: ActiveFilters;
@@ -35,7 +40,7 @@ function ChipBadge({ count }: { count: number }) {
   const scale = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+    scale.value = withSpring(1, FILTER_SPRING.press);
   }, [count, scale]);
 
   const badgeStyle = useAnimatedStyle(() => ({
@@ -108,8 +113,8 @@ function FilterChipButton({
         height: CHIP_HEIGHT,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        borderRadius: FILTER_RADIUS.chip + 6,
+        paddingHorizontal: 14,
+        borderRadius: FILTER_RADIUS.chip + 4,
         backgroundColor: isActive ? FILTER_COLORS.primary : FILTER_COLORS.surface,
         borderWidth: isActive ? 0 : 1,
         borderColor: FILTER_COLORS.border,
@@ -117,7 +122,7 @@ function FilterChipButton({
       {icon ? (
         <Ionicons
           name={icon as keyof typeof Ionicons.glyphMap}
-          size={16}
+          size={15}
           color={isActive ? '#FFFFFF' : FILTER_COLORS.textMuted}
           style={{ marginRight: 6 }}
         />
@@ -152,7 +157,6 @@ export function FilterBar({
   onClearChip,
 }: FilterBarProps) {
   const totalActive = countActiveFilters(activeFilters, config.priceBounds);
-  // Fixed order: Brand → Grade → Price
   const visibleChips = FILTER_CHIPS.filter((chip) =>
     config.visibleChips.includes(chip.key),
   );
@@ -169,7 +173,7 @@ export function FilterBar({
       }}
       style={{ flexGrow: 0, marginTop: FILTER_SPACING.md }}>
       <FilterChipButton
-        label={totalActive > 0 ? `Filters` : 'Filters'}
+        label="Filters"
         icon="options-outline"
         isActive={totalActive > 0}
         count={totalActive}
@@ -184,7 +188,6 @@ export function FilterBar({
           config.priceBounds,
         );
         const isActive = count > 0;
-        // Active chips keep the category name + count badge (Brand (2))
         const label = isActive
           ? chip.label
           : getChipLabel(chip.key, activeFilters, config);

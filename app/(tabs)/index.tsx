@@ -25,10 +25,13 @@ import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
 import { MembershipBanner } from '@components/membership';
 import { EmergencyCard } from '@components/home/EmergencyCard';
+import { EmergencyBannerStrip } from '@components/home/EmergencyBannerStrip';
 import { LoyaltyCard } from '@components/home/LoyaltyCard';
 import { MaterialCategoriesGrid } from '@components/home/MaterialCategoriesGrid';
 import { BulkProcurementCard } from '@components/home/BulkProcurementCard';
 import { BrandAdsSection } from '@components/home/BrandAdsSection';
+import { OfferForYouSection } from '@components/home/OfferForYouSection';
+import { QuickActionsRow } from '@components/home/QuickActionsRow';
 import { HomeProductDiscovery } from '@components/home/HomeProductDiscovery';
 import { TestimonialCarousel } from '@components/home/TestimonialSection';
 import { VideoBanner } from '@components/home/VideoBanner';
@@ -107,8 +110,12 @@ export default function HomeScreen() {
     sections,
     banners,
     videoBanners,
+    heroVideo,
     ads,
     testimonials,
+    offers,
+    quickActions,
+    emergencyBanner,
     emergencyDelivery,
     bulkProcurement,
     isRefreshing: cmsRefreshing,
@@ -127,7 +134,7 @@ export default function HomeScreen() {
     () => adaptTestimonialReviews(testimonials),
     [testimonials],
   );
-  const videoBanner = videoBanners[0] ?? null;
+  const videoBanner = heroVideo ?? videoBanners[0] ?? null;
 
   const enabledSections = useMemo(
     () =>
@@ -358,21 +365,21 @@ export default function HomeScreen() {
       }
 
       case 'EMERGENCY_DELIVERY':
-        return (
+        return emergencyDelivery ? (
           <View key={sectionType} style={styles.section}>
             <EmergencyCard
               onOrderNow={goEmergency}
               promotion={emergencyDelivery}
             />
           </View>
-        );
+        ) : null;
 
       case 'VIDEO_BANNER':
-        return (
+        return videoBanner ? (
           <View key={sectionType} style={styles.section}>
             <VideoBanner banner={videoBanner} onShopNow={onVideoShopNow} />
           </View>
-        );
+        ) : null;
 
       case 'ADVERTISEMENTS':
         return ads.length > 0 ? (
@@ -384,8 +391,32 @@ export default function HomeScreen() {
           </View>
         ) : null;
 
+      case 'OFFER_FOR_YOU':
+        return offers.length > 0 ? (
+          <View key={sectionType} style={styles.section}>
+            <OfferForYouSection
+              offers={offers}
+              title={sectionMeta(sectionType)?.title}
+            />
+          </View>
+        ) : null;
+
+      case 'QUICK_ACTIONS':
+        return quickActions.length > 0 ? (
+          <View key={sectionType} style={styles.section}>
+            <QuickActionsRow actions={quickActions} />
+          </View>
+        ) : null;
+
+      case 'EMERGENCY_BANNER':
+        return emergencyBanner ? (
+          <View key={sectionType} style={styles.section}>
+            <EmergencyBannerStrip banner={emergencyBanner} />
+          </View>
+        ) : null;
+
       case 'TESTIMONIALS':
-        return (
+        return testimonialVideos.length > 0 || testimonialReviews.length > 0 ? (
           <View key={sectionType} style={styles.section}>
             <TestimonialCarousel
               videos={testimonialVideos}
@@ -395,27 +426,27 @@ export default function HomeScreen() {
               onHorizontalInteractionChange={handleTestimonialScrollInteraction}
             />
           </View>
-        );
+        ) : null;
 
       case 'MEMBERSHIP':
         // Compact MembershipBanner is fixed below Search; skip CMS card to avoid duplicate.
         return null;
 
       case 'BULK_PROCUREMENT':
-        return (
+        return bulkProcurement ? (
           <View key={sectionType} style={styles.section}>
             <BulkProcurementCard
               onKnowMore={onBulkProcurement}
               promotion={bulkProcurement}
             />
           </View>
-        );
+        ) : null;
 
       case 'PRODUCT_DISCOVERY':
+      case 'FEATURED_COLLECTION':
         return <HomeProductDiscovery key={sectionType} />;
 
       case 'RECOMMENDED':
-        // Replaced by PRODUCT_DISCOVERY (Featured / Popular / New / Deals)
         return null;
 
       case 'PRIORITY_EXPRESS':
@@ -522,6 +553,10 @@ export default function HomeScreen() {
                 />
               }>
               <MembershipBanner onPress={onOpenMembership} />
+
+              {!sectionOrder.includes('EMERGENCY_BANNER') && emergencyBanner ? (
+                <EmergencyBannerStrip banner={emergencyBanner} />
+              ) : null}
 
               {sectionOrder.map((type) => renderSection(type))}
 

@@ -258,11 +258,17 @@ function mapApiProducts(raw: Record<string, unknown>): OrderProduct[] {
 
   return source.map((p) => {
     const name = String(p.productName ?? p.name ?? '');
-    const image =
+    const rawImage =
       (p.productImage ? String(p.productImage) : undefined) ??
       (p.image ? String(p.image) : undefined) ??
       (p.thumbnailUrl ? String(p.thumbnailUrl) : undefined) ??
-      (p.imageUrl ? String(p.imageUrl) : undefined);
+      (p.imageUrl ? String(p.imageUrl) : undefined) ??
+      (p.thumbnail ? String(p.thumbnail) : undefined);
+    const image =
+      rawImage &&
+      (rawImage.startsWith('http://') || rawImage.startsWith('https://'))
+        ? rawImage
+        : undefined;
 
     return {
       id: String(p.id ?? p.productId ?? ''),
@@ -282,7 +288,7 @@ function mapApiProducts(raw: Record<string, unknown>): OrderProduct[] {
       totalPrice: Number(p.totalPrice ?? p.subtotal ?? p.unitPrice ?? p.price ?? 0),
       gst: p.gst != null ? Number(p.gst) : undefined,
       image,
-      imageSearch: p.imageSearch ? String(p.imageSearch) : image,
+      imageSearch: image,
       delivered: Boolean(p.delivered),
     };
   });

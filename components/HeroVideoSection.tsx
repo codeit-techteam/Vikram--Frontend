@@ -10,14 +10,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
-import type { VideoSource } from 'expo-video';
 
 import { ExpoVideoPlayer } from '@components/video/ExpoVideoPlayer';
 import type { CmsBanner } from '@/types/cms';
 import { resolveCmsVideoSource } from '@utils/cmsMedia';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const FALLBACK_VIDEO = require('../assets/videos/delivery-hero.mp4');
 
 interface VideoBannerProps {
   banner?: CmsBanner | null;
@@ -33,6 +31,8 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
     setPaused(!isFocused);
   }, [isFocused]);
 
+  if (!banner?.videoUrl) return null;
+
   const toggleMute = () => {
     setIsMuted((current) => !current);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -43,14 +43,13 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
     onShopNow?.();
   };
 
-  const videoSource: VideoSource =
-    resolveCmsVideoSource(banner?.videoUrl) ?? FALLBACK_VIDEO;
+  const videoSource = resolveCmsVideoSource(banner.videoUrl);
+  if (!videoSource) return null;
 
-  const badge = banner?.badge ?? '2-Hour Delivery';
-  const title = banner?.title ?? 'Materials Delivered\nRight to Your Site';
-  const subtitle =
-    banner?.subtitle ?? 'Real-time tracking, verified drivers, zero delays.';
-  const buttonText = banner?.buttonText ?? 'Shop Now';
+  const badge = banner.badge ?? '';
+  const title = banner.title;
+  const subtitle = banner.subtitle ?? '';
+  const buttonText = banner.buttonText ?? '';
 
   return (
     <View style={styles.container}>
@@ -61,6 +60,7 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
         autoPlay
         paused={paused}
         contentFit="cover"
+        posterUrl={banner.thumbnailUrl ?? banner.imageUrl}
       />
 
       <LinearGradient
@@ -76,10 +76,12 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
       />
 
       <View style={styles.topContent}>
-        <View style={styles.badge}>
-          <Ionicons name="flash" size={12} color="#1A1A1A" />
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
+        {badge ? (
+          <View style={styles.badge}>
+            <Ionicons name="flash" size={12} color="#1A1A1A" />
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -95,14 +97,16 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
 
       <View style={styles.bottomContent}>
         <Text style={styles.title}>{title.replace(/\\n/g, '\n')}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={handleShopNow}
-          activeOpacity={0.85}>
-          <Text style={styles.primaryBtnText}>{buttonText}</Text>
-        </TouchableOpacity>
+        {buttonText ? (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={handleShopNow}
+            activeOpacity={0.85}>
+            <Text style={styles.primaryBtnText}>{buttonText}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );

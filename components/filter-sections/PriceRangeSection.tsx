@@ -1,13 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
 
 import { DualRangeSlider } from '@components/filter-sections/DualRangeSlider';
 import { ScaledPressable } from '@components/ScaledPressable';
@@ -24,43 +18,15 @@ function parsePriceInput(text: string): number | null {
   return Number(cleaned);
 }
 
-function MatchingCount({ count }: { count: number }) {
-  const opacity = useSharedValue(1);
-
-  useEffect(() => {
-    opacity.value = withSequence(
-      withTiming(0.35, { duration: 80 }),
-      withTiming(1, { duration: 120 }),
-    );
-  }, [count, opacity]);
-
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-
-  return (
-    <Animated.Text
-      style={[
-        {
-          fontSize: 15,
-          fontWeight: '700',
-          color: FILTER_COLORS.text,
-        },
-        style,
-      ]}>
-      {count} {count === 1 ? 'Product' : 'Products'}
-    </Animated.Text>
-  );
-}
-
 /**
  * Compact price filter: quick radios + min/max inputs + dual-thumb slider.
- * Designed to fit on one screen without scrolling.
+ * Fits without nested scrolling; matching count lives in the sticky Apply bar.
  */
-export function PriceRangeSection({
+export const PriceRangeSection = memo(function PriceRangeSection({
   draft,
   onChange,
   config,
   facetCounts,
-  matchingCount,
 }: FilterSectionProps) {
   const [minBound, maxBound] = config.priceBounds;
   const [minVal, maxVal] = draft.priceRange;
@@ -90,7 +56,8 @@ export function PriceRangeSection({
 
   const selectPreset = (presetId: string) => {
     void Haptics.selectionAsync();
-    const exists = draft.pricePresets.includes(presetId) && draft.pricePresets.length === 1;
+    const exists =
+      draft.pricePresets.includes(presetId) && draft.pricePresets.length === 1;
     if (exists) {
       onChange({
         ...draft,
@@ -99,7 +66,6 @@ export function PriceRangeSection({
       });
       return;
     }
-    // Single-select radio behaviour for quick price
     onChange({
       ...draft,
       pricePresets: [presetId],
@@ -137,7 +103,7 @@ export function PriceRangeSection({
           fontWeight: '700',
           color: FILTER_COLORS.textMuted,
           textTransform: 'uppercase',
-          letterSpacing: 0.5,
+          letterSpacing: 0.6,
         }}>
         Quick Price
       </Text>
@@ -151,14 +117,18 @@ export function PriceRangeSection({
               key={preset.id}
               onPress={() => selectPreset(preset.id)}
               scaleTo={0.98}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                minHeight: 44,
+                minHeight: 48,
                 paddingVertical: 8,
-                paddingHorizontal: 4,
+                paddingHorizontal: 10,
                 borderRadius: FILTER_RADIUS.input,
-                backgroundColor: selected ? FILTER_COLORS.primaryLight : 'transparent',
+                backgroundColor: selected
+                  ? FILTER_COLORS.primaryLight
+                  : 'transparent',
               }}>
               <View
                 style={{
@@ -166,10 +136,13 @@ export function PriceRangeSection({
                   height: 22,
                   borderRadius: 11,
                   borderWidth: 2,
-                  borderColor: selected ? FILTER_COLORS.primary : FILTER_COLORS.border,
+                  borderColor: selected
+                    ? FILTER_COLORS.primary
+                    : FILTER_COLORS.border,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 12,
+                  flexShrink: 0,
                 }}>
                 {selected ? (
                   <View
@@ -183,8 +156,10 @@ export function PriceRangeSection({
                 ) : null}
               </View>
               <Text
+                numberOfLines={1}
                 style={{
                   flex: 1,
+                  flexShrink: 1,
                   fontSize: 15,
                   fontWeight: selected ? '600' : '500',
                   color: FILTER_COLORS.text,
@@ -192,7 +167,14 @@ export function PriceRangeSection({
                 {preset.label}
               </Text>
               {typeof count === 'number' ? (
-                <Text style={{ fontSize: 13, color: FILTER_COLORS.textMuted }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 13,
+                    color: FILTER_COLORS.textMuted,
+                    flexShrink: 0,
+                  }}>
                   ({count})
                 </Text>
               ) : null}
@@ -205,7 +187,7 @@ export function PriceRangeSection({
         style={{
           height: 1,
           backgroundColor: FILTER_COLORS.divider,
-          marginVertical: 2,
+          marginVertical: 4,
         }}
       />
 
@@ -215,34 +197,41 @@ export function PriceRangeSection({
           fontWeight: '700',
           color: FILTER_COLORS.textMuted,
           textTransform: 'uppercase',
-          letterSpacing: 0.5,
+          letterSpacing: 0.6,
         }}>
-        Custom Range
+        Custom Price
       </Text>
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             style={{
               fontSize: 11,
               color: FILTER_COLORS.textMuted,
               marginBottom: 6,
-              fontWeight: '500',
+              fontWeight: '600',
             }}>
             Min
           </Text>
           <View
             style={{
-              height: 44,
+              height: 48,
               borderRadius: FILTER_RADIUS.input,
               borderWidth: 1.5,
-              borderColor: customActive ? FILTER_COLORS.primary : FILTER_COLORS.border,
+              borderColor: customActive
+                ? FILTER_COLORS.primary
+                : FILTER_COLORS.border,
               backgroundColor: FILTER_COLORS.surfaceMuted,
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 12,
             }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: FILTER_COLORS.text }}>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: '700',
+                color: FILTER_COLORS.textMuted,
+              }}>
               ₹
             </Text>
             <BottomSheetTextInput
@@ -259,32 +248,40 @@ export function PriceRangeSection({
                 fontWeight: '600',
                 color: FILTER_COLORS.text,
                 paddingVertical: 0,
+                minWidth: 0,
               }}
             />
           </View>
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             style={{
               fontSize: 11,
               color: FILTER_COLORS.textMuted,
               marginBottom: 6,
-              fontWeight: '500',
+              fontWeight: '600',
             }}>
             Max
           </Text>
           <View
             style={{
-              height: 44,
+              height: 48,
               borderRadius: FILTER_RADIUS.input,
               borderWidth: 1.5,
-              borderColor: customActive ? FILTER_COLORS.primary : FILTER_COLORS.border,
+              borderColor: customActive
+                ? FILTER_COLORS.primary
+                : FILTER_COLORS.border,
               backgroundColor: FILTER_COLORS.surfaceMuted,
               flexDirection: 'row',
               alignItems: 'center',
               paddingHorizontal: 12,
             }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: FILTER_COLORS.text }}>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: '700',
+                color: FILTER_COLORS.textMuted,
+              }}>
               ₹
             </Text>
             <BottomSheetTextInput
@@ -301,57 +298,45 @@ export function PriceRangeSection({
                 fontWeight: '600',
                 color: FILTER_COLORS.text,
                 paddingVertical: 0,
+                minWidth: 0,
               }}
             />
           </View>
         </View>
       </View>
 
-      <DualRangeSlider
-        minBound={minBound}
-        maxBound={maxBound}
-        low={Math.min(Math.max(safeMin, minBound), maxBound)}
-        high={Math.min(Math.max(safeMax, minBound), maxBound)}
-        onChange={applyCustomRange}
-      />
-
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginTop: -4,
-        }}>
-        <Text style={{ fontSize: 12, color: FILTER_COLORS.textMuted }}>
-          {formatPrice(minBound)}
-        </Text>
-        <Text style={{ fontSize: 12, color: FILTER_COLORS.textMuted }}>
-          {formatPrice(maxBound)}
-        </Text>
-      </View>
-
-      {typeof matchingCount === 'number' ? (
+      <View style={{ marginTop: 4 }}>
+        <DualRangeSlider
+          minBound={minBound}
+          maxBound={maxBound}
+          low={Math.min(Math.max(safeMin, minBound), maxBound)}
+          high={Math.min(Math.max(safeMax, minBound), maxBound)}
+          onChange={applyCustomRange}
+        />
         <View
           style={{
-            marginTop: 4,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            borderRadius: FILTER_RADIUS.card,
-            backgroundColor: FILTER_COLORS.surfaceMuted,
             flexDirection: 'row',
-            alignItems: 'center',
             justifyContent: 'space-between',
+            marginTop: 2,
+            paddingHorizontal: 2,
           }}>
           <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: FILTER_COLORS.textMuted,
-            }}>
-            Products Matching
+            numberOfLines={1}
+            style={{ fontSize: 12, color: FILTER_COLORS.textMuted, flexShrink: 1 }}>
+            {formatPrice(minBound)}
           </Text>
-          <MatchingCount count={matchingCount} />
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: 12,
+              color: FILTER_COLORS.textMuted,
+              flexShrink: 1,
+              textAlign: 'right',
+            }}>
+            {formatPrice(maxBound)}
+          </Text>
         </View>
-      ) : null}
+      </View>
     </View>
   );
-}
+});

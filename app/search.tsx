@@ -11,10 +11,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { router, Stack, type Href } from 'expo-router';
 
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
+import { ProductImage } from '@components/product/ProductImage';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -162,14 +162,15 @@ function SearchResultItem({
     <Animated.View style={animStyle}>
       <Pressable onPress={onPress} style={styles.resultCard}>
         <View style={styles.resultImageWrap}>
-          <Image
+          <ProductImage
             source={resolveProductImageSource({
               imageUrl: item.imageUrl ?? item.image,
               productSlug: item.slug ?? item.id,
               categorySlug: item.categorySlug ?? item.category,
             })}
-            style={styles.resultImage}
-            contentFit="cover"
+            size={80}
+            padding={10}
+            borderRadius={12}
             recyclingKey={item.id}
           />
           {item.badge ? (
@@ -212,16 +213,18 @@ function BundleCard({ onAddBundle }: { onAddBundle: () => void }) {
 
       <View style={styles.bundleItems}>
         <View style={styles.bundleProduct}>
-          <Image
+          <ProductImage
             source={resolveProductImageSource({
               imageUrl: cementProduct?.imageUrl ?? cementProduct?.image,
               productSlug: cementProduct?.slug ?? cementProduct?.id ?? 'ultratech-premium-ppc',
               categorySlug: cementProduct?.categorySlug ?? 'cement',
               fallbackImage: { uri: getProductImageUrl('ultratech cement bags', '200x160') },
             })}
-            style={styles.bundleProductImage}
-            contentFit="cover"
+            size={64}
+            padding={8}
+            borderRadius={10}
             recyclingKey={cementProduct?.id ?? 'bundle-cement'}
+            style={styles.bundleProductImage}
           />
           <Text style={styles.bundleProductName}>UltraTech PPC</Text>
         </View>

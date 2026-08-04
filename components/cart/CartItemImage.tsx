@@ -1,46 +1,41 @@
-import type { ImageSourcePropType } from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
+import { ProductImage } from '@components/product/ProductImage';
 import { getCartItemImageSource } from '@utils/cartHelpers';
 import type { CartItem } from '@store/cartStore';
 
 interface CartItemImageProps {
   item: CartItem;
-  style?: object;
+  style?: StyleProp<ViewStyle>;
+  /** @deprecated Always contain — kept for call-site compatibility. */
   contentFit?: 'cover' | 'contain';
+  size?: number;
+  padding?: number;
+  borderRadius?: number;
+  showSkeleton?: boolean;
 }
 
 export function CartItemImage({
   item,
   style,
-  contentFit = 'cover',
+  size,
+  padding = 10,
+  borderRadius = 12,
+  showSkeleton = true,
 }: CartItemImageProps) {
   const source = getCartItemImageSource(item);
 
-  if (!source) {
-    return (
-      <View style={[styles.placeholder, style]}>
-        <Ionicons name="image-outline" size={28} color="#AAA" />
-        <Text style={styles.placeholderText}>No Product Image</Text>
-      </View>
-    );
-  }
-
-  return <Image source={source as ImageSourcePropType} style={style} contentFit={contentFit} />;
+  return (
+    <ProductImage
+      source={source}
+      size={size ?? 'fill'}
+      padding={padding}
+      borderRadius={borderRadius}
+      backgroundColor="#FFFFFF"
+      showSkeleton={showSkeleton}
+      recyclingKey={item.productId ?? item.id}
+      style={style}
+      accessibilityLabel={item.productName ?? item.name}
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  placeholder: {
-    backgroundColor: '#F0F0F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  placeholderText: {
-    fontSize: 10,
-    color: '#999',
-    fontWeight: '600',
-  },
-});

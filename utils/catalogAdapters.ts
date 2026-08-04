@@ -3,6 +3,7 @@ import {
   resolveCategoryImageSource,
   resolveProductImageSource,
 } from '@utils/catalogPlaceholders';
+import { normalizeMediaUrl } from '@utils/media';
 import type {
   ApiCategory,
   ApiProduct,
@@ -78,9 +79,19 @@ function adaptVariant(variant: ApiProductVariant): ProductVariant {
 }
 
 function resolvePrimaryImageUrl(dto: ApiProduct): string | null {
-  if (dto.thumbnail) return dto.thumbnail;
-  const primary = dto.images?.find((img) => img.isPrimary) ?? dto.images?.[0];
-  return primary?.url ?? primary?.imageUrl ?? null;
+  const candidates = [
+    dto.imageUrl,
+    dto.thumbnail,
+    dto.images?.find((img) => img.isPrimary)?.url,
+    dto.images?.find((img) => img.isPrimary)?.imageUrl,
+    dto.images?.[0]?.url,
+    dto.images?.[0]?.imageUrl,
+    dto.gallery?.[0],
+  ];
+  for (const candidate of candidates) {
+    if (candidate?.trim()) return candidate.trim();
+  }
+  return null;
 }
 
 function adaptBulkPricing(dto: ApiProduct): BulkPricingTier[] {
@@ -104,7 +115,7 @@ function adaptBulkPricing(dto: ApiProduct): BulkPricingTier[] {
 }
 
 export function adaptApiCategory(dto: ApiCategory): CatalogCategory {
-  const imageUrl = dto.imageUrl ?? dto.image ?? null;
+  const imageUrl = normalizeMediaUrl(dto.imageUrl ?? dto.image ?? null);
   return {
     id: dto.id,
     slug: dto.slug,
@@ -124,16 +135,22 @@ export function adaptApiCategory(dto: ApiCategory): CatalogCategory {
 export function adaptApiProduct(dto: ApiProduct): Product {
   const retail = dto.retailPrice ?? dto.price ?? 0;
   const bulk = dto.bulkPrice ?? 0;
-  const imageUrl = resolvePrimaryImageUrl(dto);
+  const imageUrl = normalizeMediaUrl(resolvePrimaryImageUrl(dto));
   const categorySlug = dto.categorySlug || dto.category?.slug || '';
   const categoryType = mapCategorySlugToType(categorySlug);
   const variantsSource = dto.variants ?? dto.variantList ?? [];
   const productVariants = variantsSource.map(adaptVariant);
   const bulkPricing = adaptBulkPricing(dto);
   const gallery =
-    dto.gallery?.filter(Boolean) ??
-    dto.images?.map((img) => img.url || img.imageUrl || '').filter(Boolean) ??
-    [];
+    (dto.gallery ?? [])
+      .map((url) => normalizeMediaUrl(url))
+      .filter((url): url is string => Boolean(url))
+      .concat(
+        (dto.images ?? [])
+          .map((img) => normalizeMediaUrl(img.url || img.imageUrl || null))
+          .filter((url): url is string => Boolean(url)),
+      )
+      .filter((url, index, arr) => arr.indexOf(url) === index) || [];
   const stockLeft = dto.availableStock ?? dto.stockLeft ?? null;
   const firstBulk = bulkPricing[0];
 
@@ -143,7 +160,7 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     badge: dto.badge ?? '',
     badgeColor: dto.badgeColor ?? undefined,
     imageUrl,
-    brandLogoUrl: dto.brandLogoUrl ?? null,
+    brandLogoUrl: normalizeMediaUrl(dto.brandLogoUrl ?? null),
     image: resolveProductImageSource({
       imageUrl,
       productSlug: dto.slug,

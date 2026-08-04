@@ -1,10 +1,10 @@
 import { useCallback, useRef } from 'react';
 import { Dimensions, FlatList, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { QuantityControls } from '@components/QuantityControls';
+import { ProductImage } from '@components/product/ProductImage';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { getProductById } from '@constants/catalogData';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
@@ -59,15 +59,17 @@ function FbtCard({ item }: { item: FrequentlyBoughtItem }) {
 
   return (
     <View style={{ width: CARD_WIDTH }} className="rounded-card border border-border bg-surface p-3">
-      <Image
-        source={resolveProductImageSource({
-          imageUrl: item.imageSearch,
-          productSlug: item.id,
-        })}
-        style={{ width: '100%', height: 120, borderRadius: 8 }}
-        contentFit="cover"
-        recyclingKey={item.id}
-      />
+      <View style={{ width: '100%', height: 120, borderRadius: 10, overflow: 'hidden' }}>
+        <ProductImage
+          source={resolveProductImageSource({
+            imageUrl: item.imageSearch,
+            productSlug: item.id,
+          })}
+          padding={10}
+          borderRadius={10}
+          recyclingKey={item.id}
+        />
+      </View>
       <Text className="mt-2 text-sm font-bold text-text" numberOfLines={1}>
         {catalogProduct?.name ?? item.name}
       </Text>

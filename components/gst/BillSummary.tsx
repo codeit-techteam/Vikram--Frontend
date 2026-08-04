@@ -86,7 +86,9 @@ export function BillSummary({
           <CartItemImage
             item={item}
             style={{ width: 48, height: 48, borderRadius: 8 }}
-            contentFit="cover"
+            size={48}
+            padding={6}
+            borderRadius={8}
           />
           <View className="flex-1">
             <Text className="text-sm font-bold text-text" numberOfLines={1}>

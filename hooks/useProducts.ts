@@ -17,7 +17,7 @@ import { useProductStore } from '@store/productStore';
 
 export const PRODUCTS_QUERY_KEY = 'products';
 export const PRODUCT_DETAIL_QUERY_KEY = 'product';
-export const PRODUCTS_STALE_TIME = 1000 * 60 * 5;
+export const PRODUCTS_STALE_TIME = 1000 * 60;
 
 export function useProducts(
   params: Omit<ProductQueryParams, 'page'> = {},
@@ -53,6 +53,8 @@ export function useProducts(
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
     staleTime: PRODUCTS_STALE_TIME,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     enabled: options?.enabled !== false,
   });
 
@@ -97,6 +99,8 @@ export function useProductDetail(slugOrId?: string) {
     queryFn: () => fetchProductBySlug(slugOrId!),
     enabled: Boolean(slugOrId),
     staleTime: PRODUCTS_STALE_TIME,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     placeholderData: cached,
   });
 

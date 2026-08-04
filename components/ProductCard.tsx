@@ -1,10 +1,10 @@
 import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 
 import { QuantityControls } from '@components/QuantityControls';
 import { ProductBulkPrice } from '@components/product/ProductBulkPrice';
+import { ProductImage } from '@components/product/ProductImage';
 import { ProductPrice } from '@components/product/ProductPrice';
 import { ProductStockInfo } from '@components/product/ProductStockInfo';
 import { ScaledPressable } from '@components/ScaledPressable';
@@ -148,13 +148,13 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
 
   return (
     <View style={styles.card}>
-      <ScaledPressable onPress={openDetail} style={styles.imageWrap}>
-        <Image
+      <ScaledPressable onPress={openDetail} style={styles.imageWrap} scaleTo={0.98}>
+        <ProductImage
           source={imageSource}
-          style={styles.image}
-          contentFit="cover"
+          size={IMAGE_SIZE}
+          padding={10}
+          borderRadius={10}
           recyclingKey={product.slug || product.id}
-          transition={200}
         />
         {offer ? (
           <View style={styles.offerBadge}>
@@ -226,11 +226,9 @@ const styles = StyleSheet.create({
     height: IMAGE_SIZE,
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#F5F5F5',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#EEEEEE',
   },
   offerBadge: {
     position: 'absolute',

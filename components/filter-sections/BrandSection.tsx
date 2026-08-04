@@ -1,11 +1,21 @@
-import { useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { FILTER_COLORS, FILTER_RADIUS, FILTER_SPACING } from '@constants/filterTokens';
+import {
+  FILTER_COLORS,
+  FILTER_RADIUS,
+  FILTER_SPACING,
+  FILTER_SPRING,
+} from '@constants/filterTokens';
 import type { FilterSectionProps } from '@/types/filter.types';
 
 type BrandSectionProps = FilterSectionProps & {
@@ -14,7 +24,122 @@ type BrandSectionProps = FilterSectionProps & {
   hideSearch?: boolean;
 };
 
-export function BrandSection({
+function BrandCheckbox({ selected }: { selected: boolean }) {
+  const scale = useSharedValue(selected ? 1 : 0.85);
+
+  useEffect(() => {
+    scale.value = withSpring(selected ? 1 : 0.85, FILTER_SPRING.press);
+  }, [selected, scale]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        animStyle,
+        {
+          width: 26,
+          height: 26,
+          borderRadius: FILTER_RADIUS.checkbox,
+          borderWidth: 2,
+          borderColor: selected ? FILTER_COLORS.primary : FILTER_COLORS.border,
+          backgroundColor: selected ? FILTER_COLORS.primary : FILTER_COLORS.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      ]}>
+      {selected ? <Ionicons name="checkmark" size={15} color="#FFFFFF" /> : null}
+    </Animated.View>
+  );
+}
+
+function BrandRow({
+  name,
+  logoText,
+  count,
+  selected,
+  onToggle,
+}: {
+  name: string;
+  logoText: string;
+  count: number;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const productLabel = count === 1 ? '1 Product' : `${count} Products`;
+
+  return (
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={`${name}, ${productLabel}`}
+      android_ripple={{ color: FILTER_COLORS.primaryLight }}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 56,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        marginBottom: 8,
+        borderRadius: FILTER_RADIUS.card,
+        backgroundColor: selected
+          ? FILTER_COLORS.primaryLight
+          : pressed
+            ? FILTER_COLORS.surfacePressed
+            : FILTER_COLORS.surface,
+        borderWidth: selected ? 1.5 : 1,
+        borderColor: selected ? FILTER_COLORS.primary : FILTER_COLORS.border,
+      })}>
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          backgroundColor: selected ? FILTER_COLORS.primary : FILTER_COLORS.surfaceMuted,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: '700',
+            color: selected ? '#FFFFFF' : FILTER_COLORS.textMuted,
+          }}>
+          {logoText}
+        </Text>
+      </View>
+
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontSize: 15,
+            color: FILTER_COLORS.text,
+            fontWeight: selected ? '700' : '600',
+          }}>
+          {name}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={{
+            marginTop: 2,
+            fontSize: 12,
+            color: FILTER_COLORS.textMuted,
+            fontWeight: '500',
+          }}>
+          {productLabel}
+        </Text>
+      </View>
+
+      <BrandCheckbox selected={selected} />
+    </Pressable>
+  );
+}
+
+export const BrandSection = memo(function BrandSection({
   draft,
   onChange,
   config,
@@ -87,95 +212,27 @@ export function BrandSection({
       ) : null}
 
       {brands.length === 0 ? (
-        <Text style={{ fontSize: 14, color: FILTER_COLORS.textMuted, paddingVertical: 16 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            color: FILTER_COLORS.textMuted,
+            paddingVertical: 24,
+            textAlign: 'center',
+          }}>
           No brands found
         </Text>
       ) : (
-        brands.map((brand) => {
-          const selected = draft.brand.includes(brand.name);
-          const productLabel =
-            brand.count === 1 ? '1 Product' : `${brand.count} Products`;
-          return (
-            <Pressable
-              key={brand.id}
-              onPress={() => toggle(brand.name)}
-              android_ripple={{ color: FILTER_COLORS.primaryLight }}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                minHeight: 64,
-                paddingVertical: 12,
-                paddingHorizontal: 8,
-                marginBottom: 6,
-                borderRadius: FILTER_RADIUS.card,
-                backgroundColor: selected
-                  ? FILTER_COLORS.primaryLight
-                  : pressed
-                    ? FILTER_COLORS.surfacePressed
-                    : FILTER_COLORS.surfaceMuted,
-                borderWidth: selected ? 1.5 : 1,
-                borderColor: selected ? FILTER_COLORS.primary : 'transparent',
-              })}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  backgroundColor: selected ? FILTER_COLORS.primary : '#EEEEEE',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: '700',
-                    color: selected ? '#FFFFFF' : FILTER_COLORS.textMuted,
-                  }}>
-                  {brand.logoText ?? brand.name.slice(0, 2).toUpperCase()}
-                </Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: FILTER_COLORS.text,
-                    fontWeight: selected ? '700' : '600',
-                  }}>
-                  {brand.name}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 2,
-                    fontSize: 13,
-                    color: FILTER_COLORS.textMuted,
-                    fontWeight: '500',
-                  }}>
-                  {productLabel}
-                </Text>
-              </View>
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
-                  borderWidth: 2,
-                  borderColor: selected
-                    ? FILTER_COLORS.primary
-                    : FILTER_COLORS.border,
-                  backgroundColor: selected
-                    ? FILTER_COLORS.primary
-                    : FILTER_COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                {selected ? (
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                ) : null}
-              </View>
-            </Pressable>
-          );
-        })
+        brands.map((brand) => (
+          <BrandRow
+            key={brand.id}
+            name={brand.name}
+            logoText={brand.logoText ?? brand.name.slice(0, 2).toUpperCase()}
+            count={brand.count}
+            selected={draft.brand.includes(brand.name)}
+            onToggle={() => toggle(brand.name)}
+          />
+        ))
       )}
     </View>
   );
-}
+});

@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { CMS_DEFAULT_HERO_IMAGE } from '@utils/cmsMedia';
+import { normalizeMediaUrl, MEDIA_EMPTY_URI } from '@utils/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 32;
@@ -71,7 +71,9 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
         {slides.map((slide, i) => (
           <View key={slide.id ?? i} style={{ width: CARD_WIDTH }} className="overflow-hidden rounded-card">
             <Image
-              source={{ uri: slide.imageUrl || CMS_DEFAULT_HERO_IMAGE }}
+              source={{
+                uri: normalizeMediaUrl(slide.imageUrl) || MEDIA_EMPTY_URI,
+              }}
               style={{ width: CARD_WIDTH, height: 180 }}
               contentFit="cover"
             />
@@ -80,37 +82,45 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
               style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
             />
             <View className="absolute left-4 top-4">
-              <View className="rounded-full bg-primary px-3 py-1">
-                <Text className="text-xs font-bold text-onPrimary">{slide.badge}</Text>
-              </View>
+              {slide.badge ? (
+                <View className="rounded-full bg-primary px-3 py-1">
+                  <Text className="text-xs font-bold text-onPrimary">{slide.badge}</Text>
+                </View>
+              ) : null}
             </View>
             <View className="absolute bottom-4 left-4 right-4">
               <Text className="text-lg font-bold leading-6 text-text-inverse">{slide.title}</Text>
-              <View className="mt-3 flex-row gap-3">
-                <ScaledPressable
-                  onPress={() => void handleShopNow(slide, i)}
-                  hitSlop={8}
-                  style={{
-                    backgroundColor: '#1A73E8',
-                    paddingHorizontal: 18,
-                    paddingVertical: 9,
-                    borderRadius: 8,
-                  }}>
-                  <Text className="text-sm font-bold text-text-inverse">{slide.shopNow}</Text>
-                </ScaledPressable>
-                <ScaledPressable
-                  onPress={() => void handleBulkInquiry(slide, i)}
-                  hitSlop={8}
-                  style={{
-                    borderWidth: 1.5,
-                    borderColor: '#FFFFFF',
-                    paddingHorizontal: 18,
-                    paddingVertical: 9,
-                    borderRadius: 8,
-                  }}>
-                  <Text className="text-sm font-bold text-text-inverse">{slide.bulkInquiry}</Text>
-                </ScaledPressable>
-              </View>
+              {slide.shopNow || slide.bulkInquiry ? (
+                <View className="mt-3 flex-row gap-3">
+                  {slide.shopNow ? (
+                    <ScaledPressable
+                      onPress={() => void handleShopNow(slide, i)}
+                      hitSlop={8}
+                      style={{
+                        backgroundColor: '#1A73E8',
+                        paddingHorizontal: 18,
+                        paddingVertical: 9,
+                        borderRadius: 8,
+                      }}>
+                      <Text className="text-sm font-bold text-text-inverse">{slide.shopNow}</Text>
+                    </ScaledPressable>
+                  ) : null}
+                  {slide.bulkInquiry ? (
+                    <ScaledPressable
+                      onPress={() => void handleBulkInquiry(slide, i)}
+                      hitSlop={8}
+                      style={{
+                        borderWidth: 1.5,
+                        borderColor: '#FFFFFF',
+                        paddingHorizontal: 18,
+                        paddingVertical: 9,
+                        borderRadius: 8,
+                      }}>
+                      <Text className="text-sm font-bold text-text-inverse">{slide.bulkInquiry}</Text>
+                    </ScaledPressable>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           </View>
         ))}

@@ -68,7 +68,7 @@ export const OrderProductPreview = memo(function OrderProductPreview({
               <CartItemImage
                 item={toCartItem(product)}
                 style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
+                padding={8}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -124,7 +124,7 @@ export const OrderProductThumbnails = memo(function OrderProductThumbnails({
           <CartItemImage
             item={toCartItem(product)}
             style={{ width: '100%', height: '100%' }}
-            contentFit="cover"
+            padding={6}
           />
         </View>
       ))}
@@ -161,7 +161,7 @@ export const OrderProducts = memo(function OrderProducts({
             <CartItemImage
               item={toCartItem(product)}
               style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
+              padding={8}
             />
           </View>
           <View style={{ flex: 1 }}>
