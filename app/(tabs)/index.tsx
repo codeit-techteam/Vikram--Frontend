@@ -429,8 +429,11 @@ export default function HomeScreen() {
         ) : null;
 
       case 'MEMBERSHIP':
-        // Compact MembershipBanner is fixed below Search; skip CMS card to avoid duplicate.
-        return null;
+        return (
+          <View key={sectionType} style={styles.section}>
+            <MembershipBanner onPress={onOpenMembership} />
+          </View>
+        );
 
       case 'BULK_PROCUREMENT':
         return bulkProcurement ? (
@@ -447,7 +450,7 @@ export default function HomeScreen() {
         return <HomeProductDiscovery key={sectionType} />;
 
       case 'RECOMMENDED':
-        return null;
+        return <HomeProductDiscovery key={sectionType} />;
 
       case 'PRIORITY_EXPRESS':
         return null;
@@ -458,48 +461,21 @@ export default function HomeScreen() {
   };
 
   // Fallback order when CMS sections are empty (before seed/migration)
-  // Desired flow: Hero → Loyalty → Categories → Product Discovery → Ads → Testimonials
   const sectionOrder = useMemo(() => {
-    const base =
-      enabledSections.length > 0
-        ? enabledSections
-            .map((s) => s.sectionType)
-            .filter((type) => type !== 'RECOMMENDED')
-        : [
-            'HERO_BANNER',
-            'LOYALTY',
-            'MATERIAL_CATEGORIES',
-            'EMERGENCY_DELIVERY',
-            'VIDEO_BANNER',
-            'ADVERTISEMENTS',
-            'TESTIMONIALS',
-            'MEMBERSHIP',
-            'BULK_PROCUREMENT',
-          ];
-
-    if (base.includes('PRODUCT_DISCOVERY')) return base;
-
-    const withDiscovery: string[] = [];
-    let inserted = false;
-    for (const type of base) {
-      withDiscovery.push(type);
-      if (type === 'MATERIAL_CATEGORIES') {
-        withDiscovery.push('PRODUCT_DISCOVERY');
-        inserted = true;
-      }
+    if (enabledSections.length > 0) {
+      return enabledSections.map((s) => s.sectionType);
     }
-    if (!inserted) {
-      const adsIdx = withDiscovery.indexOf('ADVERTISEMENTS');
-      const testimonialsIdx = withDiscovery.indexOf('TESTIMONIALS');
-      const insertAt =
-        adsIdx >= 0
-          ? adsIdx
-          : testimonialsIdx >= 0
-            ? testimonialsIdx
-            : withDiscovery.length;
-      withDiscovery.splice(insertAt, 0, 'PRODUCT_DISCOVERY');
-    }
-    return withDiscovery;
+    return [
+      'HERO_BANNER',
+      'LOYALTY',
+      'MATERIAL_CATEGORIES',
+      'PRODUCT_DISCOVERY',
+      'EMERGENCY_DELIVERY',
+      'VIDEO_BANNER',
+      'ADVERTISEMENTS',
+      'TESTIMONIALS',
+      'BULK_PROCUREMENT',
+    ];
   }, [enabledSections]);
 
   return (
@@ -552,12 +528,6 @@ export default function HomeScreen() {
                   onRefresh={() => void onRefresh()}
                 />
               }>
-              <MembershipBanner onPress={onOpenMembership} />
-
-              {!sectionOrder.includes('EMERGENCY_BANNER') && emergencyBanner ? (
-                <EmergencyBannerStrip banner={emergencyBanner} />
-              ) : null}
-
               {sectionOrder.map((type) => renderSection(type))}
 
               <View style={styles.bottomSpacer} />
