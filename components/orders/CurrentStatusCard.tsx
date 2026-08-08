@@ -14,6 +14,10 @@ interface CurrentStatusCardProps {
   estimatedMinutes?: number | null;
   estimatedArrival?: string | null;
   partnerAssigned?: boolean;
+  driverName?: string | null;
+  vehicleNumber?: string | null;
+  vehicleType?: string | null;
+  driverReached?: boolean;
   isDelivered?: boolean;
   deliveredAtLabel?: string | null;
 }
@@ -23,6 +27,10 @@ export const CurrentStatusCard = memo(function CurrentStatusCard({
   estimatedMinutes,
   estimatedArrival,
   partnerAssigned,
+  driverName,
+  vehicleNumber,
+  vehicleType,
+  driverReached,
   isDelivered,
   deliveredAtLabel,
 }: CurrentStatusCardProps) {
@@ -65,7 +73,64 @@ export const CurrentStatusCard = memo(function CurrentStatusCard({
   }
 
   const message = getCustomerStatusMessage(status);
-  const showEta = status === 'out_for_delivery';
+  const showEta = status === 'out_for_delivery' && !driverReached;
+  const showVehicle = status === 'out_for_delivery' && Boolean(vehicleNumber || driverName);
+
+  if (driverReached && status === 'out_for_delivery') {
+    return (
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        style={{
+          borderRadius: borderRadius.lg,
+          borderWidth: 1,
+          borderColor: '#FFD8B8',
+          backgroundColor: '#FFF7F0',
+          padding: 16,
+          gap: 12,
+        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: theme.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <Ionicons name="car" size={22} color="#FFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+              Your delivery vehicle has arrived
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
+              Share the delivery OTP with your driver to complete delivery.
+            </Text>
+          </View>
+        </View>
+        {vehicleNumber ? (
+          <View
+            style={{
+              paddingTop: 10,
+              borderTopWidth: 1,
+              borderTopColor: '#FFE4CC',
+              gap: 6,
+            }}>
+            <Text style={{ fontSize: 12, color: theme.textMuted }}>Vehicle Number</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary }}>
+              {vehicleNumber}
+            </Text>
+            {driverName ? (
+              <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                Driver: {driverName}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View
@@ -111,7 +176,38 @@ export const CurrentStatusCard = memo(function CurrentStatusCard({
         ) : null}
       </View>
 
-      {status === 'out_for_delivery' && (
+      {showVehicle ? (
+        <View
+          style={{
+            gap: 8,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: '#F0F0F0',
+          }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textMuted }}>
+            Your Delivery Vehicle
+          </Text>
+          {vehicleNumber ? (
+            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+              {vehicleNumber}
+            </Text>
+          ) : null}
+          {vehicleType ? (
+            <Text style={{ fontSize: 13, color: theme.textSecondary }}>{vehicleType}</Text>
+          ) : null}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+            <Text style={{ fontSize: 13, color: theme.textSecondary }}>Driver</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary }}>
+              {driverName || (partnerAssigned ? 'Assigned' : 'Assigning…')}
+            </Text>
+          </View>
+        </View>
+      ) : status === 'out_for_delivery' ? (
         <View
           style={{
             flexDirection: 'row',
@@ -126,7 +222,7 @@ export const CurrentStatusCard = memo(function CurrentStatusCard({
             {partnerAssigned ? 'Assigned' : 'Assigning…'}
           </Text>
         </View>
-      )}
+      ) : null}
 
       <ScaledPressable
         onPress={() => router.push('/support')}

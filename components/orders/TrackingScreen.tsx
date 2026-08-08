@@ -153,6 +153,11 @@ export const TrackingScreen = memo(function TrackingScreen() {
           estimatedMinutes={order.tracking?.estimatedMinutes}
           estimatedArrival={order.expectedDelivery ?? order.tracking?.estimatedArrival}
           partnerAssigned={partnerAssigned}
+          driverName={order.driver?.name ?? order.tracking?.driver?.name}
+          vehicleNumber={
+            order.driver?.vehicleNumber ?? order.tracking?.driver?.vehicleNumber
+          }
+          driverReached={Boolean(order.driverReachedAt)}
           isDelivered={isDelivered}
           deliveredAtLabel={formatDeliveredLabel(order.deliveredAt)}
         />
