@@ -14,6 +14,7 @@ export interface HeroSlide {
   id?: string;
   badge: string;
   title: string;
+  subtitle?: string;
   shopNow: string;
   bulkInquiry: string;
   imageUrl?: string;
@@ -90,6 +91,11 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
             </View>
             <View className="absolute bottom-4 left-4 right-4">
               <Text className="text-lg font-bold leading-6 text-text-inverse">{slide.title}</Text>
+              {slide.subtitle ? (
+                <Text className="mt-1 text-sm leading-5 text-text-inverse/90" numberOfLines={3}>
+                  {slide.subtitle}
+                </Text>
+              ) : null}
               {slide.shopNow || slide.bulkInquiry ? (
                 <View className="mt-3 flex-row gap-3">
                   {slide.shopNow ? (

@@ -55,6 +55,7 @@ import {
   sortHomeCategories,
 } from '@utils/categoryDisplay';
 import {
+  adaptCmsCategories,
   adaptHeroSlides,
   adaptTestimonialReviews,
   adaptTestimonialVideos,
@@ -101,11 +102,6 @@ export default function HomeScreen() {
     refresh: refreshCategories,
   } = useCategories();
 
-  const homeCategories = useMemo(
-    () => sortHomeCategories(filterMarketplaceCategories(rawHomeCategories)),
-    [rawHomeCategories],
-  );
-
   const {
     sections,
     banners,
@@ -118,7 +114,10 @@ export default function HomeScreen() {
     emergencyBanner,
     emergencyDelivery,
     bulkProcurement,
+    categories: cmsCategories,
+    isLoading: cmsLoading,
     isRefreshing: cmsRefreshing,
+    error: cmsError,
     refresh: refreshCms,
   } = useCmsHome();
 
@@ -135,6 +134,15 @@ export default function HomeScreen() {
     [testimonials],
   );
   const videoBanner = heroVideo ?? videoBanners[0] ?? null;
+
+  const homeCategories = useMemo(() => {
+    if (cmsCategories.length > 0) {
+      return sortHomeCategories(
+        filterMarketplaceCategories(adaptCmsCategories(cmsCategories)),
+      );
+    }
+    return sortHomeCategories(filterMarketplaceCategories(rawHomeCategories));
+  }, [cmsCategories, rawHomeCategories]);
 
   const enabledSections = useMemo(
     () =>
@@ -460,23 +468,14 @@ export default function HomeScreen() {
     }
   };
 
-  // Fallback order when CMS sections are empty (before seed/migration)
-  const sectionOrder = useMemo(() => {
-    if (enabledSections.length > 0) {
-      return enabledSections.map((s) => s.sectionType);
-    }
-    return [
-      'HERO_BANNER',
-      'LOYALTY',
-      'MATERIAL_CATEGORIES',
-      'PRODUCT_DISCOVERY',
-      'EMERGENCY_DELIVERY',
-      'VIDEO_BANNER',
-      'ADVERTISEMENTS',
-      'TESTIMONIALS',
-      'BULK_PROCUREMENT',
-    ];
-  }, [enabledSections]);
+  // Layout order comes only from CMS Home Page Layout — never hardcode sections.
+  const sectionOrder = useMemo(
+    () => enabledSections.map((s) => s.sectionType),
+    [enabledSections],
+  );
+
+  const showCmsFallback =
+    Boolean(cmsError) && !cmsLoading && enabledSections.length === 0;
 
   return (
     <View style={styles.root}>
@@ -528,7 +527,16 @@ export default function HomeScreen() {
                   onRefresh={() => void onRefresh()}
                 />
               }>
-              {sectionOrder.map((type) => renderSection(type))}
+              {showCmsFallback ? (
+                <View style={styles.section}>
+                  <CatalogErrorState
+                    message={t('unableToLoadHome')}
+                    onRetry={() => void refreshCms()}
+                  />
+                </View>
+              ) : (
+                sectionOrder.map((type) => renderSection(type))
+              )}
 
               <View style={styles.bottomSpacer} />
             </Animated.ScrollView>

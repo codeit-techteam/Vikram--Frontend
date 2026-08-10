@@ -138,12 +138,26 @@ export interface CmsEmergencyBanner {
   dismissible: boolean;
 }
 
+export interface CmsCategory {
+  id: string;
+  slug: string;
+  name: string;
+  nameHi: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  iconUrl: string | null;
+  displayOrder: number;
+  isFeatured: boolean;
+}
+
 export interface CmsHomeResponse {
   sections: CmsHomeSection[];
   banners: CmsBanner[];
   heroBanners?: CmsBanner[];
   ads: CmsAdvertisement[];
   brandAdvertisements?: CmsAdvertisement[];
+  catalogs?: CmsAdvertisement[];
+  categories?: CmsCategory[];
   testimonials: CmsTestimonial[];
   promotions: CmsPromotion[];
   videoBanners: CmsBanner[];

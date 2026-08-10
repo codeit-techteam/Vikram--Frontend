@@ -2,16 +2,20 @@ import type { ImageSourcePropType } from 'react-native';
 import type { VideoSource } from 'expo-video';
 import { router, type Href } from 'expo-router';
 
-import type { CmsBanner, CmsPromotion, CmsTestimonial } from '@/types/cms';
+import type { CmsBanner, CmsCategory, CmsPromotion, CmsTestimonial } from '@/types/cms';
+import type { CatalogCategory } from '@/types/catalog';
 import {
   resolveCmsImageSource,
   resolveCmsVideoSource,
 } from '@utils/cmsMedia';
+import { resolveCategoryImageSource } from '@utils/catalogPlaceholders';
+import { normalizeMediaUrl } from '@utils/media';
 
 export interface CmsHeroSlide {
   id: string;
   badge: string;
   title: string;
+  subtitle: string;
   shopNow: string;
   bulkInquiry: string;
   imageUrl: string;
@@ -46,6 +50,7 @@ export function adaptHeroSlides(banners: CmsBanner[]): CmsHeroSlide[] {
       id: b.id,
       badge: b.badge ?? '',
       title: b.title,
+      subtitle: b.subtitle ?? '',
       shopNow: b.buttonText ?? '',
       bulkInquiry: b.secondaryButtonText ?? '',
       imageUrl: b.imageUrl,
@@ -54,13 +59,43 @@ export function adaptHeroSlides(banners: CmsBanner[]): CmsHeroSlide[] {
     }));
 }
 
+export function adaptCmsCategories(categories: CmsCategory[]): CatalogCategory[] {
+  return [...categories]
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((c) => {
+      const imageUrl = normalizeMediaUrl(c.imageUrl ?? c.iconUrl);
+      return {
+        id: c.id,
+        slug: c.slug,
+        name: c.name,
+        nameHi: c.nameHi,
+        description: c.description,
+        image: resolveCategoryImageSource(c.slug, imageUrl),
+        imageUrl,
+        displayOrder: c.displayOrder,
+        isFeatured: c.isFeatured,
+        isActive: true,
+        productCount: 0,
+      };
+    });
+}
+
 export function adaptTestimonialVideos(
   items: CmsTestimonial[],
 ): CmsTestimonialVideoView[] {
   return items
-    .filter((t) => t.type === 'VIDEO' && t.videoUrl)
+    .filter((t) => t.type === 'VIDEO' && Boolean(t.videoUrl))
     .map((t) => {
       const video = resolveCmsVideoSource(t.videoUrl);
+      if (!video && !t.videoUrl) {
+        if (__DEV__) {
+          console.warn(
+            `[cms] Testimonial ${t.id} (${t.customerName}) has unavailable video media`,
+            t.videoUrl,
+          );
+        }
+        return null;
+      }
       return {
         id: t.id,
         video: video ?? { uri: t.videoUrl! },
@@ -72,7 +107,7 @@ export function adaptTestimonialVideos(
         quote: t.review ?? '',
       };
     })
-    .filter((t) => t.video != null);
+    .filter((t): t is CmsTestimonialVideoView => t != null && t.video != null);
 }
 
 export function adaptTestimonialReviews(
@@ -80,16 +115,24 @@ export function adaptTestimonialReviews(
 ): CmsTestimonialReviewView[] {
   return items
     .filter((t) => t.type === 'TEXT' || t.type === 'IMAGE')
-    .map((t) => ({
-      id: t.id,
-      customerName: t.customerName,
-      businessType: t.designation ?? 'Customer',
-      rating: t.rating,
-      review: t.review ?? '',
-      photo: t.profileImage || t.imageUrl
-        ? resolveCmsImageSource(t.profileImage ?? t.imageUrl)
-        : undefined,
-    }));
+    .map((t) => {
+      const photoSource = t.profileImage || t.imageUrl;
+      if (t.type === 'IMAGE' && !photoSource && __DEV__) {
+        console.warn(
+          `[cms] Testimonial ${t.id} (${t.customerName}) has unavailable image media`,
+        );
+      }
+      return {
+        id: t.id,
+        customerName: t.customerName,
+        businessType: t.designation ?? 'Customer',
+        rating: t.rating,
+        review: t.review ?? '',
+        photo: photoSource
+          ? resolveCmsImageSource(photoSource)
+          : undefined,
+      };
+    });
 }
 
 export function navigateCmsRedirect(
