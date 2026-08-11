@@ -2,7 +2,7 @@ import { getProductImageUrl } from '@constants/catalogData';
 import type { Product } from '@/types/catalog';
 import type { CartItem } from '@store/cartStore';
 
-export type SearchCategory = 'cement' | 'steel' | 'stone' | 'sand' | 'bricks';
+export type SearchCategory = 'cement' | 'rmc' | 'steel' | 'stone' | 'sand' | 'bricks';
 
 export interface SearchProduct {
   id: string;
@@ -24,7 +24,7 @@ export interface SearchProduct {
 
 export const SEARCH_CATEGORIES = [
   { id: 'cement' as const, label: 'Cement', icon: '🧱' },
-  { id: 'steel' as const, label: 'Steel', icon: '🔩' },
+  { id: 'rmc' as const, label: 'RMC', icon: '🚛' },
   { id: 'stone' as const, label: 'Stone Chips', icon: '🪨' },
   { id: 'sand' as const, label: 'Sand', icon: '🏖' },
   { id: 'bricks' as const, label: 'Bricks', icon: '🧱' },
@@ -65,35 +65,35 @@ export const ALL_PRODUCTS: SearchProduct[] = [
   },
   {
     id: 'p4',
-    category: 'steel',
+    category: 'rmc',
     badge: 'TRENDING',
     badgeColor: '#FEB623',
-    name: 'JSW Neosteel TMT 12mm',
-    brand: 'JSW',
-    price: 58450,
-    unit: 'MT',
-    image: 'jsw steel rods construction',
+    name: 'RMC M25',
+    brand: 'Bajriwala Concrete',
+    price: 4800,
+    unit: 'Cum',
+    image: 'ready mix concrete mixer truck',
   },
   {
     id: 'p5',
-    category: 'steel',
+    category: 'rmc',
     badge: 'POPULAR',
     badgeColor: '#1A73E8',
-    name: 'TATA Tiscon 500D',
-    brand: 'TATA',
-    price: 57200,
-    unit: 'MT',
-    image: 'tata steel bars',
+    name: 'RMC M30',
+    brand: 'Bajriwala Concrete',
+    price: 5200,
+    unit: 'Cum',
+    image: 'ready mix concrete mixer truck',
   },
   {
     id: 'p6',
-    category: 'steel',
+    category: 'bricks',
     badge: null,
-    name: 'Jindal Panther TMT 10mm',
-    brand: 'Jindal',
-    price: 55800,
-    unit: 'MT',
-    image: 'jindal tmt bars construction',
+    name: 'Grey Ash Bricks (Fly Ash Bricks) — A+',
+    brand: 'Regional Supplier',
+    price: 800,
+    unit: 'Pieces',
+    image: 'fly ash bricks construction',
   },
   {
     id: 'p7',
@@ -131,7 +131,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     id: 'p10',
     category: 'bricks',
     badge: null,
-    name: 'Red Clay Bricks ISI',
+    name: 'Red Bricks — A',
     brand: 'Local',
     price: 8,
     unit: 'piece',

@@ -17,6 +17,11 @@ export function normalizeCategoryDisplayName(name: string): string {
   // "Bricks & Masonry" / "Bricks and Masonry" / typo variants → "Bricks"
   if (/^bricks\s*(&|and)\b/i.test(trimmed)) return 'Bricks';
   if (/^ईंट\s*(और|&)\b/u.test(trimmed)) return 'ईंट';
+  // Legacy Steel category → RMC
+  if (/^steel$/i.test(trimmed) || /^tmt\s*steel$/i.test(trimmed)) return 'RMC';
+  if (/^rmc$/i.test(trimmed) || /^ready\s*mix(ed)?\s*concrete$/i.test(trimmed)) {
+    return 'RMC';
+  }
   return trimmed;
 }
 

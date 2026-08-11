@@ -16,7 +16,7 @@ interface SearchStore {
 export const useSearchStore = create<SearchStore>()(
   persist(
     (set) => ({
-      recentSearches: ['UltraTech Cement', 'TMT Steel 12mm', 'River Sand'],
+      recentSearches: ['UltraTech Cement', 'RMC M25', 'River Sand'],
       recentlyViewed: [],
 
       addRecentSearch: (term) => {

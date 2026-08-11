@@ -34,7 +34,9 @@ export function mapCategorySlugToType(slug: string): ProductCategoryType {
   const normalized = slug.toLowerCase();
   const aliases: Record<string, ProductCategoryType> = {
     cement: 'cement',
-    steel: 'steel',
+    rmc: 'rmc',
+    /** Legacy slug — backend renamed steel → rmc */
+    steel: 'rmc',
     hardware: 'hardware',
     sand: 'sand',
     bricks: 'bricks',
@@ -178,6 +180,9 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     name: dto.name,
     nameHi: dto.nameHi ?? undefined,
     grade: dto.grade ?? '',
+    gradeLabel: dto.gradeLabel ?? null,
+    productType: dto.productType ?? null,
+    productTypeLabel: dto.productTypeLabel ?? null,
     status: normalizeStatus(dto.status),
     spec: dto.spec ?? '',
     hasVariants: dto.hasVariants || productVariants.length > 1,

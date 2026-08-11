@@ -38,6 +38,12 @@ import {
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useProducts } from '@hooks/useProducts';
 import { useFilterState } from '@hooks/useFilterState';
+import {
+  createDefaultFilters,
+  filtersToQueryParams,
+  normalizeFilters,
+} from '@constants/filterOptions';
+import { useCategoryFilterStore } from '@store/categoryFilterStore';
 import { useTranslation } from '@store/languageStore';
 import type { FilterKey, QuickFilterKey } from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
@@ -63,6 +69,34 @@ export default function ProductListingScreen() {
     t('catalogLabel');
   const title = normalizeCategoryDisplayName(rawTitle);
 
+  const storedFilters = useCategoryFilterStore((s) =>
+    slug ? s.byCategory[slug] : undefined,
+  );
+
+  const productQuery = useMemo(() => {
+    const filters = storedFilters
+      ? normalizeFilters(storedFilters, storedFilters.priceRange ?? [0, 5000])
+      : createDefaultFilters([0, 5000]);
+    const api = filtersToQueryParams(
+      filters,
+      filters.priceRange,
+      undefined,
+      slug,
+    );
+    return {
+      category: slug || undefined,
+      productType: api.productType,
+      brickType: api.brickType,
+      grade: api.grade,
+      brand: api.brand,
+      search: api.search,
+      minPrice: api.minPrice,
+      maxPrice: api.maxPrice,
+      sortBy: api.sortBy,
+      sortOrder: api.sortOrder,
+    };
+  }, [slug, storedFilters]);
+
   const {
     products,
     isLoading,
@@ -72,10 +106,7 @@ export default function ProductListingScreen() {
     error,
     refresh,
     loadMore,
-  } = useProducts(
-    { category: slug || undefined },
-    { enabled: Boolean(slug), pageSize: 50 },
-  );
+  } = useProducts(productQuery, { enabled: Boolean(slug), pageSize: 50 });
 
   const {
     config,
@@ -120,6 +151,13 @@ export default function ProductListingScreen() {
       updateFilters({
         ...activeFilters,
         grade: activeFilters.grade.filter((g) => g !== value),
+      });
+      return;
+    }
+    if (key === 'productType' && value) {
+      updateFilters({
+        ...activeFilters,
+        productType: (activeFilters.productType ?? []).filter((t) => t !== value),
       });
       return;
     }

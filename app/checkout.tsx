@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, Fragment } from 'react';
-import { Alert, ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState, Fragment } from 'react';
+import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,10 @@ import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { useServiceability } from '@hooks/useServiceability';
 import { placeOrder } from '@services/orders.api';
 import { syncLocalCartToServer } from '@services/cart.api';
+import {
+  fetchCheckoutPreview,
+  type CheckoutPreview,
+} from '@services/checkout.api';
 import { safeGoBack } from '@utils/navigation';
 import { requireAuth } from '@utils/requireAuth';
 import { formatINR } from '@utils/formatCurrency';
@@ -164,23 +168,83 @@ export default function CheckoutScreen() {
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>(DEFAULT_PAYMENT_METHOD);
   const [instructions, setInstructions] = useState('');
-  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [useLoyalty, setUseLoyalty] = useState(
+    () => useCartStore.getState().pointsApplied,
+  );
+  const [checkoutPreview, setCheckoutPreview] = useState<CheckoutPreview | null>(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
-  const [bikeDelivery, setBikeDelivery] = useState(false);
 
   const savingsOpacity = useSharedValue(1);
 
-  const subtotal = useMemo(
+  const localSubtotal = useMemo(
     () => items.reduce((sum, i) => sum + getLineTotal(i), 0),
     [items],
   );
-  const deliveryCharge = bikeDelivery
-    ? 0
-    : (useEtaStore.getState().eta?.deliveryCharge ?? 150);
-  const loadingCharges = 200;
-  const unloadingCharges = 150;
-  const loyaltyRedemption = loyaltyPoints / 10;
+
+  const refreshCheckoutPreview = useCallback(
+    async (applyLoyalty: boolean) => {
+      if (items.length === 0) return;
+      setLoyaltyLoading(true);
+      setLoyaltyError(null);
+      try {
+        await syncLocalCartToServer(items);
+        const base = await fetchCheckoutPreview({
+          addressId: selectedSite?.id,
+          loyaltyPointsToRedeem: 0,
+        });
+
+        if (!applyLoyalty) {
+          setCheckoutPreview(base);
+          return;
+        }
+
+        if (!base.redemptionEligible || base.maxRedeemablePoints <= 0) {
+          setUseLoyalty(false);
+          setCheckoutPreview(base);
+          setLoyaltyError(
+            base.loyaltyMessage ||
+              `Loyalty points can be redeemed on orders of ₹${base.minRedeemOrderValue} or more.`,
+          );
+          return;
+        }
+
+        const withLoyalty = await fetchCheckoutPreview({
+          addressId: selectedSite?.id,
+          loyaltyPointsToRedeem: base.maxRedeemablePoints,
+        });
+        setCheckoutPreview(withLoyalty);
+        savingsOpacity.value = withSequence(
+          withTiming(0.4, { duration: 100 }),
+          withTiming(1, { duration: 200 }),
+        );
+      } catch (e) {
+        setLoyaltyError(
+          e instanceof Error
+            ? e.message
+            : 'Unable to apply loyalty points. Please try again.',
+        );
+      } finally {
+        setLoyaltyLoading(false);
+      }
+    },
+    [items, selectedSite?.id, savingsOpacity],
+  );
+
+  useEffect(() => {
+    void refreshCheckoutPreview(useLoyalty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load when cart/site changes
+  }, [items.length, selectedSite?.id]);
+
+  const subtotal = checkoutPreview?.subtotal ?? localSubtotal;
+  const deliveryCharge = checkoutPreview?.deliveryCharge ?? 0;
+  const loadingCharges = checkoutPreview?.loadingCharges ?? 0;
+  const unloadingCharges = checkoutPreview?.unloadingCharges ?? 0;
+  const loyaltyPoints = checkoutPreview?.loyaltyUsed ?? 0;
+  const loyaltyRedemption = checkoutPreview?.loyaltyDiscount ?? 0;
+  const bikeDelivery = checkoutPreview?.bikeDeliveryFree ?? false;
 
   const hasGstApplied = useGstStore((s) => s.verified);
 
@@ -188,9 +252,17 @@ export default function CheckoutScreen() {
     () =>
       Math.max(
         0,
-        subtotal + deliveryCharge + loadingCharges + unloadingCharges - loyaltyRedemption,
+        (checkoutPreview?.grandTotal ?? subtotal + deliveryCharge) +
+          (checkoutPreview ? 0 : loadingCharges + unloadingCharges - loyaltyRedemption),
       ),
-    [subtotal, deliveryCharge, loadingCharges, unloadingCharges, loyaltyRedemption],
+    [
+      checkoutPreview,
+      subtotal,
+      deliveryCharge,
+      loadingCharges,
+      unloadingCharges,
+      loyaltyRedemption,
+    ],
   );
 
   const gstBusinessDiscount = useMemo(
@@ -200,7 +272,10 @@ export default function CheckoutScreen() {
 
   const gstDiscountPercent = formatGstDiscountPercent(DEFAULT_GST_DISCOUNT_CONFIG.rate);
 
-  const checkoutTotal = Math.max(0, preDiscountTotal - gstBusinessDiscount);
+  const checkoutTotal = checkoutPreview
+    ? Math.max(0, checkoutPreview.grandTotal - (hasGstApplied ? gstBusinessDiscount : 0))
+    : Math.max(0, preDiscountTotal - gstBusinessDiscount);
+
   const corporateSavings = useMemo(
     () =>
       items.reduce((sum, item) => {
@@ -214,9 +289,9 @@ export default function CheckoutScreen() {
 
   const savingsAnimStyle = useAnimatedStyle(() => ({ opacity: savingsOpacity.value }));
 
-  const selectLoyalty = (pts: number) => {
-    setLoyaltyPoints(pts);
-    savingsOpacity.value = withSequence(withTiming(0.4, { duration: 100 }), withTiming(1, { duration: 200 }));
+  const onToggleLoyalty = (enabled: boolean) => {
+    setUseLoyalty(enabled);
+    void refreshCheckoutPreview(enabled);
   };
 
   const appendChip = (chip: string) => {
@@ -367,64 +442,111 @@ export default function CheckoutScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 }}>
         <View className="mb-3 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center justify-between">
-            <Text className="font-bold text-text">⭐ {t('redeemLoyaltyPoints')}</Text>
-            <View className="rounded-full bg-primary/10 px-2 py-0.5">
-              <Text className="text-[10px] font-bold text-primary">{t('platinumContractor')}</Text>
-            </View>
-          </View>
-          <View className="mt-3 flex-row justify-between">
-            <Text className="text-sm font-bold text-text">{t('available')}: 2,450 {t('points').toLowerCase()}</Text>
-            <Text className="text-sm text-text-secondary">{t('value')}: ★★★★</Text>
-          </View>
-          <View className="mt-2 h-2 overflow-hidden rounded-full bg-border">
-            <View className="h-full w-3/4 rounded-full bg-warning" />
-          </View>
-          <View className="mt-1 flex-row justify-between">
-            <Text className="text-[10px] text-text-secondary">{t('pointsAvailable')}</Text>
-            <Text className="text-[10px] font-bold text-success">{t('eligible')}</Text>
-          </View>
-          <View className="mt-3 flex-row items-center rounded-lg border border-border px-3 py-2">
-            <TextInput
-              className="flex-1 text-base font-bold text-text"
-              keyboardType="numeric"
-              value={String(loyaltyPoints)}
-              onChangeText={(val) => selectLoyalty(Number(val.replace(/\D/g, '')) || 0)}
+            <Text className="font-bold text-text">BajriPro Points</Text>
+            <Switch
+              value={useLoyalty}
+              onValueChange={onToggleLoyalty}
+              disabled={
+                loyaltyLoading ||
+                !checkoutPreview?.redemptionEligible ||
+                (checkoutPreview?.maxRedeemablePoints ?? 0) <= 0
+              }
+              trackColor={{ false: '#E5E5E5', true: '#FEB623' }}
+              thumbColor="#FFFFFF"
             />
-            <Text className="text-xs font-bold text-text-secondary">{t('points')}</Text>
           </View>
-          <View className="mt-2 flex-row gap-2">
-            {[500, 1000].map((pts) => (
-              <ScaledPressable
-                key={pts}
-                onPress={() => selectLoyalty(pts)}
-                className={`rounded-lg px-4 py-2 ${
-                  loyaltyPoints === pts ? 'bg-primary' : 'border border-border'
-                }`}>
-                <Text
-                  className={`text-xs font-bold ${
-                    loyaltyPoints === pts ? 'text-onPrimary' : 'text-text-secondary'
-                  }`}>
-                  {pts} pts
-                </Text>
-              </ScaledPressable>
-            ))}
-            <ScaledPressable
-              onPress={() => selectLoyalty(2450)}
-              className="rounded-lg border border-border px-4 py-2">
-              <Text className="text-xs font-bold text-text-secondary">{t('maxLabel')}</Text>
-            </ScaledPressable>
-          </View>
-          <Text className="mt-2 text-xs text-text-secondary">
-            {loyaltyPoints} Points = {formatINR(loyaltyRedemption)} Discount
-          </Text>
-          <Animated.View
-            style={savingsAnimStyle}
-            className="mt-3 flex-row items-center gap-2 rounded-lg bg-primary/10 p-3">
-            <Text className="text-lg">🎁</Text>
-            <Text className="text-sm font-medium text-primary">
-              {t('youAreSaving')} {formatINR(loyaltyRedemption)} {t('withLoyaltyRewards')}
+          {loyaltyLoading ? (
+            <Text className="mt-2 text-xs text-text-secondary">Checking available points…</Text>
+          ) : (
+            <View className="mt-3 flex-row justify-between">
+              <Text className="text-sm font-bold text-text">
+                Balance:{' '}
+                {(checkoutPreview?.redeemablePoints ?? 0).toLocaleString('en-IN')}{' '}
+                Points
+              </Text>
+              <Text className="text-sm text-text-secondary">
+                Value:{' '}
+                {formatINR(checkoutPreview?.loyaltyAvailableValue ?? 0)}
+              </Text>
+            </View>
+          )}
+          {loyaltyError ? (
+            <Text className="mt-2 text-xs text-error">{loyaltyError}</Text>
+          ) : null}
+          {!loyaltyError &&
+          checkoutPreview &&
+          !checkoutPreview.redemptionEligible ? (
+            <Text className="mt-2 text-xs text-text-secondary">
+              Spend ₹{checkoutPreview.minRedeemOrderValue} or more to unlock
+              loyalty redemption.
             </Text>
-          </Animated.View>
+          ) : (
+            <Text className="mt-2 text-xs text-text-secondary">
+              Apply loyalty points at checkout (orders ₹
+              {checkoutPreview?.minRedeemOrderValue ?? 500}+). 100 points = ₹1.
+            </Text>
+          )}
+          {useLoyalty && loyaltyRedemption > 0 ? (
+            <>
+              <Text className="mt-2 text-xs text-text-secondary">
+                {loyaltyPoints.toLocaleString('en-IN')} Points ={' '}
+                {formatINR(loyaltyRedemption)} Discount
+              </Text>
+              <Animated.View
+                style={savingsAnimStyle}
+                className="mt-3 flex-row items-center gap-2 rounded-lg bg-primary/10 p-3">
+                <Text className="text-lg">✓</Text>
+                <Text className="text-sm font-medium text-primary">
+                  You saved {formatINR(loyaltyRedemption)} using BajriPro Points
+                </Text>
+              </Animated.View>
+            </>
+          ) : null}
+          {checkoutPreview && checkoutPreview.estimatedEarnPoints > 0 ? (
+            <Text className="mt-3 text-xs text-text-secondary">
+              You will earn {checkoutPreview.estimatedEarnPoints} BajriPro Points
+              after successful delivery
+            </Text>
+          ) : null}
+          {checkoutPreview && checkoutPreview.freeBikeDeliveriesRemaining > 0 ? (
+            <Text className="mt-1 text-xs text-success">
+              Free bike deliveries remaining: {checkoutPreview.freeBikeDeliveriesRemaining}
+              {checkoutPreview.bikeDeliveryFree || checkoutPreview.freeDeliveryApplied
+                ? ' · Delivery FREE'
+                : ''}
+              {checkoutPreview.freeBikeDeliveriesAllowed != null &&
+              checkoutPreview.freeBikeDeliveriesUsed != null
+                ? ` · ${checkoutPreview.freeBikeDeliveriesUsed} of ${checkoutPreview.freeBikeDeliveriesAllowed} used`
+                : ''}
+            </Text>
+          ) : null}
+              {checkoutPreview?.deliveryVehicleDisplayName ? (
+            <View className="mt-3 rounded-lg bg-gray-50 p-3">
+              <Text className="text-xs text-text-secondary">Delivery Vehicle</Text>
+              <Text className="mt-0.5 text-sm font-semibold text-text-primary">
+                {checkoutPreview.deliveryVehicleDisplayName}
+              </Text>
+              {checkoutPreview.deliveryDistanceKm != null ? (
+                <>
+                  <Text className="mt-2 text-xs text-text-secondary">Distance</Text>
+                  <Text className="mt-0.5 text-sm font-medium text-text-primary">
+                    {checkoutPreview.deliveryDistanceKm.toFixed(1)} km
+                  </Text>
+                </>
+              ) : null}
+              <Text className="mt-2 text-xs text-text-secondary">Delivery Charge</Text>
+              <Text
+                className={`mt-0.5 text-sm font-semibold ${
+                  bikeDelivery || checkoutPreview.freeDeliveryApplied
+                    ? 'text-success'
+                    : 'text-text-primary'
+                }`}>
+                {bikeDelivery || checkoutPreview.freeDeliveryApplied
+                  ? t('bikeDeliveryFree')
+                  : formatINR(deliveryCharge)}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <BillSummary
@@ -522,8 +644,7 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        <ScaledPressable
-          onPress={() => setBikeDelivery((v) => !v)}
+        <View
           className={`mb-3 flex-row items-center justify-between rounded-card border p-4 ${
             bikeDelivery ? 'border-primary bg-primary/5' : 'border-border bg-surface'
           }`}>
@@ -533,10 +654,10 @@ export default function CheckoutScreen() {
           </View>
           <View className="rounded-md bg-success/15 px-2.5 py-1">
             <Text className="text-[11px] font-800 font-bold text-success">
-              {t('bikeDeliveryFree')}
+              {bikeDelivery ? t('bikeDeliveryFree') : formatINR(deliveryCharge)}
             </Text>
           </View>
-        </ScaledPressable>
+        </View>
 
         <View className="mb-3 rounded-card border border-border bg-surface p-4">
           <Text className="mb-2 font-bold text-text">{t('deliveryInstructions')}</Text>

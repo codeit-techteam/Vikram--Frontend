@@ -18,7 +18,7 @@ interface SearchHeaderProps {
  * Shared floating search bar — Home, Catalog, Category, Search, Wishlist.
  */
 function SearchHeaderComponent({
-  placeholder = 'Search cement, steel, sand...',
+  placeholder = 'Search cement, RMC, sand...',
   onPress,
   onVoicePress,
   style,

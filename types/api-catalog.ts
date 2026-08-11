@@ -79,6 +79,9 @@ export interface ApiProduct {
   subcategoryName?: string | null;
   category?: ApiProductCategorySummary;
   grade?: string | null;
+  gradeLabel?: string | null;
+  productType?: string | null;
+  productTypeLabel?: string | null;
   badge?: string | null;
   badgeColor?: string | null;
   status: string;
@@ -256,6 +259,10 @@ export interface ProductQueryParams {
   listingType?: 'FEATURED' | 'BEST_SELLING' | 'NEW_ARRIVAL' | 'STANDARD';
   brand?: string;
   grade?: string;
+  /** Brick / category product type code (e.g. RED_BRICKS, GREY_ASH_BRICKS) */
+  productType?: string;
+  /** Alias for productType */
+  brickType?: string;
   status?: string;
   minPrice?: number;
   maxPrice?: number;

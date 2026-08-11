@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AnimatedProgressBar } from '@components/AnimatedProgressBar';
+import { useLoyaltyStore } from '@store/loyaltyStore';
 import { useTranslation } from '@store/languageStore';
 
 interface LoyaltyCardProps {
@@ -11,26 +13,41 @@ interface LoyaltyCardProps {
 
 export function LoyaltyCard({
   onPress,
-  points = 12450,
-  progress = 10 / 600,
+  points,
+  progress,
 }: LoyaltyCardProps) {
   const { t } = useTranslation();
+  const totalPoints = useLoyaltyStore((s) => s.totalPoints);
+  const tierProgress = useLoyaltyStore((s) => s.progressPercent);
+  const tier = useLoyaltyStore((s) => s.tier);
+  const nextTier = useLoyaltyStore((s) => s.nextTier);
+  const refresh = useLoyaltyStore((s) => s.refresh);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const displayPoints = points ?? totalPoints;
+  const displayProgress =
+    progress ?? Math.min(1, Math.max(0, tierProgress / 100));
 
   return (
     <Pressable onPress={onPress} style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.tierBadge}>
-          <Text style={styles.tierText}>{t('platinumTier')}</Text>
+          <Text style={styles.tierText}>{tier}</Text>
         </View>
         <Text style={styles.pointsText}>
-          {points.toLocaleString('en-IN')} {t('points')}
+          {displayPoints.toLocaleString('en-IN')} {t('points')}
         </Text>
       </View>
       <View style={styles.midRow}>
         <Text style={styles.title}>{t('loyaltyProgress')}</Text>
-        <Text style={styles.next}>{t('platinumNext')} →</Text>
+        <Text style={styles.next}>
+          {nextTier ? `${nextTier} →` : 'Max tier'}
+        </Text>
       </View>
-      <AnimatedProgressBar progress={progress} height={5} />
+      <AnimatedProgressBar progress={displayProgress} height={5} />
       <Text style={styles.earn}>{t('earnPoints')}</Text>
     </Pressable>
   );

@@ -1,12 +1,17 @@
 /**
- * Automatic delivery vehicle allocation by quantity (bag-equivalent units).
- * Thresholds are frontend-configurable until backend config is wired.
+ * Delivery vehicle types — must match backend DeliveryVehicleType enum.
+ * Pricing comes from backend; this file only allocates vehicle by quantity.
  */
 
-export type VehicleType = 'BIKE' | 'THREE_WHEELER' | 'PICKUP' | 'TRUCK';
+export type DeliveryVehicleType =
+  | 'BIKE'
+  | 'E_LOADER'
+  | 'THREE_WHEELER_LOADER'
+  | 'PICK_UP_VAN'
+  | 'FULL_TRUCK';
 
 export interface VehicleTier {
-  type: VehicleType;
+  type: DeliveryVehicleType;
   /** Inclusive max quantity for this tier (Infinity for last). */
   maxQty: number;
   label: string;
@@ -22,7 +27,15 @@ export interface VehicleTier {
   message: string;
 }
 
-/** Quantity thresholds — bike → three-wheeler → pickup → truck. */
+export const DELIVERY_VEHICLE_DISPLAY_NAMES: Record<DeliveryVehicleType, string> = {
+  BIKE: 'Bike',
+  E_LOADER: 'E-Loader',
+  THREE_WHEELER_LOADER: '3 Wheeler Loader',
+  PICK_UP_VAN: 'Pick Up Van',
+  FULL_TRUCK: 'Full Truck',
+};
+
+/** Quantity thresholds — synced with backend DELIVERY_VEHICLE_QTY_TIERS. */
 export const VEHICLE_TIERS: readonly VehicleTier[] = [
   {
     type: 'BIKE',
@@ -36,10 +49,21 @@ export const VEHICLE_TIERS: readonly VehicleTier[] = [
     message: 'ETA 23 mins',
   },
   {
-    type: 'THREE_WHEELER',
-    maxQty: 40,
-    label: 'Mini Vehicle Delivery',
-    shortLabel: 'Three Wheeler',
+    type: 'E_LOADER',
+    maxQty: 25,
+    label: 'E-Loader Delivery',
+    shortLabel: 'E-Loader',
+    emoji: '🛵',
+    icon: 'car-outline',
+    etaLabel: '35 mins',
+    modeTitle: 'E-Loader Delivery',
+    message: 'ETA 35 mins',
+  },
+  {
+    type: 'THREE_WHEELER_LOADER',
+    maxQty: 50,
+    label: '3 Wheeler Loader',
+    shortLabel: '3 Wheeler',
     emoji: '🛺',
     icon: 'car-outline',
     etaLabel: '45 mins',
@@ -47,21 +71,21 @@ export const VEHICLE_TIERS: readonly VehicleTier[] = [
     message: 'ETA 45 mins',
   },
   {
-    type: 'PICKUP',
+    type: 'PICK_UP_VAN',
     maxQty: 150,
-    label: 'Truck Delivery',
-    shortLabel: 'Truck',
+    label: 'Pick Up Van',
+    shortLabel: 'Pick Up Van',
     emoji: '🚚',
     icon: 'bus-outline',
     etaLabel: '2 Hours',
-    modeTitle: 'Heavy Vehicle Delivery',
+    modeTitle: 'Pick Up Van Delivery',
     message: 'ETA 2 Hours',
   },
   {
-    type: 'TRUCK',
+    type: 'FULL_TRUCK',
     maxQty: Number.POSITIVE_INFINITY,
-    label: 'Heavy Vehicle Dispatch',
-    shortLabel: 'Truck',
+    label: 'Full Truck',
+    shortLabel: 'Full Truck',
     emoji: '🚛',
     icon: 'trail-sign-outline',
     etaLabel: '2 Hours',
@@ -76,6 +100,7 @@ export const DEFAULT_WEIGHT_PER_UNIT_KG = 50;
 /** Category → default unit weight (kg) fallbacks. */
 export const CATEGORY_WEIGHT_KG: Record<string, number> = {
   cement: 50,
+  rmc: 1,
   steel: 1,
   sand: 40,
   bricks: 2.5,

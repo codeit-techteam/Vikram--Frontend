@@ -96,11 +96,11 @@ export const CATALOG_CATEGORIES: CatalogCategory[] = [
     productCount: 0,
   },
   {
-    id: 'steel',
-    slug: 'steel',
-    name: 'Steel',
-    labelKey: 'steel',
-    image: images.categorySteel,
+    id: 'rmc',
+    slug: 'rmc',
+    name: 'RMC',
+    labelKey: 'rmc',
+    image: images.categoryRmc,
     displayOrder: 2,
     isFeatured: true,
     isActive: true,
@@ -278,57 +278,59 @@ const cementProducts: Product[] = [
   },
 ];
 
-const steelProducts: Product[] = [
+/** Offline/static RMC fallbacks aligned with seeded catalog (RMC-M25 / RMC-M30). */
+const rmcProducts: Product[] = [
   {
-    id: 's1',
-    badge: '⚡ 90 min ETA',
-    imageSearch: 'tata steel tmt bars construction',
-    category: 'STEEL & REBAR',
-    name: 'TATA Tiscon TMT 500D',
-    nameHi: 'TATA Tiscon TMT 500D',
-    detailName: 'TATA Tiscon TMT 500D',
-    grade: 'Fe500',
+    id: 'rmc_m25',
+    badge: '⚡ Same Day',
+    image: images.categoryRmc,
+    imageSearch: 'ready mix concrete mixer truck',
+    category: 'RMC',
+    name: 'RMC M25',
+    nameHi: 'आरएमसी M25',
+    detailName: 'Ready Mix Concrete M25',
+    grade: 'M25',
     status: 'IN STOCK',
-    spec: 'Min 1 MT',
-    retailPrice: '₹58,000 / MT',
-    retailPriceValue: 58000,
-    bulkLabel: 'Bulk (5MT+)',
-    bulkPrice: '₹54,500',
-    bulkPriceValue: 54500,
-    unit: 'MT',
-    defaultQuantity: 1,
-    bulkThreshold: 5,
-    categoryType: 'steel',
-    description:
-      'Thermo-mechanically treated bars with superior bendability and weldability for reinforced concrete structures.',
-    descriptionHi:
-      'प्रबलित कंक्रीट संरचनाओं के लिए उत्कृष्ट मोड़ और वेल्ड क्षमता वाली thermo-mechanically treated सरिया।',
-  },
-  {
-    id: 's2',
-    badge: '⚡ 90 min ETA',
-    image: images.productJswNeosteel,
-    imageSearch: 'jsw steel rods construction',
-    category: 'STEEL & REBAR',
-    name: 'JSW Neo Steel Bars',
-    nameHi: 'JSW Neo Steel Bars',
-    detailName: 'JSW Neo Steel Bars',
-    grade: 'Fe550',
-    status: 'READY FOR DISPATCH',
-    spec: '12mm Rod',
-    retailPrice: '₹61,000 / MT',
-    retailPriceValue: 61000,
-    bulkLabel: 'Contractor (10MT+)',
-    bulkPrice: '₹57,200',
-    bulkPriceValue: 57200,
-    unit: 'MT',
+    spec: 'Ready Mix Concrete',
+    retailPrice: '₹4,800 / Cum',
+    retailPriceValue: 4800,
+    bulkLabel: 'Bulk (10+ Cum)',
+    bulkPrice: '₹4,500',
+    bulkPriceValue: 4500,
+    unit: 'Cum',
     defaultQuantity: 1,
     bulkThreshold: 10,
-    categoryType: 'steel',
+    categoryType: 'rmc',
     description:
-      'High-strength TMT bars with enhanced corrosion resistance for coastal and high-humidity construction zones.',
+      'Ready Mix Concrete M25 for structural pours. Delivered by Bajriwala mixer trucks.',
     descriptionHi:
-      'तटीय और उच्च-आर्द्रता निर्माण क्षेत्रों के लिए बढ़ी हुई जंग प्रतिरोध क्षमता वाली उच्च-मजबूती TMT सरिया।',
+      'संरचनात्मक ढलाई के लिए रेडी मिक्स कंक्रीट M25। बजरीवाला मिक्सर ट्रकों द्वारा डिलीवरी।',
+  },
+  {
+    id: 'rmc_m30',
+    badge: '⚡ Same Day',
+    image: images.categoryRmc,
+    imageSearch: 'ready mix concrete mixer truck',
+    category: 'RMC',
+    name: 'RMC M30',
+    nameHi: 'आरएमसी M30',
+    detailName: 'Ready Mix Concrete M30',
+    grade: 'M30',
+    status: 'IN STOCK',
+    spec: 'Ready Mix Concrete',
+    retailPrice: '₹5,200 / Cum',
+    retailPriceValue: 5200,
+    bulkLabel: 'Bulk (10+ Cum)',
+    bulkPrice: '₹4,900',
+    bulkPriceValue: 4900,
+    unit: 'Cum',
+    defaultQuantity: 1,
+    bulkThreshold: 10,
+    categoryType: 'rmc',
+    description:
+      'Ready Mix Concrete M30 for high-strength structural applications.',
+    descriptionHi:
+      'उच्च-शक्ति संरचनात्मक अनुप्रयोगों के लिए रेडी मिक्स कंक्रीट M30।',
   },
 ];
 
@@ -421,9 +423,13 @@ const stoneChipProducts: Product[] = [
 ];
 
 
+const rmcMerged = mergeCategoryProducts(rmcProducts, 'rmc');
+
 export const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
   cement: mergeCategoryProducts(cementProducts, 'cement'),
-  steel: mergeCategoryProducts(steelProducts, 'steel'),
+  rmc: rmcMerged,
+  /** Legacy slug alias — redirects / older links */
+  steel: rmcMerged,
   /** Legacy empty bucket — Hardware is hidden from marketplace grids */
   hardware: [],
   sand: mergeCategoryProducts(sandProducts, 'sand'),
@@ -440,7 +446,8 @@ export const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
 
 const CATEGORY_TYPE_MAP: Record<string, ProductCategoryType> = {
   cement: 'cement',
-  steel: 'steel',
+  rmc: 'rmc',
+  steel: 'rmc',
   sand: 'sand',
   bricks: 'bricks',
   'grey-fill-sand': 'sand',

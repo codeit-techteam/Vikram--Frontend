@@ -114,15 +114,14 @@ interface CartState {
   grandTotal: () => number;
 }
 
-const FALLBACK_DELIVERY_CHARGE = 150;
-const LOYALTY_DISCOUNT = 500;
+const LOYALTY_DISCOUNT = 0; // Applied at checkout via backend — not a flat cart discount
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
       savedForLater: [],
-      pointsApplied: true,
+      pointsApplied: false,
       cartBumpVersion: 0,
 
       addItem: (item) => {
@@ -291,11 +290,11 @@ export const useCartStore = create<CartState>()(
       deliveryCharge: () => {
         if (get().items.length === 0) return 0;
         const eta = useEtaStore.getState().eta;
-        if (eta) {
-          if (eta.freeDelivery) return 0;
-          return eta.deliveryCharge ?? FALLBACK_DELIVERY_CHARGE;
-        }
-        return FALLBACK_DELIVERY_CHARGE;
+        // Preview only — final amount is always recalculated by backend at checkout/order.
+        // Never fall back to a hardcoded business price.
+        if (eta?.freeDelivery) return 0;
+        if (eta?.deliveryCharge != null) return eta.deliveryCharge;
+        return 0;
       },
 
       loyaltyDiscount: () => (get().pointsApplied ? LOYALTY_DISCOUNT : 0),

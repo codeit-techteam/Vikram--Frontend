@@ -14,7 +14,9 @@ export const images = {
   deliveryTruck:
     'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&q=80',
   categoryCement: require('../assets/category-cement.png'),
-  categorySteel: require('../assets/category-steel.png'),
+  categoryRmc: require('../assets/category-rmc.png'),
+  /** @deprecated Use categoryRmc — kept as alias for legacy imports */
+  categorySteel: require('../assets/category-rmc.png'),
   categoryStone: require('../assets/category-stone-chips.png'),
   categorySand: require('../assets/category-sand.png'),
   categoryBricks: require('../assets/category-bricks.png'),

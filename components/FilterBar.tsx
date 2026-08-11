@@ -77,6 +77,8 @@ function getChipSelectionCount(
   switch (key) {
     case 'grade':
       return filters.grade.length;
+    case 'productType':
+      return filters.productType?.length ?? 0;
     case 'brand':
       return filters.brand.length;
     case 'priceRange':

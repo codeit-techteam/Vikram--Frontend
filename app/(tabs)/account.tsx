@@ -51,6 +51,11 @@ const QUICK_LINKS = [
   { key: 'invoices', icon: 'document-text-outline' as const, route: '/account/invoices' },
   { key: 'loyalty', icon: 'diamond-outline' as const, route: '/account/loyalty' },
   {
+    key: 'bulkEnquiries',
+    icon: 'cube-outline' as const,
+    route: '/bulk-procurement/my-enquiries',
+  },
+  {
     key: 'terms',
     icon: 'reader-outline' as const,
     route: '/account/terms',
@@ -444,7 +449,10 @@ export default function AccountScreen() {
                   key={link.key}
                   onPress={() => {
                     if (
-                      (link.key === 'invoices' || link.key === 'loyalty' || link.key === 'history') &&
+                      (link.key === 'invoices' ||
+                        link.key === 'loyalty' ||
+                        link.key === 'history' ||
+                        link.key === 'bulkEnquiries') &&
                       !requireAuth('Please log in to access this section.')
                     ) {
                       return;
@@ -463,7 +471,9 @@ export default function AccountScreen() {
                           ? t('invoices')
                           : link.key === 'loyalty'
                             ? t('loyaltyWallet')
-                            : t('termsConditions')}
+                            : link.key === 'bulkEnquiries'
+                              ? t('myBulkEnquiries')
+                              : t('termsConditions')}
                     </Text>
                     {'subtitleKey' in link && link.subtitleKey ? (
                       <Text className="mt-0.5 text-xs text-text-secondary">

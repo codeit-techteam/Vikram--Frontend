@@ -1,8 +1,15 @@
 import type { Product } from '@/types/catalog';
 
-export type FilterKey = 'grade' | 'brand' | 'priceRange' | 'discount' | 'bulkPricing' | 'sort';
+export type FilterKey =
+  | 'grade'
+  | 'brand'
+  | 'productType'
+  | 'priceRange'
+  | 'discount'
+  | 'bulkPricing'
+  | 'sort';
 
-export type QuickFilterKey = 'grade' | 'brand' | 'priceRange';
+export type QuickFilterKey = 'grade' | 'brand' | 'productType' | 'priceRange';
 
 export type SortOption =
   | 'popularity'
@@ -41,6 +48,8 @@ export interface FacetOption {
 
 export interface CategoryFilterConfig {
   grades: string[];
+  /** Brick / category product-type display labels */
+  productTypes: string[];
   brands: BrandOption[];
   priceBounds: [number, number];
   pricePresets: PricePresetOption[];
@@ -51,6 +60,8 @@ export interface CategoryFilterConfig {
 export interface ActiveFilters {
   search: string;
   grade: string[];
+  /** Display labels (e.g. Red Bricks) — mapped to API codes when querying */
+  productType: string[];
   brand: string[];
   priceRange: [number, number];
   /** Selected price preset ids — OR logic across ranges */

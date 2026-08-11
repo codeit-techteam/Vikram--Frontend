@@ -307,6 +307,24 @@ export default function ProductDetailScreen() {
           {showBrand ? (
             <Text className="mt-1 text-sm font-semibold text-primary">{product.brand}</Text>
           ) : null}
+          {(product.productTypeLabel || product.gradeLabel || product.grade) ? (
+            <View className="mt-2 flex-row flex-wrap gap-2">
+              {product.productTypeLabel ? (
+                <View className="rounded-full bg-trust px-3 py-1">
+                  <Text className="text-xs font-semibold text-text">
+                    {product.productTypeLabel}
+                  </Text>
+                </View>
+              ) : null}
+              {(product.gradeLabel || product.grade) ? (
+                <View className="rounded-full bg-trust px-3 py-1">
+                  <Text className="text-xs font-semibold text-text">
+                    {t('grade')}: {product.gradeLabel || product.grade}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           <Text className="mt-2 text-sm leading-5 text-text-secondary">{localizedDescription}</Text>
 
           {(hasVariants || product.variantsPlaceholder) && (

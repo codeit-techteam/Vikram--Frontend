@@ -41,6 +41,8 @@ function buildQuery(params: ProductQueryParams = {}): string {
   if (params.listingType) query.set('listingType', params.listingType);
   if (params.brand) query.set('brand', params.brand);
   if (params.grade) query.set('grade', params.grade);
+  if (params.productType) query.set('productType', params.productType);
+  if (params.brickType) query.set('brickType', params.brickType);
   if (params.status) query.set('status', params.status);
   if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
   if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
@@ -143,6 +145,8 @@ export async function fetchCategoryProducts(
   if (params.search) query.set('search', params.search);
   if (params.brand) query.set('brand', params.brand);
   if (params.grade) query.set('grade', params.grade);
+  if (params.productType) query.set('productType', params.productType);
+  if (params.brickType) query.set('brickType', params.brickType);
   if (params.status) query.set('status', params.status);
   if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
   if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));

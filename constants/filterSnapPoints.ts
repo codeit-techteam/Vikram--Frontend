@@ -1,9 +1,10 @@
 import type { QuickFilterKey } from '@/types/filter.types';
 import { FILTER_LAYOUT } from '@constants/filterTokens';
 
-/** Unified filter sheet snap — Brand / Grade / Price share one sheet. */
+/** Unified filter sheet snap — Brand / Type / Grade / Price share one sheet. */
 export const FILTER_SNAP_POINTS: Record<QuickFilterKey | 'all', string[]> = {
   grade: [FILTER_LAYOUT.snapPercent],
+  productType: [FILTER_LAYOUT.snapPercent],
   brand: [FILTER_LAYOUT.snapPercent],
   priceRange: [FILTER_LAYOUT.snapPercent],
   all: [FILTER_LAYOUT.snapPercent],

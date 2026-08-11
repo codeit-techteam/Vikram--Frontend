@@ -16,10 +16,12 @@ import { BrandLogo } from '@components/BrandLogo';
 import { CartItemCard } from '@components/cart/CartItemCard';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
+import { useLoyaltyStore } from '@store/loyaltyStore';
 import type { DeliverySite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { requireAuthOr } from '@utils/requireAuth';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
+import { useEffect } from 'react';
 
 function SummaryRow({
   label,
@@ -59,27 +61,66 @@ function CartScreenHeader() {
 function BajriProPointsBanner({
   pointsApplied,
   onToggle,
+  availablePoints,
+  availableValue,
+  itemsTotal,
+  minOrderValue = 500,
 }: {
   pointsApplied: boolean;
   onToggle: () => void;
+  availablePoints: number;
+  availableValue: number;
+  itemsTotal: number;
+  minOrderValue?: number;
 }) {
   const { t } = useTranslation();
+  const eligible = itemsTotal >= minOrderValue;
+  const disabled = !eligible || availablePoints <= 0;
 
   return (
-    <View style={styles.pointsBanner}>
+    <View style={[styles.pointsBanner, disabled && { opacity: 0.85 }]}>
       <View style={styles.pointsRow}>
         <View style={styles.pointsLeft}>
           <BrandLogo size="sm" />
           <View>
             <Text style={styles.pointsTitle}>{t('buildProPoints')}</Text>
-            <Text style={styles.pointsBalance}>{t('balance')}: 12,450</Text>
+            <Text style={styles.pointsBalance}>
+              {t('balance')}: {availablePoints.toLocaleString('en-IN')} Points
+            </Text>
+            <Text style={{ fontSize: 11, color: '#8A6A00', marginTop: 2 }}>
+              ≈ ₹
+              {availableValue.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Text>
           </View>
         </View>
-        <Pressable onPress={onToggle} style={[styles.toggle, pointsApplied && styles.toggleOn]}>
-          <View style={[styles.toggleKnob, pointsApplied && styles.toggleKnobOn]} />
+        <Pressable
+          onPress={() => {
+            if (disabled) return;
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onToggle();
+          }}
+          disabled={disabled}
+          style={[
+            styles.toggle,
+            pointsApplied && eligible && styles.toggleOn,
+            disabled && { backgroundColor: '#E8E8E8' },
+          ]}>
+          <View
+            style={[
+              styles.toggleKnob,
+              pointsApplied && eligible && styles.toggleKnobOn,
+            ]}
+          />
         </Pressable>
       </View>
-      <Text style={styles.pointsHint}>{t('usePointsToSave')}</Text>
+      <Text style={styles.pointsHint}>
+        {eligible
+          ? 'Apply loyalty points at checkout (orders ₹500+)'
+          : `Spend ₹${minOrderValue.toLocaleString('en-IN')} or more to unlock loyalty redemption.`}
+      </Text>
     </View>
   );
 }
@@ -106,13 +147,15 @@ function OrderSummaryCard({
         value={`₹${deliveryCharge.toLocaleString('en-IN')}`}
         showInfo
       />
-      {pointsApplied && (
-        <SummaryRow
-          label={t('loyaltyDiscount')}
-          value={`-₹${loyaltyDiscount.toLocaleString('en-IN')}`}
-          valueColor="#FEB623"
-        />
-      )}
+      <SummaryRow
+        label={t('loyaltyDiscount')}
+        value={
+          pointsApplied && loyaltyDiscount > 0
+            ? `-₹${loyaltyDiscount.toLocaleString('en-IN')}`
+            : '-₹0'
+        }
+        valueColor="#FEB623"
+      />
       <View style={styles.summaryDivider} />
     </View>
   );
@@ -220,6 +263,22 @@ export default function CartScreen() {
   const deliveryCharge = useCartStore((s) => s.deliveryCharge());
   const loyaltyDiscount = useCartStore((s) => s.loyaltyDiscount());
   const grandTotal = useCartStore((s) => s.grandTotal());
+  const availablePoints = useLoyaltyStore((s) => s.totalPoints);
+  const availableValue = useLoyaltyStore((s) => s.availableValue);
+  const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
+  const minRedeemOrderValue =
+    useLoyaltyStore((s) => s.summary?.minRedeemOrderValue) ?? 500;
+
+  useEffect(() => {
+    void refreshLoyalty();
+  }, [refreshLoyalty]);
+
+  // Auto-disable cart toggle if order falls below minimum.
+  useEffect(() => {
+    if (pointsApplied && itemsTotal < minRedeemOrderValue) {
+      togglePoints();
+    }
+  }, [itemsTotal, minRedeemOrderValue, pointsApplied, togglePoints]);
 
   const selectedSite = useDeliveryStore((s) => {
     const site = s.sites.find((x) => x.id === s.selectedSiteId);
@@ -257,12 +316,19 @@ export default function CartScreen() {
                 />
               ))}
 
-              <BajriProPointsBanner pointsApplied={pointsApplied} onToggle={togglePoints} />
+              <BajriProPointsBanner
+                pointsApplied={pointsApplied}
+                onToggle={togglePoints}
+                availablePoints={availablePoints}
+                availableValue={availableValue}
+                itemsTotal={itemsTotal}
+                minOrderValue={minRedeemOrderValue}
+              />
 
               <OrderSummaryCard
                 itemsTotal={itemsTotal}
                 deliveryCharge={deliveryCharge}
-                pointsApplied={pointsApplied}
+                pointsApplied={pointsApplied && itemsTotal >= minRedeemOrderValue}
                 loyaltyDiscount={loyaltyDiscount}
               />
 

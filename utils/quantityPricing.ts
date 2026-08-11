@@ -3,7 +3,7 @@ import {
   DEFAULT_WEIGHT_PER_UNIT_KG,
   resolveVehicleForQuantity,
   type VehicleTier,
-  type VehicleType,
+  type DeliveryVehicleType,
 } from '@constants/deliveryVehicles';
 import type { Product, ProductVariant } from '@/types/catalog';
 import { getProductPricing, type ProductPricing } from '@utils/productPricing';
@@ -36,7 +36,7 @@ export interface QuantityPriceBreakdown {
   weightPerUnitKg: number;
   estimatedWeightKg: number;
   vehicle: VehicleTier;
-  vehicleType: VehicleType;
+  vehicleType: DeliveryVehicleType;
   deliveryMode: string;
   eta: string;
   modeTitle: string;

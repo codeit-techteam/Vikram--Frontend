@@ -21,24 +21,25 @@ export type SearchSortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newes
 
 export const POPULAR_SEARCH_TERMS = [
   'UltraTech Cement',
-  'TMT Steel',
+  'RMC M25',
   'Sand & Gravel',
 ] as const;
 
 export const POPULAR_CATEGORIES = [
   { id: 'cement', label: 'Cement', icon: '🧱' },
-  { id: 'steel', label: 'Steel', icon: '🔩' },
+  { id: 'rmc', label: 'RMC', icon: '🚛' },
   { id: 'stone', label: 'Aggregates', icon: '🪨' },
   { id: 'bricks', label: 'Bricks', icon: '🪵' },
 ] as const;
 
-const GRADE_TERMS = ['OPC 53', 'FE550D', '20mm', '12mm', '10mm', '500D', 'PPC'];
+const GRADE_TERMS = ['OPC 53', 'M25', 'M20', 'A+', 'A', 'B+', 'PPC'];
 
 const BRAND_NAMES = [...new Set(ALL_PRODUCTS.map((p) => p.brand))];
 
 const CATEGORY_LABELS: Record<string, string> = {
   cement: 'Cement',
-  steel: 'Steel',
+  rmc: 'RMC',
+  steel: 'RMC',
   stone: 'Aggregates',
   sand: 'Sand',
   bricks: 'Bricks',

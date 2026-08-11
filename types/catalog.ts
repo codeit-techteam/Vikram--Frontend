@@ -23,6 +23,7 @@ export type ProductStatus = 'READY FOR DISPATCH' | 'IN STOCK' | 'LIMITED STOCK' 
 
 export type ProductCategoryType =
   | 'cement'
+  | 'rmc'
   | 'steel'
   | 'sand'
   | 'bricks'
@@ -81,6 +82,12 @@ export interface Product {
   name: string;
   nameHi?: string;
   grade: string;
+  /** Display label for grade when API provides one (e.g. A+). */
+  gradeLabel?: string | null;
+  /** Stable product type code (e.g. RED_BRICKS). */
+  productType?: string | null;
+  /** Display label for product type (e.g. Red Bricks). */
+  productTypeLabel?: string | null;
   status: ProductStatus;
   spec: string;
   /** @deprecated Use productVariants for priced variants */

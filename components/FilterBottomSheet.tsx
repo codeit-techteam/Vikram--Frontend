@@ -22,6 +22,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { BrandSection } from '@components/filter-sections/BrandSection';
 import { GradeSection } from '@components/filter-sections/GradeSection';
 import { PriceRangeSection } from '@components/filter-sections/PriceRangeSection';
+import { ProductTypeSection } from '@components/filter-sections/ProductTypeSection';
 import { FilterFooter } from '@components/FilterFooter';
 import { ScaledPressable } from '@components/ScaledPressable';
 import {
@@ -43,7 +44,7 @@ import type {
 import type { Product } from '@/types/catalog';
 
 export interface FilterBottomSheetRef {
-  /** Open unified sheet; optionally jump to Brand / Grade / Price. */
+  /** Open unified sheet; optionally jump to Brand / Type / Grade / Price. */
   open: (section?: FilterKey) => void;
   close: () => void;
 }
@@ -62,11 +63,17 @@ interface FilterBottomSheetProps {
 
 const SECTION_LABELS: Record<string, string> = {
   brand: 'Brand',
+  productType: 'Type',
   priceRange: 'Price',
   grade: 'Grade',
 };
 
-const SIDEBAR_SECTIONS: FilterKey[] = ['brand', 'grade', 'priceRange'];
+const SIDEBAR_SECTIONS: FilterKey[] = [
+  'productType',
+  'brand',
+  'grade',
+  'priceRange',
+];
 
 function sectionHasSelection(
   key: FilterKey,
@@ -76,6 +83,8 @@ function sectionHasSelection(
   switch (key) {
     case 'brand':
       return draft.brand.length > 0;
+    case 'productType':
+      return (draft.productType?.length ?? 0) > 0;
     case 'grade':
       return draft.grade.length > 0;
     case 'priceRange':
@@ -168,6 +177,11 @@ export const FilterBottomSheet = forwardRef<
       () => computeFacetCounts(products, draft, config, categoryId, 'grade'),
       [products, draft, config, categoryId],
     );
+    const productTypeCounts = useMemo(
+      () =>
+        computeFacetCounts(products, draft, config, categoryId, 'productType'),
+      [products, draft, config, categoryId],
+    );
     const priceCounts = useMemo(
       () => computeFacetCounts(products, draft, config, categoryId, 'price'),
       [products, draft, config, categoryId],
@@ -207,6 +221,13 @@ export const FilterBottomSheet = forwardRef<
               facetCounts={brandCounts}
               externalSearch={filterQuery}
               hideSearch
+            />
+          );
+        case 'productType':
+          return (
+            <ProductTypeSection
+              {...sectionProps}
+              facetCounts={productTypeCounts}
             />
           );
         case 'grade':

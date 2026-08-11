@@ -58,7 +58,7 @@ const SUGGESTION_KEYS: {
   color: string;
 }[] = [
   { icon: 'cube-outline', textKey: 'orderCementBags', color: '#4285F4' },
-  { icon: 'trending-up', textKey: 'steelPricesToday', color: '#EA4335' },
+  { icon: 'trending-up', textKey: 'rmcPricesToday', color: '#EA4335' },
   { icon: 'location-outline', textKey: 'trackMyOrder', color: '#FBBC05' },
   { icon: 'flash-outline', textKey: 'emergencyDelivery', color: '#34A853' },
 ];
@@ -73,12 +73,19 @@ function getResultForQuery(text: string): VoiceSearchResult {
       navigateTo: '/orders/details/BJW-88294' as Href,
     };
   }
-  if (lower.includes('steel') || lower.includes('price') || lower.includes('स्टील')) {
+  if (
+    lower.includes('rmc') ||
+    lower.includes('ready mix') ||
+    lower.includes('steel') ||
+    lower.includes('price') ||
+    lower.includes('स्टील') ||
+    lower.includes('आरएमसी')
+  ) {
     return {
-      title: 'Steel Prices Today',
-      body: 'JSW Neosteel TMT 12mm — ₹58,450/ton. Bulk discount available.',
-      actionLabel: 'View Steel →',
-      navigateTo: '/products/2' as Href,
+      title: 'RMC Prices Today',
+      body: 'RMC M25 — ₹4,800/Cum. Bulk discount available for 10+ Cum.',
+      actionLabel: 'View RMC →',
+      navigateTo: '/products/rmc' as Href,
     };
   }
   if (lower.includes('emergency') || lower.includes('urgent')) {
@@ -99,7 +106,7 @@ function getResultForQuery(text: string): VoiceSearchResult {
   }
   return {
     title: 'Bajriwala',
-    body: 'Search cement, steel, sand & more. 90-minute delivery to your site.',
+    body: 'Search cement, RMC, sand & more. 90-minute delivery to your site.',
     actionLabel: 'Browse Catalog →',
     navigateTo: '/(tabs)/catalog' as Href,
   };

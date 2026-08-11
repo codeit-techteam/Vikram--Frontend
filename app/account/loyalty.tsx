@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Modal,
+  Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,8 +17,6 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
-  withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,76 +27,44 @@ import { useLoyaltyStore, type ActivityItem, type LoyaltyTier } from '@store/loy
 import { safeGoBack } from '@utils/navigation';
 
 const TIER_TITLES: Record<LoyaltyTier, string> = {
-  silver: 'Silver Contractor',
-  gold: 'Gold Contractor',
-  platinum: 'Platinum Contractor',
-  diamond: 'Diamond Contractor',
+  BRONZE: 'Bronze Contractor',
+  SILVER: 'Silver Contractor',
+  GOLD: 'Gold Contractor',
+  PLATINUM: 'Platinum Contractor',
 };
 
-interface Reward {
-  id: string;
-  image: string;
-  badge: string | null;
-  badgeColor?: string;
-  title: string;
-  subtitle: string;
-  points: number | null;
-  pointsLabel: string;
-  pointsColor?: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  isLocked: boolean;
-}
+type ActivityFilter = 'all' | 'earned' | 'redeemed';
 
-const REWARDS: Reward[] = [
-  {
-    id: 'r1',
-    image: 'jcb excavator construction yellow',
-    badge: 'Hot Deal',
-    badgeColor: '#FF3B30',
-    title: 'JCB Rental Voucher',
-    subtitle: 'Flat 15% off next booking',
-    points: 5000,
-    pointsLabel: '5,000 CP',
-    icon: 'ticket-outline',
-    isLocked: false,
-  },
-  {
-    id: 'r2',
-    image: 'credit cards stack dark',
-    badge: null,
-    title: 'Shell Fuel Card',
-    subtitle: '₹2,000 top-up voucher',
-    points: 12000,
-    pointsLabel: '12,000 CP',
-    icon: 'card-outline',
-    isLocked: false,
-  },
-  {
-    id: 'r3',
-    image: 'construction insurance document',
-    badge: null,
-    title: 'Site Insurance Plus',
-    subtitle: 'Coverage for 3 projects',
-    points: null,
-    pointsLabel: 'Platinum Only',
-    pointsColor: '#FEB623',
-    icon: 'lock-closed-outline',
-    isLocked: true,
-  },
-  {
-    id: 'r4',
-    image: 'construction equipment tools drills',
-    badge: null,
-    title: 'Equipment Credits',
-    subtitle: '₹10,000 purchase discount',
-    points: 35000,
-    pointsLabel: '35,000 CP',
-    icon: 'construct-outline',
-    isLocked: false,
-  },
-];
+const TIER_BENEFITS = [
+  'Earn 1 point for every ₹100 spent',
+  '50 bonus points on your first eligible order',
+  'Redeem points on orders ₹500+',
+  'Use points directly as a bill deduction',
+  'First 3 bike deliveries free',
+] as const;
 
-type ActivityFilter = 'all' | 'credits' | 'debits';
+const HOW_POINTS_WORK = [
+  {
+    step: '1',
+    title: 'Shop & Earn',
+    body: 'Earn 1 BajriPro Point for every ₹100 spent on eligible order value.',
+  },
+  {
+    step: '2',
+    title: 'First Order Bonus',
+    body: 'Receive 50 bonus points once on your first eligible completed order.',
+  },
+  {
+    step: '3',
+    title: 'Redeem at Checkout',
+    body: 'Apply points on orders of ₹500 or more. 100 points = ₹1 off.',
+  },
+  {
+    step: '4',
+    title: 'Save on Your Bill',
+    body: 'Points are deducted from your payable amount after order confirmation.',
+  },
+] as const;
 
 function AnimatedNumber({
   value,
@@ -117,7 +82,7 @@ function AnimatedNumber({
 
   useEffect(() => {
     animatedValue.value = withTiming(value, {
-      duration: 1000,
+      duration: 900,
       easing: Easing.out(Easing.cubic),
     });
   }, [animatedValue, value]);
@@ -138,180 +103,11 @@ function AnimatedNumber({
   );
 }
 
-function RewardCard({
-  reward,
-  totalPoints,
-  tier,
-  onRedeem,
-}: {
-  reward: Reward;
-  totalPoints: number;
-  tier: LoyaltyTier;
-  onRedeem: (reward: Reward) => void;
-}) {
-  const [redeeming, setRedeeming] = useState(false);
-  const scale = useSharedValue(1);
-
-  const isLocked = reward.isLocked && tier !== 'platinum';
-  const canAfford = reward.points != null && totalPoints >= reward.points;
-  const canRedeem = !isLocked && (reward.points == null || canAfford);
-
-  const cardAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const onPressRedeem = () => {
-    if (isLocked) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      onRedeem(reward);
-      return;
-    }
-    if (reward.points != null && totalPoints < reward.points) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      onRedeem(reward);
-      return;
-    }
-
-    scale.value = withSequence(
-      withSpring(0.96, { damping: 8, stiffness: 300 }),
-      withSpring(1.0, { damping: 10 }),
-    );
-    setRedeeming(true);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    setTimeout(() => {
-      onRedeem(reward);
-      setRedeeming(false);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }, 1500);
-  };
-
-  return (
-    <Animated.View style={[{ marginBottom: 14 }, cardAnimStyle]}>
-      <View
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: 16,
-          overflow: 'hidden',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.07,
-          shadowRadius: 8,
-          elevation: 3,
-          opacity: isLocked ? 0.75 : 1,
-        }}>
-        <View style={{ position: 'relative' }}>
-          <Image
-            source={{ uri: `https://source.unsplash.com/featured/600x220/?${reward.image}` }}
-            style={{ width: '100%', height: 140 }}
-            resizeMode="cover"
-          />
-          {reward.badge && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 10,
-                right: 10,
-                backgroundColor: reward.badgeColor,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}>
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{reward.badge}</Text>
-            </View>
-          )}
-          {isLocked && (
-            <View
-              style={{
-                ...StyleSheet.absoluteFillObject,
-                backgroundColor: 'rgba(0,0,0,0.35)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-              <Ionicons name="lock-closed" size={32} color="rgba(255,255,255,0.8)" />
-            </View>
-          )}
-        </View>
-
-        <View style={{ padding: 14 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }}>{reward.title}</Text>
-              <Text style={{ fontSize: 13, color: '#888', marginTop: 2 }}>{reward.subtitle}</Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={onPressRedeem}
-              disabled={redeeming || (!isLocked && reward.points != null && !canAfford)}
-              style={{
-                backgroundColor: isLocked ? '#F0F0F0' : canRedeem ? '#FFF4D1' : '#F8F8F8',
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: 10,
-              }}>
-              {redeeming ? (
-                <ActivityIndicator size="small" color="#FEB623" />
-              ) : (
-                <Ionicons
-                  name={isLocked ? 'lock-closed-outline' : 'gift-outline'}
-                  size={18}
-                  color={isLocked ? '#CCC' : canRedeem ? '#FEB623' : '#CCC'}
-                />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ marginTop: 10 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '800',
-                color: reward.pointsColor || '#FEB623',
-              }}>
-              {reward.pointsLabel}
-            </Text>
-            {!isLocked && reward.points != null && (
-              <Text
-                style={{
-                  fontSize: 11,
-                  color: canAfford ? '#34C759' : '#FF3B30',
-                  fontWeight: '600',
-                  marginTop: 1,
-                }}>
-                {canAfford
-                  ? '✓ You can redeem this'
-                  : `Need ${(reward.points - totalPoints).toLocaleString('en-IN')} more CP`}
-              </Text>
-            )}
-          </View>
-        </View>
-      </View>
-    </Animated.View>
-  );
-}
-
 function ActivityRow({ activity }: { activity: ActivityItem }) {
-  const isInr = activity.valueType === 'inr';
-  const iconBg = isInr ? '#E3F2FD' : activity.isCredit ? '#E8F5E9' : '#FFF4D1';
-  const iconColor = isInr ? '#1976D2' : activity.isCredit ? '#34C759' : '#FEB623';
-
-  const valueColor = isInr
-    ? '#FEB623'
-    : activity.isCredit
-      ? '#34C759'
-      : '#FF3B30';
-
-  const valueText = isInr
-    ? `${activity.isCredit ? '+' : ''}₹${Math.abs(activity.points).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : `${activity.points >= 0 ? '+' : ''}${activity.points.toLocaleString('en-IN')} CP`;
+  const iconBg = activity.isCredit ? '#E8F5E9' : '#FFEBEE';
+  const iconColor = activity.isCredit ? '#34C759' : '#FF3B30';
+  const valueColor = activity.isCredit ? '#34C759' : '#FF3B30';
+  const valueText = `${activity.points >= 0 ? '+' : ''}${activity.points.toLocaleString('en-IN')} Points`;
 
   return (
     <View
@@ -332,11 +128,22 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-        <Ionicons name={activity.icon as keyof typeof Ionicons.glyphMap} size={18} color={iconColor} />
+        <Ionicons
+          name={activity.icon as keyof typeof Ionicons.glyphMap}
+          size={18}
+          color={iconColor}
+        />
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#1A1A1A' }}>{activity.title}</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: '#1A1A1A' }}>
+          {activity.title}
+        </Text>
+        {activity.subtitle ? (
+          <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }} numberOfLines={1}>
+            {activity.subtitle}
+          </Text>
+        ) : null}
         <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>{activity.time}</Text>
       </View>
 
@@ -344,20 +151,14 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
         <Text style={{ fontSize: 14, fontWeight: '800', color: valueColor }}>{valueText}</Text>
         <View
           style={{
-            backgroundColor: activity.status === 'COMPLETED' ? '#E8F5E9' : '#FFF4D1',
+            backgroundColor: '#E8F5E9',
             paddingHorizontal: 6,
             paddingVertical: 2,
-            borderRadius: 4,
-            marginTop: 3,
+            borderRadius: 8,
+            marginTop: 4,
           }}>
-          <Text
-            style={{
-              fontSize: 9,
-              fontWeight: '700',
-              color: activity.status === 'COMPLETED' ? '#34C759' : '#FEB623',
-              letterSpacing: 0.3,
-            }}>
-            {activity.status}
+          <Text style={{ fontSize: 9, fontWeight: '800', color: '#2E7D32', letterSpacing: 0.4 }}>
+            COMPLETED
           </Text>
         </View>
       </View>
@@ -365,29 +166,135 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
   );
 }
 
-export default function LoyaltyWalletScreen() {
-  const totalPoints = useLoyaltyStore((s) => s.totalPoints);
-  const cashbackEarned = useLoyaltyStore((s) => s.cashbackEarned);
-  const tier = useLoyaltyStore((s) => s.tier);
-  const progressPercent = useLoyaltyStore((s) => s.progressPercent);
-  const spendToNextTier = useLoyaltyStore((s) => s.spendToNextTier);
-  const totalSpend = useLoyaltyStore((s) => s.totalSpend);
-  const nextTier = useLoyaltyStore((s) => s.nextTier);
-  const progressTierLabel = useLoyaltyStore((s) => s.progressTierLabel);
-  const activityHistory = useLoyaltyStore((s) => s.activityHistory);
-  const deductPoints = useLoyaltyStore((s) => s.deductPoints);
-  const addActivityHistory = useLoyaltyStore((s) => s.addActivityHistory);
-  const downloadStatement = useLoyaltyStore((s) => s.downloadStatement);
+function TierBenefitsSheet({
+  visible,
+  tier,
+  onClose,
+}: {
+  visible: boolean;
+  tier: LoyaltyTier;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
+        onPress={onClose}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: '#fff',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 36,
+          }}>
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: '#E0E0E0',
+              marginBottom: 16,
+            }}
+          />
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1A1A1A' }}>
+            Your Tier Benefits
+          </Text>
+          <Text
+            style={{
+              marginTop: 6,
+              alignSelf: 'flex-start',
+              backgroundColor: '#FEB623',
+              color: '#fff',
+              overflow: 'hidden',
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: '800',
+              letterSpacing: 0.6,
+            }}>
+            {tier}
+          </Text>
+          <Text style={{ marginTop: 14, marginBottom: 12, color: '#666', fontSize: 14 }}>
+            Your BajriPro loyalty benefits
+          </Text>
 
-  const [toastMsg, setToastMsg] = useState('');
-  const [toastVisible, setToastVisible] = useState(false);
+          {TIER_BENEFITS.map((benefit) => (
+            <View
+              key={benefit}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 10,
+                marginBottom: 12,
+              }}>
+              <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+              <Text style={{ flex: 1, fontSize: 14, color: '#1A1A1A', lineHeight: 20 }}>
+                {benefit}
+              </Text>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              marginTop: 12,
+              backgroundColor: '#FEB623',
+              borderRadius: 14,
+              paddingVertical: 14,
+              alignItems: 'center',
+            }}>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Got it</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+export default function LoyaltyScreen() {
+  const {
+    summary,
+    totalPoints,
+    availableValue,
+    lifetimeRedeemed,
+    tier,
+    progressPercent,
+    pointsToNextTier,
+    nextTier,
+    progressTierLabel,
+    freeBikeDeliveriesRemaining,
+    freeBikeDeliveriesUsed,
+    freeBikeDeliveriesAllowed,
+    activityHistory,
+    historyMeta,
+    loading,
+    historyLoading,
+    error,
+    refresh,
+    loadHistory,
+    downloadStatement,
+  } = useLoyaltyStore();
+
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [benefitsOpen, setBenefitsOpen] = useState(false);
 
   const progressWidth = useSharedValue(0);
 
   useEffect(() => {
-    progressWidth.value = withTiming(progressPercent / 100, {
-      duration: 1200,
+    void refresh();
+    void loadHistory(1);
+  }, [refresh, loadHistory]);
+
+  useEffect(() => {
+    progressWidth.value = withTiming(Math.min(100, Math.max(0, progressPercent)) / 100, {
+      duration: 800,
       easing: Easing.out(Easing.cubic),
     });
   }, [progressPercent, progressWidth]);
@@ -403,10 +310,10 @@ export default function LoyaltyWalletScreen() {
   }, []);
 
   const filteredActivity = useMemo(() => {
-    if (activityFilter === 'credits') {
+    if (activityFilter === 'earned') {
       return activityHistory.filter((a) => a.isCredit);
     }
-    if (activityFilter === 'debits') {
+    if (activityFilter === 'redeemed') {
       return activityHistory.filter((a) => !a.isCredit);
     }
     return activityHistory;
@@ -415,42 +322,18 @@ export default function LoyaltyWalletScreen() {
   const cycleFilter = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActivityFilter((prev) => {
-      if (prev === 'all') return 'credits';
-      if (prev === 'credits') return 'debits';
+      if (prev === 'all') return 'earned';
+      if (prev === 'earned') return 'redeemed';
       return 'all';
     });
   };
 
-  const handleRedeem = useCallback(
-    (reward: Reward) => {
-      const isLocked = reward.isLocked && tier !== 'platinum';
-
-      if (isLocked) {
-        showToast('Upgrade to Platinum to unlock');
-        return;
-      }
-      if (reward.points != null && totalPoints < reward.points) {
-        showToast(`Need ${(reward.points - totalPoints).toLocaleString('en-IN')} more CP`);
-        return;
-      }
-
-      if (reward.points != null) {
-        deductPoints(reward.points);
-      }
-      addActivityHistory({
-        id: Date.now().toString(),
-        icon: 'gift-outline',
-        title: `${reward.title} Redeemed`,
-        time: 'Just now',
-        points: reward.points != null ? -reward.points : 0,
-        status: 'PENDING',
-        isCredit: false,
-        valueType: 'cp',
-      });
-      showToast('Reward redeemed! Check your email.');
-    },
-    [tier, totalPoints, deductPoints, addActivityHistory, showToast],
-  );
+  const filterLabel =
+    activityFilter === 'all'
+      ? 'All'
+      : activityFilter === 'earned'
+        ? 'Earned'
+        : 'Redeemed';
 
   const onDownloadStatement = async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -462,7 +345,23 @@ export default function LoyaltyWalletScreen() {
     }
   };
 
-  const tierTitle = TIER_TITLES[tier];
+  const onRetry = () => {
+    void refresh();
+    void loadHistory(1);
+  };
+
+  const tierTitle = TIER_TITLES[tier] ?? tier;
+  const minOrder = summary?.minRedeemOrderValue ?? 500;
+  const pointValue = summary?.pointValueInr ?? 0.01;
+  const firstBonus = summary?.firstOrderBonus ?? 50;
+  const earnRate = summary?.earnPointsPer100Inr ?? 1;
+
+  const deliveryMessage =
+    freeBikeDeliveriesRemaining > 0
+      ? `${freeBikeDeliveriesRemaining} free bike ${
+          freeBikeDeliveriesRemaining === 1 ? 'delivery' : 'deliveries'
+        } remaining`
+      : 'Free bike delivery benefit used';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }} edges={['top']}>
@@ -474,360 +373,389 @@ export default function LoyaltyWalletScreen() {
         onBack={() => safeGoBack('/(tabs)/account')}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}>
-        <LinearGradient
-          colors={['#1A2340', '#0D1420', '#1A2340']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            marginHorizontal: 16,
-            borderRadius: 20,
-            padding: 22,
-            overflow: 'hidden',
-          }}>
-          <View
+      {loading && !summary ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#FEB623" />
+          <Text style={{ marginTop: 12, color: '#888' }}>Loading BajriPro Points…</Text>
+        </View>
+      ) : error && !summary ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Text style={{ color: '#FF3B30', textAlign: 'center', marginBottom: 12 }}>{error}</Text>
+          <TouchableOpacity
+            onPress={onRetry}
             style={{
-              position: 'absolute',
-              right: -30,
-              top: -30,
-              width: 160,
-              height: 160,
-              borderRadius: 80,
-              backgroundColor: 'rgba(254,182,35,0.08)',
-            }}
-          />
-          <View
+              backgroundColor: '#FEB623',
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 12,
+            }}>
+            <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 32 }}>
+          <LinearGradient
+            colors={['#1A2340', '#0D1420', '#1A2340']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={{
-              position: 'absolute',
-              right: 40,
-              bottom: -40,
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              backgroundColor: 'rgba(254,182,35,0.05)',
-            }}
-          />
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              marginHorizontal: 16,
+              borderRadius: 20,
+              padding: 22,
+              overflow: 'hidden',
+            }}>
             <View
               style={{
-                width: 20,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: '#FEB623',
+                position: 'absolute',
+                right: -30,
+                top: -30,
+                width: 160,
+                height: 160,
+                borderRadius: 80,
+                backgroundColor: 'rgba(254,182,35,0.08)',
               }}
             />
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: '700',
-                color: '#FEB623',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-              }}>
-              Premium Tier
-            </Text>
-          </View>
 
-          <Text
-            style={{
-              fontSize: 30,
-              fontWeight: '800',
-              color: '#FFFFFF',
-              lineHeight: 36,
-              marginBottom: 24,
-              letterSpacing: -0.5,
-            }}>
-            {tierTitle.split(' ')[0]}
-            {'\n'}
-            {tierTitle.split(' ').slice(1).join(' ')}
-          </Text>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-            }}>
-            <View>
-              <Text
-                style={{
-                  fontSize: 10,
-                  color: 'rgba(255,255,255,0.5)',
-                  fontWeight: '600',
-                  letterSpacing: 0.8,
-                  textTransform: 'uppercase',
-                  marginBottom: 2,
-                }}>
-                Total Points
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                <AnimatedNumber
-                  value={totalPoints}
-                  style={{
-                    fontSize: 32,
-                    fontWeight: '800',
-                    color: '#FFFFFF',
-                    letterSpacing: -1,
-                  }}
-                />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#FEB623' }}>CP</Text>
-              </View>
-            </View>
-
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text
-                style={{
-                  fontSize: 10,
-                  color: 'rgba(255,255,255,0.5)',
-                  fontWeight: '600',
-                  letterSpacing: 0.8,
-                  textTransform: 'uppercase',
-                  marginBottom: 2,
-                }}>
-                Cashback Earned
-              </Text>
-              <AnimatedNumber
-                value={cashbackEarned}
-                prefix="₹"
-                style={{
-                  fontSize: 22,
-                  fontWeight: '800',
-                  color: '#FFFFFF',
-                }}
-              />
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginTop: 14,
-            backgroundColor: '#fff',
-            borderRadius: 16,
-            padding: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.06,
-            shadowRadius: 6,
-            elevation: 2,
-          }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>Membership Progress</Text>
-          <Text style={{ fontSize: 13, color: '#888', marginTop: 2, marginBottom: 14 }}>
-            Spend {spendToNextTier} more to reach {nextTier}
-          </Text>
-
-          <View style={{ marginBottom: 8 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                marginBottom: 6,
-              }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
               <View
                 style={{
+                  width: 20,
+                  height: 3,
+                  borderRadius: 2,
                   backgroundColor: '#FEB623',
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: 6,
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  color: '#FEB623',
+                  letterSpacing: 1.2,
+                  textTransform: 'uppercase',
                 }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
-                  {progressTierLabel}
-                </Text>
-              </View>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FEB623' }}>
-                {progressPercent}%
+                BajriPro Points
               </Text>
             </View>
 
-            <View
+            <Text
               style={{
-                height: 8,
-                backgroundColor: '#F0F0F0',
-                borderRadius: 4,
-                overflow: 'hidden',
+                fontSize: 28,
+                fontWeight: '800',
+                color: '#FFFFFF',
+                lineHeight: 34,
+                marginBottom: 20,
+                letterSpacing: -0.5,
               }}>
-              <Animated.View
-                style={[
-                  {
-                    height: '100%',
-                    borderRadius: 4,
-                    backgroundColor: '#FEB623',
-                  },
-                  progressBarStyle,
-                ]}
-              />
-            </View>
+              {tierTitle}
+            </Text>
 
             <View
               style={{
                 flexDirection: 'row',
+                alignItems: 'flex-end',
                 justifyContent: 'space-between',
-                marginTop: 6,
               }}>
-              <Text style={{ fontSize: 12, color: '#888' }}>{totalSpend} Total Spend</Text>
-              <TouchableOpacity onPress={() => router.push('/account/tier-benefits' as never)}>
-                <Text style={{ fontSize: 12, color: '#FEB623', fontWeight: '600' }}>
-                  {nextTier} Tier →
+              <View>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: 'rgba(255,255,255,0.5)',
+                    fontWeight: '600',
+                    letterSpacing: 0.8,
+                    textTransform: 'uppercase',
+                    marginBottom: 2,
+                  }}>
+                  Available Balance
                 </Text>
-              </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                  <AnimatedNumber
+                    value={totalPoints}
+                    style={{
+                      fontSize: 32,
+                      fontWeight: '800',
+                      color: '#FFFFFF',
+                      letterSpacing: -1,
+                    }}
+                  />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#FEB623' }}>
+                    Points
+                  </Text>
+                </View>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.65)',
+                    marginTop: 4,
+                  }}>
+                  ≈ ₹
+                  {availableValue.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  · Available to redeem
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    color: 'rgba(255,255,255,0.5)',
+                    fontWeight: '600',
+                    letterSpacing: 0.8,
+                    textTransform: 'uppercase',
+                    marginBottom: 2,
+                  }}>
+                  Lifetime Redeemed
+                </Text>
+                <AnimatedNumber
+                  value={lifetimeRedeemed}
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '800',
+                    color: '#FFFFFF',
+                  }}
+                />
+              </View>
             </View>
+          </LinearGradient>
+
+          <View
+            style={{
+              marginHorizontal: 16,
+              marginTop: 14,
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              padding: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
+            }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
+              Membership Progress
+            </Text>
+            <Text style={{ fontSize: 13, color: '#888', marginTop: 2, marginBottom: 14 }}>
+              {nextTier
+                ? `${pointsToNextTier.toLocaleString('en-IN')} points to reach ${nextTier}`
+                : 'You are at the top tier'}
+            </Text>
+
+            <View style={{ marginBottom: 8 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  marginBottom: 6,
+                }}>
+                <View
+                  style={{
+                    backgroundColor: '#FEB623',
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                  }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
+                    {progressTierLabel}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FEB623' }}>
+                  {progressPercent}%
+                </Text>
+              </View>
+
+              <View
+                style={{
+                  height: 8,
+                  backgroundColor: '#F0F0F0',
+                  borderRadius: 4,
+                  overflow: 'hidden',
+                }}>
+                <Animated.View
+                  style={[
+                    {
+                      height: '100%',
+                      borderRadius: 4,
+                      backgroundColor: '#FEB623',
+                    },
+                    progressBarStyle,
+                  ]}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setBenefitsOpen(true);
+              }}
+              style={{
+                borderWidth: 1.5,
+                borderColor: '#FEB623',
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: 'center',
+                marginTop: 10,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 6,
+              }}>
+              <Text style={{ color: '#FEB623', fontSize: 14, fontWeight: '700' }}>
+                View Tier Benefits
+              </Text>
+              <Ionicons name="arrow-forward" size={16} color="#FEB623" />
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            onPress={() => router.push('/account/tier-benefits' as never)}
-            style={{
-              borderWidth: 1.5,
-              borderColor: '#FEB623',
-              borderRadius: 12,
-              paddingVertical: 12,
-              alignItems: 'center',
-              marginTop: 6,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 6,
-            }}>
-            <Text style={{ color: '#FEB623', fontSize: 14, fontWeight: '700' }}>View Tier Benefits</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FEB623" />
-          </TouchableOpacity>
-        </View>
-
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginTop: 14,
-            backgroundColor: '#FEB623',
-            borderRadius: 16,
-            padding: 18,
-            overflow: 'hidden',
-          }}>
           <View
             style={{
-              position: 'absolute',
-              right: -20,
-              top: -20,
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              backgroundColor: 'rgba(255,255,255,0.1)',
-            }}
-          />
+              marginHorizontal: 16,
+              marginTop: 14,
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              padding: 16,
+            }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 14 }}>
+              How BajriPro Points Work
+            </Text>
+            {HOW_POINTS_WORK.map((item) => (
+              <View
+                key={item.step}
+                style={{
+                  flexDirection: 'row',
+                  gap: 12,
+                  marginBottom: 14,
+                }}>
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: '#FFF4D1',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                  <Text style={{ color: '#FEB623', fontWeight: '800', fontSize: 13 }}>
+                    {item.step}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A1A1A' }}>
+                    {item.title}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#666', marginTop: 2, lineHeight: 18 }}>
+                    {item.body
+                      .replace('1 BajriPro Point', `${earnRate} BajriPro Point`)
+                      .replace('50 bonus', `${firstBonus} bonus`)
+                      .replace('₹500', `₹${minOrder}`)
+                      .replace('100 points = ₹1', `${Math.round(1 / pointValue)} points = ₹1`)}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
 
           <View
             style={{
-              alignSelf: 'flex-start',
-              backgroundColor: 'rgba(0,0,0,0.25)',
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              borderRadius: 6,
-              marginBottom: 10,
+              marginHorizontal: 16,
+              marginTop: 14,
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: '#F0F0F0',
             }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 }}>
-              PRO KNIGHT
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Ionicons name="bicycle-outline" size={20} color="#FEB623" />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
+                Bike Delivery Benefit
+              </Text>
+            </View>
+            <Text style={{ fontSize: 13, color: '#666', lineHeight: 19 }}>
+              First {freeBikeDeliveriesAllowed} eligible bike deliveries are FREE.
+            </Text>
+            <Text
+              style={{
+                marginTop: 10,
+                fontSize: 14,
+                fontWeight: '700',
+                color: freeBikeDeliveriesRemaining > 0 ? '#34C759' : '#888',
+              }}>
+              {deliveryMessage}
+            </Text>
+            <Text style={{ marginTop: 4, fontSize: 12, color: '#999' }}>
+              {freeBikeDeliveriesUsed} of {freeBikeDeliveriesAllowed} used
             </Text>
           </View>
 
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '800',
-              color: '#fff',
-              marginBottom: 6,
-              lineHeight: 24,
-            }}>
-            Earn 2x Points on TMT Steel
-          </Text>
-          <Text
-            style={{
-              fontSize: 13,
-              color: 'rgba(255,255,255,0.85)',
-              lineHeight: 19,
-              marginBottom: 16,
-            }}>
-            Order over 50 metric tons of Tata Tiscon this week to unlock double milestone credits.
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push({ pathname: '/products/[categoryId]', params: { categoryId: 'steel' } });
-            }}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 10,
-              paddingVertical: 11,
-              alignItems: 'center',
-            }}>
-            <Text style={{ color: '#FEB623', fontSize: 14, fontWeight: '700' }}>Order Now</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ marginTop: 22, paddingHorizontal: 16 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              marginBottom: 14,
-            }}>
-            <View>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Redeem Rewards</Text>
-              <Text style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
-                Premium benefits tailored for your projects
-              </Text>
+          <View style={{ marginTop: 22, paddingHorizontal: 16 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 14,
+              }}>
+              <View>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A' }}>
+                  Activity History
+                </Text>
+                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{filterLabel}</Text>
+              </View>
+              <TouchableOpacity onPress={cycleFilter} hitSlop={8}>
+                <Ionicons
+                  name={activityFilter === 'all' ? 'filter-outline' : 'funnel'}
+                  size={20}
+                  color={activityFilter === 'all' ? '#888' : '#FEB623'}
+                />
+              </TouchableOpacity>
             </View>
+
+            {historyLoading && filteredActivity.length === 0 ? (
+              <ActivityIndicator color="#FEB623" style={{ marginVertical: 24 }} />
+            ) : filteredActivity.length === 0 ? (
+              <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                <Text style={{ color: '#888', fontSize: 14 }}>No loyalty activity yet</Text>
+                <Text style={{ color: '#AAA', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                  Place an eligible order to start earning BajriPro Points
+                </Text>
+              </View>
+            ) : (
+              filteredActivity.map((activity) => (
+                <ActivityRow key={activity.id} activity={activity} />
+              ))
+            )}
+
+            {historyMeta && historyMeta.page < historyMeta.totalPages ? (
+              <TouchableOpacity
+                onPress={() => void loadHistory(historyMeta.page + 1, true)}
+                disabled={historyLoading}
+                style={{ alignItems: 'center', marginTop: 12 }}>
+                <Text style={{ color: '#FEB623', fontWeight: '700' }}>
+                  {historyLoading ? 'Loading…' : 'Load more'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
-              onPress={() => router.push('/account/all-rewards' as never)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-              <Text style={{ fontSize: 13, color: '#FEB623', fontWeight: '600' }}>View All</Text>
-              <Ionicons name="chevron-forward" size={14} color="#FEB623" />
+              onPress={onDownloadStatement}
+              style={{ alignItems: 'center', marginTop: 16, marginBottom: 24 }}>
+              <Text style={{ fontSize: 14, color: '#FEB623', fontWeight: '700' }}>
+                Download Statement
+              </Text>
             </TouchableOpacity>
           </View>
+        </ScrollView>
+      )}
 
-          {REWARDS.map((reward) => (
-            <RewardCard
-              key={reward.id}
-              reward={reward}
-              totalPoints={totalPoints}
-              tier={tier}
-              onRedeem={handleRedeem}
-            />
-          ))}
-        </View>
-
-        <View style={{ marginTop: 8, paddingHorizontal: 16 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 14,
-            }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A' }}>Activity History</Text>
-            <TouchableOpacity onPress={cycleFilter}>
-              <Ionicons
-                name={activityFilter === 'all' ? 'filter-outline' : 'funnel'}
-                size={20}
-                color={activityFilter === 'all' ? '#888' : '#FEB623'}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {filteredActivity.map((activity) => (
-            <ActivityRow key={activity.id} activity={activity} />
-          ))}
-
-          <TouchableOpacity
-            onPress={onDownloadStatement}
-            style={{ alignItems: 'center', marginTop: 8, marginBottom: 24 }}>
-            <Text style={{ fontSize: 14, color: '#FEB623', fontWeight: '700' }}>Download Statement</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
+      <TierBenefitsSheet
+        visible={benefitsOpen}
+        tier={tier}
+        onClose={() => setBenefitsOpen(false)}
+      />
       <Toast message={toastMsg} visible={toastVisible} />
     </SafeAreaView>
   );

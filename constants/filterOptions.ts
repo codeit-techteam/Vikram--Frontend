@@ -10,12 +10,66 @@ import type {
   SortOption,
 } from '@/types/filter.types';
 
-/** Quick chips — always Brand → Grade → Price (Filters button is separate). */
+/** Quick chips — Brand → Type → Grade → Price (Filters button is separate). */
 export const FILTER_CHIPS: FilterChip[] = [
   { key: 'brand', label: 'Brand', icon: 'business-outline' },
+  { key: 'productType', label: 'Type', icon: 'cube-outline' },
   { key: 'grade', label: 'Grade', icon: 'layers-outline' },
   { key: 'priceRange', label: 'Price', icon: 'pricetag-outline' },
 ];
+
+/** Brick product-type display labels ↔ API codes */
+export const BRICK_PRODUCT_TYPE_OPTIONS = [
+  { code: 'RED_BRICKS', label: 'Red Bricks' },
+  { code: 'GREY_ASH_BRICKS', label: 'Grey Ash Bricks (Fly Ash Bricks)' },
+] as const;
+
+/** Brick grade display labels ↔ API codes */
+export const BRICK_GRADE_OPTIONS = [
+  { code: 'A_PLUS', label: 'A+' },
+  { code: 'A', label: 'A' },
+  { code: 'B_PLUS', label: 'B+' },
+] as const;
+
+export function brickProductTypeLabelToCode(label: string): string | undefined {
+  const normalized = label.trim().toLowerCase();
+  const hit = BRICK_PRODUCT_TYPE_OPTIONS.find(
+    (o) =>
+      o.label.toLowerCase() === normalized ||
+      o.code.toLowerCase() === normalized ||
+      (normalized.includes('fly') && o.code === 'GREY_ASH_BRICKS') ||
+      (normalized.includes('grey') && o.code === 'GREY_ASH_BRICKS') ||
+      (normalized.includes('red') && o.code === 'RED_BRICKS'),
+  );
+  return hit?.code;
+}
+
+export function brickGradeLabelToCode(label: string): string | undefined {
+  const normalized = label.trim().toUpperCase().replace(/\s+/g, '_');
+  const hit = BRICK_GRADE_OPTIONS.find(
+    (o) =>
+      o.label.toUpperCase() === label.trim().toUpperCase() ||
+      o.code === normalized ||
+      o.code === label.trim().toUpperCase(),
+  );
+  return hit?.code;
+}
+
+export function brickProductTypeCodeToLabel(code?: string | null): string {
+  if (!code) return '';
+  const hit = BRICK_PRODUCT_TYPE_OPTIONS.find(
+    (o) => o.code === code || o.code.toLowerCase() === code.toLowerCase(),
+  );
+  return hit?.label ?? code;
+}
+
+export function brickGradeCodeToLabel(code?: string | null): string {
+  if (!code) return '';
+  const hit = BRICK_GRADE_OPTIONS.find(
+    (o) => o.code === code || o.label === code || o.code.toLowerCase() === code.toLowerCase(),
+  );
+  return hit?.label ?? code;
+}
 
 /** Absolute retail-style presets shown in the Price section. */
 export const ABSOLUTE_PRICE_PRESETS: PricePresetOption[] = [
@@ -59,27 +113,21 @@ export const PRICE_PRESETS = ABSOLUTE_PRICE_PRESETS.map((p) => ({
  */
 const GRADES_BY_CATEGORY: Record<string, string[]> = {
   cement: ['PPC', 'OPC 43', 'OPC 53', 'PSC', 'Premium', 'Industrial'],
-  steel: [
-    'Fe 415',
-    'Fe 500',
-    'Fe 550',
-    'Fe 600',
-    '500D',
-    '550D',
-    '8mm',
-    '10mm',
-    '12mm',
-    '16mm',
-    '20mm',
-  ],
+  rmc: ['M20', 'M25', 'M30', 'M35', 'M40'],
+  /** Legacy alias */
+  steel: ['M20', 'M25', 'M30', 'M35', 'M40'],
   paint: ['1L', '4L', '10L'],
   paints: ['1L', '4L', '10L'],
   adhesives: ['250ml', '500ml', '1L', '4L'],
   sand: ['Zone 1', 'Zone 2', 'Fine'],
-  bricks: ['Class A', 'Class B', 'Grade 2'],
+  bricks: BRICK_GRADE_OPTIONS.map((o) => o.label),
   'grey-fill-sand': ['G1', 'G2', 'G3', 'Premium'],
   'stone-chips': ['Grade A', 'Grade B', 'Grade C'],
   aggregates: ['Standard', 'Fine', 'Coarse'],
+};
+
+const PRODUCT_TYPES_BY_CATEGORY: Record<string, string[]> = {
+  bricks: BRICK_PRODUCT_TYPE_OPTIONS.map((o) => o.label),
 };
 
 /** Always Brand → Grade → Price on the listing bar. */
@@ -87,6 +135,9 @@ const DEFAULT_CHIPS: QuickFilterKey[] = ['brand', 'grade', 'priceRange'];
 
 /** Full-sheet sections — Brand, Grade, Price only. */
 const DEFAULT_SECTIONS: FilterKey[] = ['brand', 'grade', 'priceRange'];
+
+const BRICKS_CHIPS: QuickFilterKey[] = ['productType', 'grade', 'priceRange'];
+const BRICKS_SECTIONS: FilterKey[] = ['productType', 'grade', 'brand', 'priceRange'];
 
 const KNOWN_BRANDS = [
   'UltraTech',
@@ -116,11 +167,15 @@ function normalizeCategoryKey(categoryId: string): string {
   return (categoryId || '').toLowerCase().trim();
 }
 
-export function getVisibleChips(_categoryId: string): QuickFilterKey[] {
+export function getVisibleChips(categoryId: string): QuickFilterKey[] {
+  const key = normalizeCategoryKey(categoryId);
+  if (key === 'bricks') return [...BRICKS_CHIPS];
   return [...DEFAULT_CHIPS];
 }
 
-export function getAdvancedSections(_categoryId: string): FilterKey[] {
+export function getAdvancedSections(categoryId: string): FilterKey[] {
+  const key = normalizeCategoryKey(categoryId);
+  if (key === 'bricks') return [...BRICKS_SECTIONS];
   return [...DEFAULT_SECTIONS];
 }
 
@@ -179,7 +234,13 @@ export function normalizeGrade(productGrade: string, categoryId: string): string
     if (/ppc/i.test(raw)) return 'PPC';
   }
 
-  if (key === 'steel') {
+  if (key === 'bricks') {
+    return brickGradeCodeToLabel(raw) || raw;
+  }
+
+  if (key === 'rmc' || key === 'steel') {
+    const mix = raw.match(/m\s*(\d+)/i);
+    if (mix) return `M${mix[1]}`;
     const mm = raw.match(/(\d+)\s*mm/i);
     if (mm) return `${mm[1]}mm`;
     if (/500\s*d/i.test(raw)) return '500D';
@@ -246,18 +307,57 @@ export function getBrandsWithCounts(
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
+export function getProductTypesFromProducts(
+  products: Product[],
+  categoryId: string,
+): string[] {
+  const key = normalizeCategoryKey(categoryId);
+  const preferred = PRODUCT_TYPES_BY_CATEGORY[key] ?? [];
+  if (key === 'bricks') {
+    // Fixed brick type catalog — always available for filter UI
+    return [...preferred];
+  }
+
+  const found = new Set<string>();
+  for (const product of products) {
+    const label =
+      product.productTypeLabel?.trim() ||
+      brickProductTypeCodeToLabel(product.productType) ||
+      '';
+    if (label) found.add(label);
+  }
+  if (found.size === 0) return preferred;
+  const ordered = preferred.filter((t) => found.has(t));
+  for (const t of found) {
+    if (!ordered.includes(t)) ordered.push(t);
+  }
+  return ordered;
+}
+
 export function getGradesFromProducts(
   products: Product[],
   categoryId: string,
 ): string[] {
+  const key = normalizeCategoryKey(categoryId);
+  const preferred = GRADES_BY_CATEGORY[key] ?? [];
+
+  // Bricks: always expose A+ / A / B+ regardless of loaded facets
+  if (key === 'bricks') {
+    return [...preferred];
+  }
+
   const found = new Set<string>();
   for (const product of products) {
-    const grade = normalizeGrade(product.grade, categoryId);
+    const grade = normalizeGrade(
+      product.gradeLabel || product.grade,
+      categoryId,
+    );
     if (grade) found.add(grade);
 
-    // Also mine diameter / pack size from name + spec for steel/paint/adhesives
-    const key = normalizeCategoryKey(categoryId);
-    if (key === 'steel') {
+    // Also mine diameter / pack size from name + spec for rmc/paint/adhesives
+    if (key === 'rmc' || key === 'steel') {
+      const mix = `${product.name} ${product.spec ?? ''}`.match(/m\s*(\d+)/i);
+      if (mix) found.add(`M${mix[1]}`);
       const mm = `${product.name} ${product.spec ?? ''}`.match(/(\d+)\s*mm/i);
       if (mm) found.add(`${mm[1]}mm`);
     }
@@ -271,8 +371,6 @@ export function getGradesFromProducts(
       }
     }
   }
-
-  const preferred = GRADES_BY_CATEGORY[normalizeCategoryKey(categoryId)] ?? [];
 
   if (found.size === 0) {
     // No product grades yet (still loading) — return empty so UI doesn't flash options
@@ -294,6 +392,7 @@ export function getCategoryFilterConfig(
 
   return {
     grades: getGradesFromProducts(products, categoryId),
+    productTypes: getProductTypesFromProducts(products, categoryId),
     brands: getBrandsWithCounts(products, categoryId),
     priceBounds,
     pricePresets: buildPricePresets(products, priceBounds),
@@ -339,6 +438,17 @@ export function getChipLabel(
       if (selected.length === 1) return selected[0];
       return `Grade (${selected.length})`;
     }
+    case 'productType': {
+      const selected = activeFilters.productType;
+      if (selected.length === 0) return 'Type';
+      if (selected.length === 1) {
+        // Shorten long brick labels on chip
+        if (selected[0].toLowerCase().includes('grey')) return 'Grey Ash';
+        if (selected[0].toLowerCase().includes('red')) return 'Red Bricks';
+        return selected[0];
+      }
+      return `Type (${selected.length})`;
+    }
     case 'brand': {
       const selected = activeFilters.brand;
       if (selected.length === 0) return 'Brand';
@@ -370,6 +480,7 @@ export function createDefaultFilters(bounds: [number, number] = [0, 5000]): Acti
   return {
     search: '',
     grade: [],
+    productType: [],
     brand: [],
     priceRange: [...bounds] as [number, number],
     pricePresets: [],
@@ -383,7 +494,7 @@ export function createDefaultFilters(bounds: [number, number] = [0, 5000]): Acti
  * Reconcile persisted / in-memory filters with the latest catalog price bounds.
  *
  * This runs synchronously (same render as products arriving) so we never flash
- * a stale "Under ₹5K" price filter against high-priced catalogs like Steel.
+ * a stale "Under ₹5K" price filter against high-priced catalogs like RMC.
  */
 export function reconcileFiltersWithBounds(
   filters: ActiveFilters,
@@ -414,7 +525,7 @@ export function reconcileFiltersWithBounds(
     return next;
   }
 
-  // Stale placeholder (e.g. [0, 5000] while Steel bounds start at ~60k)
+  // Stale placeholder (e.g. [0, 5000] while RMC bounds start at ~60k)
   // or any range that does not overlap the catalog at all.
   const noOverlap = hi < bounds[0] || lo > bounds[1];
   const looksLikePlaceholder =
@@ -460,6 +571,7 @@ export function normalizeFilters(
     {
       search: typeof raw.search === 'string' ? raw.search : '',
       grade: Array.isArray(raw.grade) ? [...raw.grade] : [],
+      productType: Array.isArray(raw.productType) ? [...raw.productType] : [],
       brand: Array.isArray(raw.brand) ? [...raw.brand] : [],
       priceRange,
       pricePresets: Array.isArray(raw.pricePresets) ? [...raw.pricePresets] : [],
@@ -478,6 +590,7 @@ export function countActiveFilters(
 ): number {
   let count = 0;
   count += filters.grade.length;
+  count += filters.productType.length;
   count += filters.brand.length;
   if (filters.pricePresets.length > 0) {
     count += filters.pricePresets.length;
@@ -514,6 +627,9 @@ export function matchesSearch(product: Product, query: string): boolean {
     product.category,
     product.categorySlug,
     product.grade,
+    product.gradeLabel,
+    product.productType,
+    product.productTypeLabel,
     product.spec,
     product.sku,
     product.id,
@@ -551,6 +667,7 @@ function productMatchesPrice(
 type FilterDimension =
   | 'search'
   | 'grade'
+  | 'productType'
   | 'brand'
   | 'price'
   | 'discount'
@@ -568,11 +685,29 @@ function matchesDimension(
       return matchesSearch(product, filters.search);
     case 'grade': {
       if (filters.grade.length === 0) return true;
-      const productGrade = normalizeGrade(product.grade, categoryId);
-      const nameSpec = `${product.name} ${product.spec ?? ''}`;
+      const productGrade = normalizeGrade(
+        product.gradeLabel || product.grade,
+        categoryId,
+      );
+      const nameSpec = `${product.name} ${product.spec ?? ''} ${product.gradeLabel ?? ''}`;
       return filters.grade.some((g) => {
         if (productGrade.toLowerCase() === g.toLowerCase()) return true;
+        const code = brickGradeLabelToCode(g);
+        if (code && (product.grade === code || product.gradeLabel === g)) return true;
         return nameSpec.toLowerCase().includes(g.toLowerCase());
+      });
+    }
+    case 'productType': {
+      if (filters.productType.length === 0) return true;
+      const label =
+        product.productTypeLabel?.trim() ||
+        brickProductTypeCodeToLabel(product.productType);
+      return filters.productType.some((t) => {
+        if (label && label.toLowerCase() === t.toLowerCase()) return true;
+        const code = brickProductTypeLabelToCode(t);
+        if (code && product.productType === code) return true;
+        const hay = `${product.name} ${product.productTypeLabel ?? ''}`.toLowerCase();
+        return hay.includes(t.toLowerCase()) || (t.toLowerCase().includes('fly') && hay.includes('ash'));
       });
     }
     case 'brand': {
@@ -603,6 +738,7 @@ function matchesDimension(
 
 const PIPELINE: FilterDimension[] = [
   'search',
+  'productType',
   'grade',
   'brand',
   'price',
@@ -642,7 +778,7 @@ export function computeFacetCounts(
   filters: ActiveFilters,
   config: CategoryFilterConfig,
   categoryId: string,
-  dimension: 'brand' | 'grade' | 'price' | 'discount',
+  dimension: 'brand' | 'grade' | 'productType' | 'price' | 'discount',
 ): Record<string, number> {
   const base = applyProductFilters(products, filters, config, categoryId, {
     skipSort: true,
@@ -661,13 +797,23 @@ export function computeFacetCounts(
       const brand = extractBrandFromProduct(product, categoryId);
       counts[brand] = (counts[brand] ?? 0) + 1;
     }
+  } else if (dimension === 'productType') {
+    for (const product of base) {
+      const label =
+        product.productTypeLabel?.trim() ||
+        brickProductTypeCodeToLabel(product.productType);
+      if (label) counts[label] = (counts[label] ?? 0) + 1;
+    }
   } else if (dimension === 'grade') {
     for (const product of base) {
-      const grade = normalizeGrade(product.grade, categoryId);
+      const grade = normalizeGrade(
+        product.gradeLabel || product.grade,
+        categoryId,
+      );
       if (grade) counts[grade] = (counts[grade] ?? 0) + 1;
       // Diameter / pack from name
       const key = normalizeCategoryKey(categoryId);
-      if (key === 'steel') {
+      if (key === 'rmc' || key === 'steel') {
         const mm = `${product.name} ${product.spec ?? ''}`.match(/(\d+)\s*mm/i);
         if (mm) {
           const label = `${mm[1]}mm`;
@@ -745,16 +891,19 @@ export function sortProducts(products: Product[], sort: SortOption): Product[] {
   }
 }
 
-/** Map UI filters → API query params for future server-side filtering. */
+/** Map UI filters → API query params for server-side filtering. */
 export function filtersToQueryParams(
   filters: ActiveFilters,
   bounds: [number, number],
   config?: CategoryFilterConfig,
+  categoryId?: string,
 ) {
   const params: {
     search?: string;
     brand?: string;
     grade?: string;
+    productType?: string;
+    brickType?: string;
     status?: string;
     minPrice?: number;
     maxPrice?: number;
@@ -762,9 +911,25 @@ export function filtersToQueryParams(
     sortOrder?: 'asc' | 'desc';
   } = {};
 
+  const key = normalizeCategoryKey(categoryId ?? '');
+
   if (filters.search.trim()) params.search = filters.search.trim();
   if (filters.brand.length === 1) params.brand = filters.brand[0];
-  if (filters.grade.length === 1) params.grade = filters.grade[0];
+
+  if (filters.grade.length === 1) {
+    const gradeLabel = filters.grade[0];
+    params.grade =
+      key === 'bricks'
+        ? brickGradeLabelToCode(gradeLabel) ?? gradeLabel
+        : gradeLabel;
+  }
+
+  if (filters.productType.length === 1) {
+    const typeLabel = filters.productType[0];
+    const code = brickProductTypeLabelToCode(typeLabel) ?? typeLabel;
+    params.productType = code;
+    if (key === 'bricks') params.brickType = code;
+  }
 
   if (filters.pricePresets.length === 1 && config) {
     const preset = config.pricePresets.find((p) => p.id === filters.pricePresets[0]);
@@ -805,6 +970,7 @@ export function cloneFilters(filters: ActiveFilters): ActiveFilters {
   return {
     ...filters,
     grade: [...filters.grade],
+    productType: [...(filters.productType ?? [])],
     brand: [...filters.brand],
     pricePresets: [...filters.pricePresets],
     priceRange: [...filters.priceRange] as [number, number],
@@ -820,6 +986,8 @@ export function getPricePresetLabel(
 }
 
 function filtersEqual(a: ActiveFilters, b: ActiveFilters): boolean {
+  const aTypes = a.productType ?? [];
+  const bTypes = b.productType ?? [];
   return (
     a.search === b.search &&
     a.sort === b.sort &&
@@ -829,6 +997,8 @@ function filtersEqual(a: ActiveFilters, b: ActiveFilters): boolean {
     a.priceRange[1] === b.priceRange[1] &&
     a.grade.length === b.grade.length &&
     a.grade.every((g, i) => g === b.grade[i]) &&
+    aTypes.length === bTypes.length &&
+    aTypes.every((g, i) => g === bTypes[i]) &&
     a.brand.length === b.brand.length &&
     a.brand.every((g, i) => g === b.brand[i]) &&
     a.pricePresets.length === b.pricePresets.length &&

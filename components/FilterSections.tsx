@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 import { BrandSection } from '@components/filter-sections/BrandSection';
 import { GradeSection } from '@components/filter-sections/GradeSection';
 import { PriceRangeSection } from '@components/filter-sections/PriceRangeSection';
+import { ProductTypeSection } from '@components/filter-sections/ProductTypeSection';
 import { computeFacetCounts } from '@constants/filterOptions';
 import { FILTER_COLORS, FILTER_SPACING } from '@constants/filterTokens';
 import type { ActiveFilters, CategoryFilterConfig, FilterKey } from '@/types/filter.types';
@@ -22,6 +23,7 @@ interface FilterSectionsProps {
 }
 
 const SECTION_META: { key: FilterKey; title: string }[] = [
+  { key: 'productType', title: 'TYPE' },
   { key: 'brand', title: 'BRAND' },
   { key: 'grade', title: 'GRADE' },
   { key: 'priceRange', title: 'PRICE' },
@@ -94,6 +96,13 @@ export function FilterSections({
         : undefined,
     [products, draft, config, categoryId],
   );
+  const productTypeCounts = useMemo(
+    () =>
+      categoryId
+        ? computeFacetCounts(products, draft, config, categoryId, 'productType')
+        : undefined,
+    [products, draft, config, categoryId],
+  );
   const priceCounts = useMemo(
     () =>
       categoryId
@@ -106,6 +115,8 @@ export function FilterSections({
 
   const renderSection = (key: FilterKey) => {
     switch (key) {
+      case 'productType':
+        return <ProductTypeSection {...sectionProps} facetCounts={productTypeCounts} />;
       case 'grade':
         return <GradeSection {...sectionProps} facetCounts={gradeCounts} />;
       case 'brand':

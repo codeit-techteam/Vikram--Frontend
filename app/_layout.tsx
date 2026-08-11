@@ -116,6 +116,7 @@ export default function RootLayout() {
                 options={{ headerShown: false, gestureEnabled: false }}
               />
               <Stack.Screen name="bulk-procurement/my-enquiries" options={{ headerShown: false }} />
+              <Stack.Screen name="bulk-procurement/enquiry-detail" options={{ headerShown: false }} />
               <Stack.Screen name="membership" options={{ headerShown: false }} />
             </Stack>
             <VoiceAssistantSheet />

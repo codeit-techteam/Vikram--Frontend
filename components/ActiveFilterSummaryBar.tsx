@@ -34,6 +34,9 @@ function buildTags(filters: ActiveFilters, config: CategoryFilterConfig): Filter
   for (const brand of filters.brand) {
     tags.push({ key: 'brand', label: brand, value: brand });
   }
+  for (const productType of filters.productType ?? []) {
+    tags.push({ key: 'productType', label: productType, value: productType });
+  }
   for (const grade of filters.grade) {
     tags.push({ key: 'grade', label: grade, value: grade });
   }

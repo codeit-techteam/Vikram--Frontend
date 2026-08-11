@@ -2,7 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 import { images } from '@constants/images';
 import { getExcelProductsByCategory } from '@constants/productAdapter';
-import type { Product, ProductCategoryType } from '@/types/catalog';
+import type { Product } from '@/types/catalog';
 import { CONTACT_FOR_SIZE } from '@constants/catalogVariantHelpers';
 import type { SearchProduct } from '@constants/searchData';
 
@@ -253,9 +253,10 @@ export const EXTENSION_PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
   waterproofing: waterproofingExtensions,
 };
 
-const SEARCH_CATEGORY_MAP: Record<ProductCategoryType, SearchProduct['category']> = {
+const SEARCH_CATEGORY_MAP: Record<string, SearchProduct['category']> = {
   cement: 'cement',
-  steel: 'steel',
+  rmc: 'rmc',
+  steel: 'rmc',
   sand: 'sand',
   bricks: 'bricks',
   stone: 'stone',

@@ -22,7 +22,15 @@ function getOrderBrand(order: Order): string {
 function getOrderCategory(order: Order): string {
   const name = order.productName.toLowerCase();
   if (name.includes('cement')) return 'cement';
-  if (name.includes('tmt') || name.includes('steel') || name.includes('neosteel')) return 'steel';
+  if (
+    name.includes('rmc') ||
+    name.includes('ready mix') ||
+    name.includes('tmt') ||
+    name.includes('steel') ||
+    name.includes('neosteel')
+  ) {
+    return 'rmc';
+  }
   if (name.includes('aggregate') || name.includes('stone')) return 'aggregates';
   if (name.includes('sand')) return 'sand';
   if (name.includes('brick')) return 'bricks';

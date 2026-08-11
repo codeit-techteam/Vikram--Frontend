@@ -187,6 +187,9 @@ export function useFilterState({
           case 'grade':
             next.grade = [];
             break;
+          case 'productType':
+            next.productType = [];
+            break;
           case 'brand':
             next.brand = [];
             break;

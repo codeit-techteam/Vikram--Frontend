@@ -1,19 +1,36 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import { images } from '@constants/images';
 import {
   isEmptyPlaceholderUri,
   mediaSource,
   normalizeMediaUrl,
 } from '@utils/media';
 
+const LOCAL_CATEGORY_FALLBACKS: Record<string, ImageSourcePropType> = {
+  rmc: images.categoryRmc,
+  steel: images.categoryRmc, // legacy slug → RMC visual
+};
+
 /**
- * Resolve category image — Cloudflare R2 HTTPS URLs only.
+ * Resolve category image — prefer Cloudflare R2 HTTPS; fall back to bundled
+ * RMC asset so the mixer truck shows before/without a successful R2 migrate.
  */
 export function resolveCategoryImageSource(
-  _slug: string,
+  slug: string,
   imageUrl?: string | null,
 ): ImageSourcePropType {
-  return mediaSource(imageUrl) ?? { uri: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' };
+  const remote = mediaSource(imageUrl);
+  if (remote) return remote;
+
+  const key = slug.trim().toLowerCase();
+  if (LOCAL_CATEGORY_FALLBACKS[key]) {
+    return LOCAL_CATEGORY_FALLBACKS[key];
+  }
+
+  return {
+    uri: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  };
 }
 
 /**
@@ -38,6 +55,11 @@ export function resolveProductImageSource(opts: {
     normalizeMediaUrl(opts.fallbackImage.uri)
   ) {
     return opts.fallbackImage;
+  }
+
+  const categoryKey = (opts.categorySlug ?? '').trim().toLowerCase();
+  if (categoryKey === 'rmc' || categoryKey === 'steel') {
+    return images.categoryRmc;
   }
 
   return {
