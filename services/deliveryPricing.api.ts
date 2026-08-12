@@ -28,10 +28,33 @@ export interface CalculatedDeliveryCharge {
   pricingVersion: number | null;
   distanceSlab: string | null;
   freeDeliveryApplied: boolean;
+  freeDeliveryReason?: string | null;
   companyAbsorbedDelivery: number;
   freeBikeDeliveriesRemaining: number | null;
   freeBikeDeliveriesAllowed: number | null;
   freeBikeDeliveriesUsed: number | null;
+  vehicleCount?: number;
+  totalWeightKg?: number | null;
+  totalVolumeCft?: number | null;
+  totalQuantity?: number | null;
+  capacityUsed?: number | null;
+  capacityLimit?: number | null;
+  capacityUtilizationPercent?: number | null;
+  selectionMode?: string | null;
+  requiresBulkQuote?: boolean;
+  multiVehicle?: boolean;
+  breakdown?: {
+    baseDeliveryCharge: number;
+    vehicle: string;
+    distanceKm: number;
+    loadWeightKg: number | null;
+    loadVolumeCft: number | null;
+    vehicleCapacity: number | null;
+    capacityUtilizationPercent: number | null;
+    vehicleCount: number;
+    discount: number;
+    finalDeliveryCharge: number;
+  };
 }
 
 /** List active rules (informational — never use for final order amount). */
@@ -44,11 +67,13 @@ export async function fetchDeliveryPricingRules(): Promise<DeliveryPricingRule[]
 
 /**
  * Server-side delivery charge calculation.
+ * Prefer cartItems so backend selects vehicle from load → capacity → distance.
  * Final checkout/order amount is always recalculated on the backend.
  */
 export async function calculateDeliveryCharge(params: {
-  vehicleType: DeliveryVehicleType;
   distanceKm: number;
+  cartItems?: Array<{ productId: string; variantId?: string; quantity: number }>;
+  vehicleType?: DeliveryVehicleType;
   applyFreeBikeBenefit?: boolean;
 }): Promise<CalculatedDeliveryCharge> {
   const { data } = await api.post<ApiResponse<CalculatedDeliveryCharge>>(

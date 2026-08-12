@@ -31,6 +31,9 @@ export function useCmsHome(options?: { enabled?: boolean }) {
     heroBanners:
       cms?.heroBanners ??
       (cms?.banners ?? []).filter((b) => b.placement === 'HOME_HERO'),
+    promoBanners:
+      cms?.promoBanners ??
+      (cms?.banners ?? []).filter((b) => b.placement === 'HOME_PROMO'),
     videoBanners: cms?.videoBanners ?? [],
     heroVideo: cms?.heroVideo ?? cms?.videoBanners?.[0] ?? null,
     ads: cms?.ads ?? cms?.brandAdvertisements ?? cms?.catalogs ?? [],

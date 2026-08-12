@@ -35,6 +35,15 @@ export interface CheckoutPreview {
   freeDeliveryApplied?: boolean;
   freeBikeDeliveriesAllowed?: number | null;
   freeBikeDeliveriesUsed?: number | null;
+  deliveryVehicleCount?: number;
+  deliveryTotalWeightKg?: number | null;
+  deliveryTotalVolumeCft?: number | null;
+  deliveryCapacityUsed?: number | null;
+  deliveryCapacityLimit?: number | null;
+  deliveryCapacityUtilizationPercent?: number | null;
+  deliveryFreeReason?: string | null;
+  deliveryRequiresBulkQuote?: boolean;
+  deliveryMultiVehicle?: boolean;
   serviceable: boolean;
   deliveryETA: number;
   deliveryMessage: string;

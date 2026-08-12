@@ -17,6 +17,13 @@ export interface DeliveryEtaResult {
   deliveryCharge: number;
   freeDelivery: boolean;
   message?: string;
+  deliveryVehicleType?: string;
+  deliveryVehicleDisplayName?: string;
+  deliveryVehicleCount?: number;
+  deliveryDistanceKm?: number;
+  deliveryTotalWeightKg?: number | null;
+  deliveryCapacityUsed?: number | null;
+  deliveryCapacityLimit?: number | null;
 }
 
 export interface FetchEtaParams {

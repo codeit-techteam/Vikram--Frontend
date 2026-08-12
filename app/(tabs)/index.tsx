@@ -33,6 +33,7 @@ import { BrandAdsSection } from '@components/home/BrandAdsSection';
 import { OfferForYouSection } from '@components/home/OfferForYouSection';
 import { QuickActionsRow } from '@components/home/QuickActionsRow';
 import { HomeProductDiscovery } from '@components/home/HomeProductDiscovery';
+import { HomePromoBanners } from '@components/home/HomePromoBanners';
 import { TestimonialCarousel } from '@components/home/TestimonialSection';
 import { VideoBanner } from '@components/home/VideoBanner';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
@@ -105,6 +106,7 @@ export default function HomeScreen() {
   const {
     sections,
     banners,
+    promoBanners,
     videoBanners,
     heroVideo,
     ads,
@@ -125,6 +127,10 @@ export default function HomeScreen() {
     useHomeProducts();
 
   const heroSlides = useMemo(() => adaptHeroSlides(banners), [banners]);
+  const promoSlides = useMemo(
+    () => adaptHeroSlides(promoBanners),
+    [promoBanners],
+  );
   const testimonialVideos = useMemo(
     () => adaptTestimonialVideos(testimonials),
     [testimonials],
@@ -291,16 +297,43 @@ export default function HomeScreen() {
               slides={heroSlides}
               onShopNow={(slide) => {
                 if (slide.linkTarget) {
-                  navigateCmsRedirect('ROUTE', slide.linkTarget);
+                  navigateCmsRedirect(
+                    slide.linkType ?? 'ROUTE',
+                    slide.linkTarget,
+                  );
                 } else {
                   router.push('/(tabs)/catalog' as Href);
                 }
               }}
               onBulkInquiry={(slide) => {
                 if (slide.secondaryLinkTarget) {
-                  navigateCmsRedirect('ROUTE', slide.secondaryLinkTarget);
+                  navigateCmsRedirect(
+                    slide.secondaryLinkType ?? 'ROUTE',
+                    slide.secondaryLinkTarget,
+                  );
                 } else {
                   router.push('/bulk-procurement' as Href);
+                }
+              }}
+            />
+          </View>
+        ) : null;
+
+      case 'PROMO_BANNER':
+      case 'HOME_PROMO':
+        return promoSlides.length > 0 ? (
+          <View key={sectionType} style={styles.section}>
+            <HomePromoBanners
+              slides={promoSlides}
+              title={sectionMeta(sectionType)?.title}
+              onShopNow={(slide) => {
+                if (slide.linkTarget) {
+                  navigateCmsRedirect(
+                    slide.linkType ?? 'ROUTE',
+                    slide.linkTarget,
+                  );
+                } else {
+                  router.push('/(tabs)/catalog' as Href);
                 }
               }}
             />
@@ -468,11 +501,22 @@ export default function HomeScreen() {
     }
   };
 
-  // Layout order comes only from CMS Home Page Layout — never hardcode sections.
-  const sectionOrder = useMemo(
-    () => enabledSections.map((s) => s.sectionType),
-    [enabledSections],
-  );
+  // Prefer CMS Homepage Layout order. Only auto-insert promo if layout has no
+  // PROMO_BANNER row yet (pre-migration) and live HOME_PROMO banners exist.
+  const sectionOrder = useMemo(() => {
+    const order = enabledSections.map((s) => s.sectionType);
+    const hasPromoSlot =
+      order.includes('PROMO_BANNER') || order.includes('HOME_PROMO');
+    if (promoSlides.length > 0 && !hasPromoSlot) {
+      const heroIdx = order.indexOf('HERO_BANNER');
+      if (heroIdx >= 0) {
+        order.splice(heroIdx + 1, 0, 'PROMO_BANNER');
+      } else {
+        order.unshift('PROMO_BANNER');
+      }
+    }
+    return order;
+  }, [enabledSections, promoSlides.length]);
 
   const showCmsFallback =
     Boolean(cmsError) && !cmsLoading && enabledSections.length === 0;

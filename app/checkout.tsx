@@ -525,12 +525,31 @@ export default function CheckoutScreen() {
               <Text className="text-xs text-text-secondary">Delivery Vehicle</Text>
               <Text className="mt-0.5 text-sm font-semibold text-text-primary">
                 {checkoutPreview.deliveryVehicleDisplayName}
+                {checkoutPreview.deliveryVehicleCount != null &&
+                checkoutPreview.deliveryVehicleCount > 1
+                  ? ` × ${checkoutPreview.deliveryVehicleCount}`
+                  : ''}
               </Text>
               {checkoutPreview.deliveryDistanceKm != null ? (
                 <>
                   <Text className="mt-2 text-xs text-text-secondary">Distance</Text>
                   <Text className="mt-0.5 text-sm font-medium text-text-primary">
                     {checkoutPreview.deliveryDistanceKm.toFixed(1)} km
+                  </Text>
+                </>
+              ) : null}
+              {checkoutPreview.deliveryTotalWeightKg != null &&
+              checkoutPreview.deliveryTotalWeightKg > 0 ? (
+                <>
+                  <Text className="mt-2 text-xs text-text-secondary">Order Load</Text>
+                  <Text className="mt-0.5 text-sm font-medium text-text-primary">
+                    {checkoutPreview.deliveryTotalWeightKg}
+                    {checkoutPreview.deliveryCapacityLimit != null
+                      ? ` / ${checkoutPreview.deliveryCapacityLimit} kg`
+                      : ' kg'}
+                    {checkoutPreview.deliveryCapacityUtilizationPercent != null
+                      ? ` · ${checkoutPreview.deliveryCapacityUtilizationPercent}%`
+                      : ''}
                   </Text>
                 </>
               ) : null}

@@ -19,7 +19,9 @@ export interface CmsHeroSlide {
   shopNow: string;
   bulkInquiry: string;
   imageUrl: string;
+  linkType: string | null;
   linkTarget: string | null;
+  secondaryLinkType: string | null;
   secondaryLinkTarget: string | null;
 }
 
@@ -54,7 +56,9 @@ export function adaptHeroSlides(banners: CmsBanner[]): CmsHeroSlide[] {
       shopNow: b.buttonText ?? '',
       bulkInquiry: b.secondaryButtonText ?? '',
       imageUrl: b.imageUrl,
+      linkType: b.linkType ?? b.buttonAction ?? 'ROUTE',
       linkTarget: b.linkTarget ?? b.linkUrl,
+      secondaryLinkType: b.secondaryLinkType ?? 'ROUTE',
       secondaryLinkTarget: b.secondaryLinkTarget ?? b.secondaryLinkUrl,
     }));
 }
@@ -141,50 +145,75 @@ export function navigateCmsRedirect(
 ): void {
   if (!redirectId) return;
 
-  switch (redirectType) {
+  const type = (redirectType || 'ROUTE').toUpperCase();
+  let target = redirectId.trim();
+
+  // Heal legacy mistaken nested catalog paths: /(tabs)/catalog/adhesives
+  const nestedCatalog = target.match(/^\/\(tabs\)\/catalog\/([^/?#]+)/);
+  if (nestedCatalog?.[1] && type === 'ROUTE') {
+    router.push({
+      pathname: '/products/[categoryId]',
+      params: {
+        categoryId: nestedCatalog[1],
+        categorySlug: nestedCatalog[1],
+        categoryName: nestedCatalog[1],
+      },
+    } as Href);
+    return;
+  }
+
+  switch (type) {
     case 'PRODUCT':
       router.push({
         pathname: '/products/detail/[productId]',
-        params: { productId: redirectId, categoryId: '', categoryName: '' },
+        params: { productId: target, categoryId: '', categoryName: '' },
       } as Href);
       break;
     case 'CATEGORY':
       router.push({
         pathname: '/products/[categoryId]',
-        params: { categoryId: redirectId, categoryName: redirectId },
+        params: {
+          categoryId: target,
+          categorySlug: target,
+          categoryName: target,
+        },
       } as Href);
       break;
     case 'OFFER':
-      router.push(`/offers/${redirectId}` as Href);
+      router.push(`/offers/${target}` as Href);
       break;
     case 'SEARCH':
       router.push({
         pathname: '/(tabs)/catalog',
-        params: { q: redirectId },
+        params: { q: target },
       } as Href);
       break;
     case 'MEMBERSHIP':
-      router.push((redirectId.startsWith('/') ? redirectId : '/membership') as Href);
+      router.push((target.startsWith('/') ? target : '/membership') as Href);
       break;
     case 'BULK_INQUIRY':
       router.push(
-        (redirectId.startsWith('/') ? redirectId : '/bulk-procurement') as Href,
+        (target.startsWith('/') ? target : '/bulk-procurement') as Href,
       );
       break;
     case 'MATERIAL_EXPERT':
       router.push(
-        (redirectId.startsWith('/') ? redirectId : '/material-expert') as Href,
+        (target.startsWith('/') ? target : '/material-expert') as Href,
       );
       break;
     case 'WHATSAPP':
     case 'EXTERNAL':
     case 'BRAND':
     case 'ROUTE':
-      router.push(redirectId as Href);
+      router.push(target as Href);
       break;
     default:
-      if (redirectId.startsWith('/') || redirectId.startsWith('http') || redirectId.startsWith('tel:')) {
-        router.push(redirectId as Href);
+      if (
+        target.startsWith('/') ||
+        target.startsWith('http') ||
+        target.startsWith('tel:')
+      ) {
+        router.push(target as Href);
       }
       break;
   }

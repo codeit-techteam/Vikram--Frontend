@@ -18,7 +18,9 @@ export interface HeroSlide {
   shopNow: string;
   bulkInquiry: string;
   imageUrl?: string;
+  linkType?: string | null;
   linkTarget?: string | null;
+  secondaryLinkType?: string | null;
   secondaryLinkTarget?: string | null;
 }
 

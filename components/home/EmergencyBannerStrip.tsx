@@ -32,7 +32,10 @@ export function EmergencyBannerStrip({ banner }: EmergencyBannerStripProps) {
   const onPress = async () => {
     await Haptics.selectionAsync();
     if (banner.linkTarget || banner.linkUrl) {
-      navigateCmsRedirect('ROUTE', banner.linkTarget ?? banner.linkUrl);
+      navigateCmsRedirect(
+        banner.linkType ?? 'ROUTE',
+        banner.linkTarget ?? banner.linkUrl,
+      );
     }
   };
 

@@ -154,6 +154,7 @@ export interface CmsHomeResponse {
   sections: CmsHomeSection[];
   banners: CmsBanner[];
   heroBanners?: CmsBanner[];
+  promoBanners?: CmsBanner[];
   ads: CmsAdvertisement[];
   brandAdvertisements?: CmsAdvertisement[];
   catalogs?: CmsAdvertisement[];
