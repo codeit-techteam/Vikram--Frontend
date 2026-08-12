@@ -476,7 +476,20 @@ export function getChipLabel(
   }
 }
 
-export function createDefaultFilters(bounds: [number, number] = [0, 5000]): ActiveFilters {
+/** Hardcoded empty-catalog placeholder — never treat as a user-selected filter. */
+export const PLACEHOLDER_PRICE_BOUNDS: [number, number] = [0, 5000];
+
+function isPlaceholderPriceRange(lo: number, hi: number): boolean {
+  return lo === PLACEHOLDER_PRICE_BOUNDS[0] && hi === PLACEHOLDER_PRICE_BOUNDS[1];
+}
+
+function nearlyEquals(a: number, b: number, epsilon = 1): boolean {
+  return Math.abs(a - b) <= epsilon;
+}
+
+export function createDefaultFilters(
+  bounds: [number, number] = PLACEHOLDER_PRICE_BOUNDS,
+): ActiveFilters {
   return {
     search: '',
     grade: [],
@@ -499,10 +512,15 @@ export function createDefaultFilters(bounds: [number, number] = [0, 5000]): Acti
 export function reconcileFiltersWithBounds(
   filters: ActiveFilters,
   bounds: [number, number],
-  options?: { productsReady?: boolean },
+  options?: {
+    productsReady?: boolean;
+    /** Prior catalog bounds — used to widen when pagination expands the range. */
+    previousBounds?: [number, number] | null;
+  },
 ): ActiveFilters {
   const next = cloneFilters(filters);
   const productsReady = options?.productsReady ?? true;
+  const prev = options?.previousBounds ?? null;
 
   // Until products load, never treat price as an intentional filter
   if (!productsReady) {
@@ -525,15 +543,42 @@ export function reconcileFiltersWithBounds(
     return next;
   }
 
-  // Stale placeholder (e.g. [0, 5000] while RMC bounds start at ~60k)
-  // or any range that does not overlap the catalog at all.
+  // Stale placeholder (e.g. [0, 5000]) or any range that does not overlap the catalog.
   const noOverlap = hi < bounds[0] || lo > bounds[1];
   const looksLikePlaceholder =
-    lo === 0 && hi === 5000 && (bounds[0] > 5000 || bounds[1] > 5000);
-  const isFullPreviousDefault =
-    lo <= 0 && hi >= 5000 && hi <= 10000 && bounds[1] > hi;
+    isPlaceholderPriceRange(lo, hi) ||
+    // Clamped remnant of the placeholder against a catalog that exceeds ₹5K
+    (hi === 5000 && lo <= bounds[0] && bounds[1] > 5000);
+  // Range matched the previous full catalog — widen when bounds expand (auto-pagination)
+  const wasFullPrevious =
+    prev != null &&
+    nearlyEquals(lo, prev[0]) &&
+    nearlyEquals(hi, prev[1]) &&
+    (bounds[0] < prev[0] || bounds[1] > prev[1]);
+  // Full span of current (or wider) catalog — keep in sync with bounds
+  const isFullCurrent = lo <= bounds[0] && hi >= bounds[1];
+  // Without a known prior full-range, a non-preset custom span that isn't the
+  // current full catalog is only kept when it still overlaps — but a restored
+  // "old full catalog" span (no presets) must not become a phantom filter.
+  // When previousBounds is unknown, prefer resetting to full bounds unless the
+  // range is a clear subset that still overlaps (user-applied custom price).
+  const restoredStaleFullRange =
+    prev == null &&
+    next.pricePresets.length === 0 &&
+    !looksLikePlaceholder &&
+    !noOverlap &&
+    !isFullCurrent &&
+    // Heuristic: spans that cover ≥90% of the catalog were almost certainly
+    // a prior default full-range, not an intentional narrow filter.
+    hi - lo >= (bounds[1] - bounds[0]) * 0.9;
 
-  if (noOverlap || looksLikePlaceholder || isFullPreviousDefault) {
+  if (
+    noOverlap ||
+    looksLikePlaceholder ||
+    wasFullPrevious ||
+    isFullCurrent ||
+    restoredStaleFullRange
+  ) {
     next.priceRange = [...bounds] as [number, number];
     return next;
   }
@@ -580,7 +625,7 @@ export function normalizeFilters(
       sort: raw.sort ?? 'recommended',
     },
     bounds,
-    { productsReady: bounds[1] > 5000 || bounds[0] > 0 || true },
+    { productsReady: true },
   );
 }
 
@@ -604,6 +649,17 @@ export function countActiveFilters(
   return count;
 }
 
+/**
+ * True only when the user has explicitly chosen a facet / preset / sort / search.
+ * A bare catalog price span (default) is never intentional.
+ */
+export function hasExplicitFilters(
+  filters: ActiveFilters,
+  bounds: [number, number],
+): boolean {
+  return countActiveFilters(filters, bounds) > 0;
+}
+
 export function isPriceRangeActive(
   filters: ActiveFilters,
   bounds: [number, number],
@@ -611,8 +667,12 @@ export function isPriceRangeActive(
   if (filters.pricePresets.length > 0) return true;
   const [min, max] = filters.priceRange;
   if (min > max) return false;
+  // Placeholder / empty-catalog default is never an active filter
+  if (isPlaceholderPriceRange(min, max)) return false;
   // Stale / non-overlapping ranges are NOT active filters
   if (max < bounds[0] || min > bounds[1]) return false;
+  // Full catalog span (or wider) is not an intentional filter
+  if (min <= bounds[0] && max >= bounds[1]) return false;
   return min > bounds[0] || max < bounds[1];
 }
 

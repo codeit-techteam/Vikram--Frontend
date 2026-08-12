@@ -9,26 +9,43 @@ interface UseVideoThumbnailResult {
   retry: () => void;
 }
 
+/**
+ * @param source Bundled require() module id, or remote https video URL
+ * @param enabled Only generate when the card is (near) visible
+ * @param preferCmsThumb When a CMS poster already exists, skip generation
+ */
 export function useVideoThumbnail(
-  videoModule: number | null | undefined,
+  source: number | string | null | undefined,
   enabled: boolean,
+  preferCmsThumb = false,
 ): UseVideoThumbnailResult {
+  const hasSource =
+    typeof source === 'number' ||
+    (typeof source === 'string' && source.startsWith('http'));
+
   const [thumbnailUri, setThumbnailUri] = useState<string | null>(() =>
-    typeof videoModule === 'number' ? peekVideoThumbnail(videoModule) ?? null : null,
+    hasSource ? peekVideoThumbnail(source as number | string) ?? null : null,
   );
   const [isLoading, setIsLoading] = useState(
-    enabled && typeof videoModule === 'number' && !thumbnailUri,
+    enabled && hasSource && !preferCmsThumb && !thumbnailUri,
   );
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!enabled || typeof videoModule !== 'number') {
+    if (preferCmsThumb) {
+      setIsLoading(false);
+      setError(false);
+      return;
+    }
+
+    if (!enabled || !hasSource) {
       setIsLoading(false);
       return;
     }
 
-    const cached = peekVideoThumbnail(videoModule);
+    const key = source as number | string;
+    const cached = peekVideoThumbnail(key);
     if (cached) {
       setThumbnailUri(cached);
       setIsLoading(false);
@@ -40,7 +57,7 @@ export function useVideoThumbnail(
     setIsLoading(true);
     setError(false);
 
-    getVideoThumbnailUri(videoModule)
+    getVideoThumbnailUri(key)
       .then((uri) => {
         if (cancelled) return;
         setThumbnailUri(uri);
@@ -55,7 +72,7 @@ export function useVideoThumbnail(
     return () => {
       cancelled = true;
     };
-  }, [videoModule, enabled, attempt]);
+  }, [source, enabled, attempt, preferCmsThumb, hasSource]);
 
   const retry = () => setAttempt((n) => n + 1);
 

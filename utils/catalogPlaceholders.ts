@@ -10,6 +10,18 @@ import {
 const LOCAL_CATEGORY_FALLBACKS: Record<string, ImageSourcePropType> = {
   rmc: images.categoryRmc,
   steel: images.categoryRmc, // legacy slug → RMC visual
+  bricks: images.categoryBricks,
+};
+
+const LOCAL_PRODUCT_FALLBACKS: Record<string, ImageSourcePropType> = {
+  'red-bricks-a-plus': images.productRedBricksAPlus,
+  'red-bricks': images.productRedBricks,
+  'red-bricks-b-plus': images.productRedBricksBPlus,
+  'red-clay-bricks': images.productRedBricksAPlus,
+  'grey-ash-bricks-a-plus': images.productGreyAshBricksAPlus,
+  'grey-ash-bricks-a': images.productGreyAshBricksAPlus,
+  'grey-ash-bricks-b-plus': images.productGreyAshBricksBPlus,
+  'grey-flash-cement-bricks': images.productGreyFlashCementBricks,
 };
 
 /**
@@ -57,9 +69,17 @@ export function resolveProductImageSource(opts: {
     return opts.fallbackImage;
   }
 
+  const slugKey = (opts.productSlug ?? '').trim().toLowerCase();
+  if (slugKey && LOCAL_PRODUCT_FALLBACKS[slugKey]) {
+    return LOCAL_PRODUCT_FALLBACKS[slugKey];
+  }
+
   const categoryKey = (opts.categorySlug ?? '').trim().toLowerCase();
   if (categoryKey === 'rmc' || categoryKey === 'steel') {
     return images.categoryRmc;
+  }
+  if (categoryKey === 'bricks') {
+    return images.categoryBricks;
   }
 
   return {

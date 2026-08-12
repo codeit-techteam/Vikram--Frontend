@@ -53,14 +53,13 @@ const STATUS_MESSAGE_KEYS: Record<VoiceState, StringKey> = {
 };
 
 const SUGGESTION_KEYS: {
-  icon: 'cube-outline' | 'trending-up' | 'location-outline' | 'flash-outline';
+  icon: 'cube-outline' | 'trending-up' | 'location-outline';
   textKey: StringKey;
   color: string;
 }[] = [
   { icon: 'cube-outline', textKey: 'orderCementBags', color: '#4285F4' },
   { icon: 'trending-up', textKey: 'rmcPricesToday', color: '#EA4335' },
   { icon: 'location-outline', textKey: 'trackMyOrder', color: '#FBBC05' },
-  { icon: 'flash-outline', textKey: 'emergencyDelivery', color: '#34A853' },
 ];
 
 function getResultForQuery(text: string): VoiceSearchResult {
@@ -83,17 +82,9 @@ function getResultForQuery(text: string): VoiceSearchResult {
   ) {
     return {
       title: 'RMC Prices Today',
-      body: 'RMC M25 — ₹4,800/Cum. Bulk discount available for 10+ Cum.',
+      body: 'RMC M25 — ₹4,800/Cubic Meter. Bulk discount available for 10+ Cubic Meter.',
       actionLabel: 'View RMC →',
       navigateTo: '/products/rmc' as Href,
-    };
-  }
-  if (lower.includes('emergency') || lower.includes('urgent')) {
-    return {
-      title: 'Emergency Delivery Available',
-      body: 'Next slot: Today, 4:00 PM at your site. 90-minute dispatch guaranteed.',
-      actionLabel: 'Book Slot →',
-      navigateTo: '/emergency-order' as Href,
     };
   }
   if (lower.includes('cement') || lower.includes('bag')) {

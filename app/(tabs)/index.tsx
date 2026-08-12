@@ -24,8 +24,6 @@ import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
 import { MembershipBanner } from '@components/membership';
-import { EmergencyCard } from '@components/home/EmergencyCard';
-import { EmergencyBannerStrip } from '@components/home/EmergencyBannerStrip';
 import { LoyaltyCard } from '@components/home/LoyaltyCard';
 import { MaterialCategoriesGrid } from '@components/home/MaterialCategoriesGrid';
 import { BulkProcurementCard } from '@components/home/BulkProcurementCard';
@@ -33,6 +31,7 @@ import { BrandAdsSection } from '@components/home/BrandAdsSection';
 import { OfferForYouSection } from '@components/home/OfferForYouSection';
 import { QuickActionsRow } from '@components/home/QuickActionsRow';
 import { HomeProductDiscovery } from '@components/home/HomeProductDiscovery';
+import { HomeProductSection } from '@components/home/HomeProductSection';
 import { HomePromoBanners } from '@components/home/HomePromoBanners';
 import { TestimonialCarousel } from '@components/home/TestimonialSection';
 import { VideoBanner } from '@components/home/VideoBanner';
@@ -66,6 +65,9 @@ import {
 } from '@utils/cmsAdapters';
 
 const SECTION_GAP = 24;
+/** Tighter stack for hero → membership → loyalty */
+const TOP_CLUSTER_GAP = 12;
+const TOP_CLUSTER = new Set(['HERO_BANNER', 'MEMBERSHIP', 'LOYALTY']);
 const H_PAD = 16;
 
 export default function HomeScreen() {
@@ -113,8 +115,6 @@ export default function HomeScreen() {
     testimonials,
     offers,
     quickActions,
-    emergencyBanner,
-    emergencyDelivery,
     bulkProcurement,
     categories: cmsCategories,
     isLoading: cmsLoading,
@@ -123,8 +123,14 @@ export default function HomeScreen() {
     refresh: refreshCms,
   } = useCmsHome();
 
-  const { isRefreshing: productsRefreshing, refresh: refreshHomeProducts } =
-    useHomeProducts();
+  const {
+    featured: featuredProducts,
+    offers: topDealProducts,
+    recentlyAdded: recentlyAddedProducts,
+    isLoading: homeProductsLoading,
+    isRefreshing: productsRefreshing,
+    refresh: refreshHomeProducts,
+  } = useHomeProducts();
 
   const heroSlides = useMemo(() => adaptHeroSlides(banners), [banners]);
   const promoSlides = useMemo(
@@ -243,16 +249,6 @@ export default function HomeScreen() {
     router.push('/account/loyalty' as Href);
   }, []);
 
-  const goEmergency = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    if (!requireAuth('Please log in for emergency orders.')) return;
-    if (emergencyDelivery?.redirectId) {
-      navigatePromotion(emergencyDelivery);
-      return;
-    }
-    router.push('/emergency-order' as Href);
-  }, [emergencyDelivery]);
-
   const onOpenMembership = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/membership' as Href);
@@ -288,11 +284,16 @@ export default function HomeScreen() {
   const sectionMeta = (type: string) =>
     enabledSections.find((s) => s.sectionType === type);
 
+  const sectionWrapStyle = (sectionType: string) =>
+    TOP_CLUSTER.has(sectionType) ? styles.sectionTight : styles.section;
+
   const renderSection = (sectionType: string) => {
+    const wrap = sectionWrapStyle(sectionType);
+
     switch (sectionType) {
       case 'HERO_BANNER':
         return heroSlides.length > 0 ? (
-          <View key={sectionType} style={styles.section}>
+          <View key={sectionType} style={wrap}>
             <HeroCarousel
               slides={heroSlides}
               onShopNow={(slide) => {
@@ -325,8 +326,7 @@ export default function HomeScreen() {
           <View key={sectionType} style={styles.section}>
             <HomePromoBanners
               slides={promoSlides}
-              title={sectionMeta(sectionType)?.title}
-              onShopNow={(slide) => {
+              onPress={(slide) => {
                 if (slide.linkTarget) {
                   navigateCmsRedirect(
                     slide.linkType ?? 'ROUTE',
@@ -342,7 +342,7 @@ export default function HomeScreen() {
 
       case 'LOYALTY':
         return (
-          <View key={sectionType} style={styles.section}>
+          <View key={sectionType} style={wrap}>
             <LoyaltyCard onPress={goLoyalty} />
           </View>
         );
@@ -406,14 +406,8 @@ export default function HomeScreen() {
       }
 
       case 'EMERGENCY_DELIVERY':
-        return emergencyDelivery ? (
-          <View key={sectionType} style={styles.section}>
-            <EmergencyCard
-              onOrderNow={goEmergency}
-              promotion={emergencyDelivery}
-            />
-          </View>
-        ) : null;
+      case 'EMERGENCY_BANNER':
+        return null;
 
       case 'VIDEO_BANNER':
         return videoBanner ? (
@@ -449,13 +443,6 @@ export default function HomeScreen() {
           </View>
         ) : null;
 
-      case 'EMERGENCY_BANNER':
-        return emergencyBanner ? (
-          <View key={sectionType} style={styles.section}>
-            <EmergencyBannerStrip banner={emergencyBanner} />
-          </View>
-        ) : null;
-
       case 'TESTIMONIALS':
         return testimonialVideos.length > 0 || testimonialReviews.length > 0 ? (
           <View key={sectionType} style={styles.section}>
@@ -471,7 +458,7 @@ export default function HomeScreen() {
 
       case 'MEMBERSHIP':
         return (
-          <View key={sectionType} style={styles.section}>
+          <View key={sectionType} style={wrap}>
             <MembershipBanner onPress={onOpenMembership} />
           </View>
         );
@@ -485,6 +472,56 @@ export default function HomeScreen() {
             />
           </View>
         ) : null;
+
+      case 'FEATURED_PRODUCTS':
+        return (
+          <View key={sectionType} style={styles.section}>
+            <HomeProductSection
+              section="featured"
+              title={
+                sectionMeta(sectionType)?.title ?? t('featuredProducts')
+              }
+              subtitle={
+                sectionMeta(sectionType)?.subtitle ??
+                t('featuredProductsSubtitle')
+              }
+              products={featuredProducts}
+              isLoading={homeProductsLoading}
+            />
+          </View>
+        );
+
+      case 'RECENTLY_ADDED':
+        return (
+          <View key={sectionType} style={styles.section}>
+            <HomeProductSection
+              section="new"
+              title={sectionMeta(sectionType)?.title ?? t('recentlyAdded')}
+              subtitle={
+                sectionMeta(sectionType)?.subtitle ??
+                t('recentlyAddedSubtitle')
+              }
+              products={recentlyAddedProducts}
+              isLoading={homeProductsLoading}
+              maxItems={6}
+            />
+          </View>
+        );
+
+      case 'TOP_DEALS':
+        return (
+          <View key={sectionType} style={styles.section}>
+            <HomeProductSection
+              section="offers"
+              title={sectionMeta(sectionType)?.title ?? t('topDeals')}
+              subtitle={
+                sectionMeta(sectionType)?.subtitle ?? t('topDealsSubtitle')
+              }
+              products={topDealProducts}
+              isLoading={homeProductsLoading}
+            />
+          </View>
+        );
 
       case 'PRODUCT_DISCOVERY':
       case 'FEATURED_COLLECTION':
@@ -630,6 +667,9 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: SECTION_GAP,
+  },
+  sectionTight: {
+    marginTop: TOP_CLUSTER_GAP,
   },
   sectionHeader: {
     flexDirection: 'row',

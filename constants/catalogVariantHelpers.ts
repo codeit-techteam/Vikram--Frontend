@@ -255,7 +255,7 @@ export function getVariantAvailabilityText(product: Product): string | null {
   return `${count} Variants Available`;
 }
 
-/** SKU-level unit label (Pieces, CFT, Bags, Bucket, L, etc.) */
+/** SKU-level unit label (Pieces, CFT, Bags, Bucket, L, Cubic Meter, etc.) */
 export function getProductSkuUnit(product: Product): string {
   switch (product.categoryType) {
     case 'adhesives':
@@ -265,6 +265,8 @@ export function getProductSkuUnit(product: Product): string {
     case 'sand':
     case 'aggregates':
       return 'CFT';
+    case 'rmc':
+      return 'Cubic Meter';
     case 'cement':
       return 'Bag';
     case 'wall-repair':

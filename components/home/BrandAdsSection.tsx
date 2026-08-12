@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import type { CmsAdvertisement } from '@/types/cms';
 import { navigateCmsRedirect } from '@utils/cmsAdapters';
 import { resolveCmsImageSource } from '@utils/cmsMedia';
+import { MEDIA_EMPTY_URI } from '@utils/media';
 
 const H_PAD = 16;
 
@@ -39,7 +40,7 @@ export function BrandAdsSection({ ads, title }: BrandAdsSectionProps) {
             style={styles.card}
             accessibilityRole="button">
             <Image
-              source={resolveCmsImageSource(ad.imageUrl)}
+              source={resolveCmsImageSource(ad.imageUrl) ?? { uri: MEDIA_EMPTY_URI }}
               style={styles.image}
               contentFit="contain"
             />

@@ -22,6 +22,9 @@ const PLURAL_MAP: Record<string, string> = {
   L: 'L',
   Box: 'Boxes',
   CFT: 'CFT',
+  Cum: 'Cum',
+  'Cubic Meter': 'Cubic Meters',
+  'Cubic Metre': 'Cubic Metres',
 };
 
 /** Pluralize a base unit for display with quantity. */

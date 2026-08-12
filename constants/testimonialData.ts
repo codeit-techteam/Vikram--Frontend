@@ -5,9 +5,11 @@ export interface TestimonialVideo {
   id: string;
   /** Bundled require() module or remote/local URI source for expo-video */
   video: VideoSource;
+  /** Remote HTTPS URI when available (for frame thumbnail generation) */
+  videoUri?: string | null;
   /** Bundled module id when available (for thumbnail generation) */
   videoModule?: number | null;
-  thumbnail: ImageSourcePropType;
+  thumbnail: ImageSourcePropType | null;
   customerName: string;
   location: string;
   rating: number;

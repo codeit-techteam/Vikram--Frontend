@@ -103,7 +103,6 @@ export function MembershipBanner({ onPress }: MembershipBannerProps) {
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    marginTop: 12,
     minHeight: 96,
     backgroundColor: '#1E1E1E',
     borderRadius: 18,

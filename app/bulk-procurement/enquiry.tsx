@@ -27,6 +27,7 @@ import {
   isRmcSlug,
   MIXED_LOAD_SLUG,
 } from '@constants/bulkEnquiry';
+import { normalizeUnitLabel } from '@utils/units';
 import { useSites } from '@hooks/useSites';
 import {
   bulkApi,
@@ -56,6 +57,8 @@ type FormState = {
   materialTypeLabel: string;
   quantity: string;
   unit: string;
+  contactPhone: string;
+  contactEmail: string;
   location: string;
   addressLine: string;
   city: string;
@@ -81,6 +84,8 @@ type FormErrors = Partial<
     | 'productType'
     | 'quantity'
     | 'unit'
+    | 'contactPhone'
+    | 'contactEmail'
     | 'location'
     | 'deliveryRequirement'
     | 'notes',
@@ -96,6 +101,8 @@ const EMPTY_FORM: FormState = {
   materialTypeLabel: '',
   quantity: '',
   unit: '',
+  contactPhone: '',
+  contactEmail: '',
   location: '',
   addressLine: '',
   city: '',
@@ -114,6 +121,14 @@ const EMPTY_FORM: FormState = {
   companyName: '',
   showProjectDetails: false,
 };
+
+function normalizePhoneDigits(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 10);
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 function SectionLabel({
   icon,
@@ -163,6 +178,8 @@ function draftPayload(form: FormState) {
     materialTypeLabel: form.materialTypeLabel,
     quantity: form.quantity,
     unit: form.unit,
+    contactPhone: form.contactPhone,
+    contactEmail: form.contactEmail,
     location: form.location,
     addressLine: form.addressLine,
     city: form.city,
@@ -240,7 +257,7 @@ export default function BulkEnquiryScreen() {
       .filter(Boolean);
   }, [form.selectedSlugs, categories]);
 
-  const profileIncomplete = !user.name?.trim() || !user.phone?.trim();
+  const profileIncomplete = !user.name?.trim();
   const isBusy = submitting || storeSubmitting;
 
   useEffect(() => {
@@ -362,6 +379,22 @@ export default function BulkEnquiryScreen() {
     }
   }, [user.company, form.companyName]);
 
+  useEffect(() => {
+    setForm((prev) => {
+      const nextPhone =
+        prev.contactPhone.trim() || normalizePhoneDigits(user.phone ?? '');
+      const nextEmail = prev.contactEmail.trim() || (user.email ?? '').trim();
+      if (nextPhone === prev.contactPhone && nextEmail === prev.contactEmail) {
+        return prev;
+      }
+      return {
+        ...prev,
+        contactPhone: nextPhone,
+        contactEmail: nextEmail,
+      };
+    });
+  }, [user.phone, user.email]);
+
   const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (key in errors) {
@@ -373,7 +406,7 @@ export default function BulkEnquiryScreen() {
     void Haptics.selectionAsync();
     setForm((prev) => {
       if (slug === MIXED_LOAD_SLUG) {
-        const enabling = !prev.isMixedMode;
+        const enabling = !prev.selectedSlugs.includes(MIXED_LOAD_SLUG);
         if (enabling) {
           return {
             ...prev,
@@ -386,34 +419,34 @@ export default function BulkEnquiryScreen() {
             ),
           };
         }
+        const remaining = prev.selectedSlugs.filter((s) => s !== MIXED_LOAD_SLUG);
         return {
           ...prev,
-          isMixedMode: false,
-          selectedSlugs: [],
-          productType: '',
-          grade: '',
-          materialTypeLabel: '',
+          isMixedMode: remaining.length > 1,
+          selectedSlugs: remaining,
         };
       }
 
-      if (prev.isMixedMode) {
-        const withoutMixed = prev.selectedSlugs.filter((s) => s !== MIXED_LOAD_SLUG);
-        const nextMaterials = withoutMixed.includes(slug)
-          ? withoutMixed.filter((s) => s !== slug)
-          : [...withoutMixed, slug];
-        return {
-          ...prev,
-          selectedSlugs: [MIXED_LOAD_SLUG, ...nextMaterials],
-        };
-      }
+      const withoutMixed = prev.selectedSlugs.filter((s) => s !== MIXED_LOAD_SLUG);
+      const nextMaterials = withoutMixed.includes(slug)
+        ? withoutMixed.filter((s) => s !== slug)
+        : [...withoutMixed, slug];
+      const keepMixedChip = prev.selectedSlugs.includes(MIXED_LOAD_SLUG);
+      const isMixedMode = keepMixedChip || nextMaterials.length > 1;
 
       return {
         ...prev,
-        isMixedMode: false,
-        selectedSlugs: prev.selectedSlugs.includes(slug) ? [] : [slug],
-        productType: isBricksSlug(slug) ? prev.productType : '',
-        grade: isBricksSlug(slug) ? prev.grade : '',
-        materialTypeLabel: isRmcSlug(slug) ? prev.materialTypeLabel : '',
+        isMixedMode,
+        selectedSlugs: keepMixedChip
+          ? [MIXED_LOAD_SLUG, ...nextMaterials]
+          : nextMaterials,
+        productType: nextMaterials.some((s) => isBricksSlug(s))
+          ? prev.productType
+          : '',
+        grade: nextMaterials.some((s) => isBricksSlug(s)) ? prev.grade : '',
+        materialTypeLabel: nextMaterials.some((s) => isRmcSlug(s))
+          ? prev.materialTypeLabel
+          : '',
       };
     });
     if (errors.materials) {
@@ -501,12 +534,10 @@ export default function BulkEnquiryScreen() {
     const newErrors: FormErrors = {};
     const materials = form.selectedSlugs.filter((s) => s !== MIXED_LOAD_SLUG);
 
-    if (form.isMixedMode) {
-      if (materials.length === 0) {
-        newErrors.materials = 'Select at least one material for mixed load';
-      }
-    } else if (form.selectedSlugs.length === 0) {
-      newErrors.materials = 'Select a material category';
+    if (materials.length === 0) {
+      newErrors.materials = form.isMixedMode
+        ? 'Select at least one material for mixed load'
+        : 'Select at least one material category';
     }
 
     if (bricksSelected && !form.productType.trim()) {
@@ -519,6 +550,17 @@ export default function BulkEnquiryScreen() {
     }
 
     if (!form.unit.trim()) newErrors.unit = 'Select a unit';
+
+    const phone = normalizePhoneDigits(form.contactPhone);
+    if (!phone || phone.length !== 10) {
+      newErrors.contactPhone = 'Enter a valid 10-digit mobile number';
+    }
+
+    if (!form.contactEmail.trim()) {
+      newErrors.contactEmail = 'Email is required';
+    } else if (!isValidEmail(form.contactEmail)) {
+      newErrors.contactEmail = 'Enter a valid email address';
+    }
 
     const locationText =
       form.location.trim() ||
@@ -547,16 +589,22 @@ export default function BulkEnquiryScreen() {
       [form.addressLine, form.city, form.state, form.pincode]
         .filter(Boolean)
         .join(', ');
+    const isMixed =
+      form.isMixedMode ||
+      materials.length > 1 ||
+      form.selectedSlugs.includes(MIXED_LOAD_SLUG);
 
     const payload: CreateBulkEnquiryPayload = {
       estimatedQuantity: Number(form.quantity),
-      unit: form.unit,
+      unit: normalizeUnitLabel(form.unit) || form.unit,
       deliveryRequirement: form.deliveryRequirement as BulkDeliveryRequirement,
       location,
       preferredContact: form.preferredContact,
+      contactPhone: normalizePhoneDigits(form.contactPhone),
+      contactEmail: form.contactEmail.trim(),
     };
 
-    if (form.isMixedMode) {
+    if (isMixed) {
       payload.isMixedLoad = true;
       payload.materialCategorySlugs = materials;
     } else if (materials[0]) {
@@ -679,7 +727,7 @@ export default function BulkEnquiryScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.profilePromptTitle}>Complete your profile</Text>
                     <Text style={styles.profilePromptText}>
-                      Add your name and phone so our team can reach you faster.
+                      Add your name so our team can address you properly.
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#888" />
@@ -693,23 +741,22 @@ export default function BulkEnquiryScreen() {
                   <Text style={styles.fieldLabel}>
                     Material Category <Text style={styles.required}>*</Text>
                   </Text>
-                  {form.selectedSlugs.length > 0 ? (
+                  {materialSlugs.length > 0 ? (
                     <View style={styles.selectedBadge}>
                       <Ionicons name="checkmark" size={11} color="#1A1A1A" />
                       <Text style={styles.selectedBadgeText}>
-                        {form.isMixedMode
-                          ? `${materialSlugs.length} in mixed load`
-                          : '1 selected'}
+                        {materialSlugs.length === 1
+                          ? '1 selected'
+                          : `${materialSlugs.length} selected`}
                       </Text>
                     </View>
                   ) : null}
                 </View>
 
-                {form.isMixedMode ? (
-                  <Text style={styles.hintText}>
-                    Mixed Load enabled — select all materials you need.
-                  </Text>
-                ) : null}
+                <Text style={styles.hintText}>
+                  Select one or more materials (e.g. Bricks + Cement). Units update
+                  based on your selection.
+                </Text>
 
                 <View style={styles.chipRow}>
                   {categories.map((material) => {
@@ -878,6 +925,65 @@ export default function BulkEnquiryScreen() {
                     ) : null}
                   </View>
                 </View>
+
+                {materialSlugs.length > 1 ? (
+                  <Text style={[styles.hintText, { marginTop: 8 }]}>
+                    Units shown are combined for your selected materials.
+                  </Text>
+                ) : null}
+
+                <View style={styles.divider} />
+
+                <SectionLabel icon="call-outline" text="Your contact details" />
+
+                <Text style={styles.fieldLabel}>
+                  Mobile Number <Text style={styles.required}>*</Text>
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    errors.contactPhone && styles.inputWrapperError,
+                  ]}>
+                  <Ionicons name="phone-portrait-outline" size={17} color="#999" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="10-digit mobile number"
+                    placeholderTextColor="#AAAAAA"
+                    value={form.contactPhone}
+                    onChangeText={(v) =>
+                      updateField('contactPhone', normalizePhoneDigits(v))
+                    }
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                  />
+                </View>
+                {errors.contactPhone ? (
+                  <Text style={styles.errorText}>{errors.contactPhone}</Text>
+                ) : null}
+
+                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+                  Email <Text style={styles.required}>*</Text>
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    errors.contactEmail && styles.inputWrapperError,
+                  ]}>
+                  <Ionicons name="mail-outline" size={17} color="#999" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="you@example.com"
+                    placeholderTextColor="#AAAAAA"
+                    value={form.contactEmail}
+                    onChangeText={(v) => updateField('contactEmail', v.trimStart())}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                {errors.contactEmail ? (
+                  <Text style={styles.errorText}>{errors.contactEmail}</Text>
+                ) : null}
 
                 <View style={styles.divider} />
 
@@ -1241,7 +1347,9 @@ export default function BulkEnquiryScreen() {
                     label="Materials"
                     value={
                       selectedCategoryNames.length
-                        ? selectedCategoryNames.join(', ')
+                        ? selectedCategoryNames
+                            .filter((n) => n.toLowerCase() !== 'mixed load')
+                            .join(', ') || selectedCategoryNames.join(', ')
                         : '—'
                     }
                   />
@@ -1252,6 +1360,14 @@ export default function BulkEnquiryScreen() {
                         ? `${form.quantity} ${form.unit}`
                         : '—'
                     }
+                  />
+                  <ReviewRow
+                    label="Mobile"
+                    value={form.contactPhone || '—'}
+                  />
+                  <ReviewRow
+                    label="Email"
+                    value={form.contactEmail || '—'}
                   />
                   <ReviewRow label="Location" value={form.location || '—'} />
                   <ReviewRow

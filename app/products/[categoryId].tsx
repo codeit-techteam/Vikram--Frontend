@@ -38,12 +38,6 @@ import {
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useProducts } from '@hooks/useProducts';
 import { useFilterState } from '@hooks/useFilterState';
-import {
-  createDefaultFilters,
-  filtersToQueryParams,
-  normalizeFilters,
-} from '@constants/filterOptions';
-import { useCategoryFilterStore } from '@store/categoryFilterStore';
 import { useTranslation } from '@store/languageStore';
 import type { FilterKey, QuickFilterKey } from '@/types/filter.types';
 import type { Product } from '@/types/catalog';
@@ -69,33 +63,12 @@ export default function ProductListingScreen() {
     t('catalogLabel');
   const title = normalizeCategoryDisplayName(rawTitle);
 
-  const storedFilters = useCategoryFilterStore((s) =>
-    slug ? s.byCategory[slug] : undefined,
+  // Always load the full category catalog. Filters are client-side only and
+  // must not be seeded from persisted / default state on entry.
+  const productQuery = useMemo(
+    () => ({ category: slug || undefined }),
+    [slug],
   );
-
-  const productQuery = useMemo(() => {
-    const filters = storedFilters
-      ? normalizeFilters(storedFilters, storedFilters.priceRange ?? [0, 5000])
-      : createDefaultFilters([0, 5000]);
-    const api = filtersToQueryParams(
-      filters,
-      filters.priceRange,
-      undefined,
-      slug,
-    );
-    return {
-      category: slug || undefined,
-      productType: api.productType,
-      brickType: api.brickType,
-      grade: api.grade,
-      brand: api.brand,
-      search: api.search,
-      minPrice: api.minPrice,
-      maxPrice: api.maxPrice,
-      sortBy: api.sortBy,
-      sortOrder: api.sortOrder,
-    };
-  }, [slug, storedFilters]);
 
   const {
     products,
@@ -370,7 +343,11 @@ export default function ProductListingScreen() {
         onClearAll={clearDraftAndApply}
       />
 
-      <MaterialExpertSheet ref={expertSheetRef} />
+      <MaterialExpertSheet
+        ref={expertSheetRef}
+        categorySlug={slug}
+        categoryName={title}
+      />
     </SafeAreaView>
   );
 }

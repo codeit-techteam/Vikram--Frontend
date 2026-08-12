@@ -28,8 +28,21 @@ export const useCategoryFilterStore = create<CategoryFilterStoreState>((set, get
     if (!categoryId) return undefined;
     const stored = get().byCategory[categoryId];
     if (!stored) return undefined;
-    const bounds = stored.priceRange ?? [0, 5000];
-    return normalizeFilters(stored, bounds as [number, number]);
+    const bounds = (stored.priceRange ?? [0, 5000]) as [number, number];
+    const normalized = normalizeFilters(stored, bounds);
+    // Drop empty shells / phantom full-range price so callers never treat them
+    // as user-applied filters.
+    const hasFacet =
+      normalized.grade.length > 0 ||
+      normalized.productType.length > 0 ||
+      normalized.brand.length > 0 ||
+      normalized.pricePresets.length > 0 ||
+      normalized.discount != null ||
+      normalized.bulkPricing != null ||
+      normalized.sort !== 'recommended' ||
+      Boolean(normalized.search.trim());
+    if (!hasFacet) return undefined;
+    return normalized;
   },
 
   clearCategoryFilters: (categoryId) => {

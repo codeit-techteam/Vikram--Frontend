@@ -4,6 +4,7 @@ import {
   resolveProductImageSource,
 } from '@utils/catalogPlaceholders';
 import { normalizeMediaUrl } from '@utils/media';
+import { normalizeBulkLabel, normalizeUnitLabel } from '@utils/units';
 import type {
   ApiCategory,
   ApiProduct,
@@ -190,19 +191,23 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     defaultVariantId: dto.defaultVariantId ?? undefined,
     variantCount: dto.variantCount ?? productVariants.length,
     perPiecePrice: dto.perPiecePrice ?? undefined,
-    retailPrice: `${formatINR(retail, false)} / ${dto.unit}`,
+    retailPrice: `${formatINR(retail, false)} / ${normalizeUnitLabel(dto.unit) || dto.unit}`,
     retailPriceValue: retail,
     mrp: dto.mrp ?? null,
     discountPercent: dto.discountPercent,
     salePrice: null,
     bulkLabel:
-      dto.bulkLabel ??
-      firstBulk?.label ??
-      (dto.bulkThreshold > 0 ? `Bulk Price (${dto.bulkThreshold}+)` : ''),
-    bulkPrice: bulk > 0 ? `${formatINR(bulk, false)} / ${dto.unit}` : '',
+      normalizeBulkLabel(
+        dto.bulkLabel ??
+          firstBulk?.label ??
+          (dto.bulkThreshold > 0 ? `Bulk Price (${dto.bulkThreshold}+)` : ''),
+      ),
+    bulkPrice: bulk > 0
+      ? `${formatINR(bulk, false)} / ${normalizeUnitLabel(dto.unit) || dto.unit}`
+      : '',
     bulkPriceValue: bulk || firstBulk?.price || 0,
     bulkPricing,
-    unit: dto.unit,
+    unit: normalizeUnitLabel(dto.unit) || dto.unit,
     // Default selected qty always starts at 1 — bulk unlocks as qty grows.
     minOrder: dto.minOrder ?? 1,
     defaultQuantity: 1,
@@ -245,7 +250,7 @@ export function adaptApiSearchProduct(dto: ApiSearchProduct): SearchProduct {
     name: dto.name,
     brand: dto.brand ?? '',
     price: dto.price ?? dto.retailPrice,
-    unit: dto.unit,
+    unit: normalizeUnitLabel(dto.unit) || dto.unit,
     image: dto.imageUrl ?? dto.thumbnail ?? dto.categorySlug,
     slug: dto.slug,
     productId: dto.id,
@@ -275,7 +280,7 @@ export function productToSearchProduct(product: Product): SearchProduct {
     name: product.detailName ?? product.name,
     brand: product.brand ?? '',
     price: product.retailPriceValue,
-    unit: product.unit,
+    unit: normalizeUnitLabel(product.unit) || product.unit,
     image: product.imageUrl ?? product.categorySlug ?? product.imageSearch,
     slug: product.slug,
     productId: product.id,

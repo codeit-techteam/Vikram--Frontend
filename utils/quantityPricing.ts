@@ -132,6 +132,9 @@ export function computeQuantityPricing(
 
 export function formatUnitCount(quantity: number, unit: string): string {
   const u = unit.trim();
+  if (/^(cum|cubic\s+metres?|cubic\s+meters?)$/i.test(u)) {
+    return quantity === 1 ? '1 Cubic Meter' : `${quantity} Cubic Meters`;
+  }
   if (quantity === 1) {
     if (/s$/i.test(u) && !/glass|pieces?/i.test(u)) {
       return `1 ${u.replace(/s$/i, '')}`;

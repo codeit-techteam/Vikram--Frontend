@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import type { CmsQuickAction } from '@/types/cms';
 import { navigateCmsRedirect } from '@utils/cmsAdapters';
 import { resolveCmsImageSource } from '@utils/cmsMedia';
+import { MEDIA_EMPTY_URI } from '@utils/media';
 
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   bulk: 'cube-outline',
@@ -43,9 +44,9 @@ export function QuickActionsRow({ actions }: QuickActionsRowProps) {
             style={styles.item}
             accessibilityRole="button">
             <View style={styles.iconWrap}>
-              {action.iconUrl ? (
+              {action.iconUrl && resolveCmsImageSource(action.iconUrl) ? (
                 <Image
-                  source={resolveCmsImageSource(action.iconUrl)}
+                  source={resolveCmsImageSource(action.iconUrl) ?? { uri: MEDIA_EMPTY_URI }}
                   style={styles.iconImage}
                   contentFit="contain"
                 />

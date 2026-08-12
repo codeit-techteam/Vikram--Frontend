@@ -31,6 +31,7 @@ interface FullscreenVideoPlayerProps {
 }
 
 const CONTROLS_HIDE_MS = 3500;
+const LOAD_TIMEOUT_MS = 15_000;
 
 export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVideoPlayerProps) {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controlsOpacity = useSharedValue(1);
 
   const player = useVideoPlayer(item.video, (instance) => {
@@ -50,6 +52,21 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
     instance.muted = false;
     instance.timeUpdateEventInterval = 0.25;
   });
+
+  const clearLoadTimer = useCallback(() => {
+    if (loadTimer.current) {
+      clearTimeout(loadTimer.current);
+      loadTimer.current = null;
+    }
+  }, []);
+
+  const armLoadTimeout = useCallback(() => {
+    clearLoadTimer();
+    loadTimer.current = setTimeout(() => {
+      setHasError(true);
+      setIsLoading(false);
+    }, LOAD_TIMEOUT_MS);
+  }, [clearLoadTimer]);
 
   const scheduleHideControls = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -75,17 +92,35 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
     setCurrentTime(0);
     setDuration(0);
     revealControls();
+
+    try {
+      player.replace(item.video);
+    } catch {
+      // replace can throw if source is identical — continue with play
+    }
     player.muted = false;
     player.currentTime = 0;
     player.play();
-  }, [visible, item.id, player, revealControls]);
+
+    // Sync in case readyToPlay already fired
+    if (player.status === 'readyToPlay') {
+      setIsLoading(false);
+      setDuration(player.duration);
+      clearLoadTimer();
+    } else {
+      armLoadTimeout();
+    }
+
+    return () => clearLoadTimer();
+  }, [visible, item.id, player, revealControls, armLoadTimeout, clearLoadTimer]);
 
   useEffect(() => {
     if (!visible) {
       player.pause();
       if (hideTimer.current) clearTimeout(hideTimer.current);
+      clearLoadTimer();
     }
-  }, [visible, player]);
+  }, [visible, player, clearLoadTimer]);
 
   useEventListener(player, 'playingChange', ({ isPlaying: playing }) => {
     setIsPlaying(playing);
@@ -94,11 +129,14 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
   useEventListener(player, 'statusChange', ({ status }) => {
     if (status === 'readyToPlay') {
       setIsLoading(false);
+      setHasError(false);
       setDuration(player.duration);
+      clearLoadTimer();
     }
     if (status === 'error') {
       setHasError(true);
       setIsLoading(false);
+      clearLoadTimer();
     }
   });
 
@@ -159,7 +197,12 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
   const handleRetry = () => {
     setHasError(false);
     setIsLoading(true);
-    player.replace(item.video);
+    armLoadTimeout();
+    try {
+      player.replace(item.video);
+    } catch {
+      // ignore
+    }
     player.play();
   };
 

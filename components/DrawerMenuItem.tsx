@@ -39,14 +39,15 @@ export const DrawerMenuItem = memo(function DrawerMenuItem({
 
   useEffect(() => {
     if (isDrawerOpen) {
-      opacity.value = withDelay(index * 35, withTiming(1, { duration: 220 }));
+      const delay = 40 + index * 28;
+      opacity.value = withDelay(delay, withTiming(1, { duration: 260 }));
       translateXItem.value = withDelay(
-        index * 35,
-        withSpring(0, { damping: 18, stiffness: 140 }),
+        delay,
+        withSpring(0, { damping: 20, stiffness: 200, mass: 0.7 }),
       );
     } else {
-      opacity.value = withTiming(0, { duration: 120 });
-      translateXItem.value = withTiming(-24, { duration: 120 });
+      opacity.value = withTiming(0, { duration: 140 });
+      translateXItem.value = withTiming(-20, { duration: 140 });
     }
   }, [isDrawerOpen, index, opacity, translateXItem]);
 
@@ -103,11 +104,15 @@ export function DrawerSectionLabel({
 
   useEffect(() => {
     if (isDrawerOpen) {
-      opacity.value = withDelay(index * 35, withTiming(1, { duration: 200 }));
-      translateXItem.value = withDelay(index * 35, withSpring(0, { damping: 18, stiffness: 140 }));
+      const delay = 40 + index * 28;
+      opacity.value = withDelay(delay, withTiming(1, { duration: 240 }));
+      translateXItem.value = withDelay(
+        delay,
+        withSpring(0, { damping: 20, stiffness: 200, mass: 0.7 }),
+      );
     } else {
-      opacity.value = withTiming(0, { duration: 100 });
-      translateXItem.value = withTiming(-16, { duration: 100 });
+      opacity.value = withTiming(0, { duration: 120 });
+      translateXItem.value = withTiming(-14, { duration: 120 });
     }
   }, [isDrawerOpen, index, opacity, translateXItem]);
 

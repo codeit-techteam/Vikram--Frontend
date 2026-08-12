@@ -70,14 +70,15 @@ function AnimatedLanguageRow({
 
   useEffect(() => {
     if (isDrawerOpen) {
-      opacity.value = withDelay(index * 35, withTiming(1, { duration: 220 }));
+      const delay = 40 + index * 28;
+      opacity.value = withDelay(delay, withTiming(1, { duration: 260 }));
       translateXItem.value = withDelay(
-        index * 35,
-        withSpring(0, { damping: 18, stiffness: 140 }),
+        delay,
+        withSpring(0, { damping: 20, stiffness: 200, mass: 0.7 }),
       );
     } else {
-      opacity.value = withTiming(0, { duration: 120 });
-      translateXItem.value = withTiming(-24, { duration: 120 });
+      opacity.value = withTiming(0, { duration: 140 });
+      translateXItem.value = withTiming(-20, { duration: 140 });
     }
   }, [isDrawerOpen, index, opacity, translateXItem]);
 
@@ -99,7 +100,6 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const orderBadge = useNotificationStore((st) => st.orderNotifications);
-  const notifBadge = useNotificationStore((st) => st.unreadCount);
   const [contentReady, setContentReady] = useState(false);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
     (href: Href, authRequired = false) => {
       if (authRequired && !requireAuth()) return;
       onClose();
-      setTimeout(() => router.push(href), 150);
+      setTimeout(() => router.push(href), 260);
     },
     [onClose],
   );
@@ -130,7 +130,7 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           onClose();
           setTimeout(() => {
             void resetAppStores().then(() => router.replace('/(tabs)'));
-          }, 150);
+          }, 260);
         },
       },
     ]);
@@ -167,11 +167,6 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           onPress: () => navigateAndClose('/(tabs)/orders', true),
         },
         {
-          icon: 'bus-outline',
-          label: t('drawerTrackDeliveries'),
-          onPress: () => navigateAndClose('/track-delivery', true),
-        },
-        {
           icon: 'location-outline',
           label: t('drawerSavedSites'),
           onPress: () => navigateAndClose('/delivery-location', true),
@@ -191,24 +186,12 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           label: t('loyaltyWallet'),
           onPress: () => navigateAndClose('/account/loyalty', true),
         },
-        {
-          icon: 'notifications-outline',
-          label: t('drawerNotifications'),
-          badge: notifBadge,
-          onPress: () => navigateAndClose('/notifications'),
-        },
       ],
     },
     {
       key: 'procurement',
       section: t('drawerProcurementTools'),
       items: [
-        {
-          icon: 'flash-outline',
-          label: t('drawerEmergencyOrders'),
-          isHighlight: true,
-          onPress: () => navigateAndClose('/(tabs)'),
-        },
         {
           icon: 'layers-outline',
           label: t('drawerBulkProcurement'),
@@ -225,11 +208,6 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
       key: 'support',
       section: t('drawerSupport'),
       items: [
-        {
-          icon: 'help-circle-outline',
-          label: t('drawerHelpCenter'),
-          onPress: () => navigateAndClose('/support'),
-        },
         {
           icon: 'chatbubble-ellipses-outline',
           label: t('drawerWhatsAppSupport'),

@@ -146,6 +146,9 @@ export interface CreateBulkEnquiryPayload {
   addressId?: string;
   additionalNotes?: string;
   preferredContact?: BulkPreferredContact;
+  /** Contact details for this enquiry (synced to admin snapshots). */
+  contactPhone?: string;
+  contactEmail?: string;
   projectName?: string;
   siteType?: string;
   expectedStartDate?: string;

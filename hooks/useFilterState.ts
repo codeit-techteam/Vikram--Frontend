@@ -9,7 +9,7 @@ import {
   createDefaultFilters,
   filtersEqual,
   getCategoryFilterConfig,
-  normalizeFilters,
+  hasExplicitFilters,
   reconcileFiltersWithBounds,
 } from '@constants/filterOptions';
 import { useCategoryFilterStore } from '@store/categoryFilterStore';
@@ -29,8 +29,6 @@ export function useFilterState({
   categoryId,
   isLoadingProducts = false,
 }: UseFilterStateOptions) {
-  const getStored = useCategoryFilterStore((s) => s.getCategoryFilters);
-  const setStored = useCategoryFilterStore((s) => s.setCategoryFilters);
   const clearStored = useCategoryFilterStore((s) => s.clearCategoryFilters);
 
   const productsReady = !isLoadingProducts && products.length >= 0;
@@ -41,37 +39,36 @@ export function useFilterState({
     [categoryId, products],
   );
 
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() => {
-    const stored = getStored(categoryId);
-    // Start with clean defaults — never restore a stale price range before catalog loads
-    return normalizeFilters(
-      stored ?? createDefaultFilters([0, 5000]),
-      [0, 5000],
-    );
-  });
+  // Always start clean — no filter applies until the user sets one explicitly.
+  // In-memory state is enough for product-detail → back (listing stays mounted).
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() =>
+    createDefaultFilters([0, 5000]),
+  );
   const [draftFilters, setDraftFilters] = useState<ActiveFilters>(() =>
     cloneFilters(activeFilters),
   );
   const [searchInput, setSearchInput] = useState(activeFilters.search);
 
   const prevCategoryRef = useRef(categoryId);
+  const previousBoundsRef = useRef<[number, number] | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore / reset when category changes — always start clean (no phantom filters)
+  // Wipe any stale persisted shells so they cannot seed the listing API
+  useEffect(() => {
+    if (categoryId) clearStored(categoryId);
+  }, [categoryId, clearStored]);
+
+  // Reset when category changes — no filters until explicitly applied
   useEffect(() => {
     if (prevCategoryRef.current === categoryId) return;
     prevCategoryRef.current = categoryId;
+    previousBoundsRef.current = null;
 
-    const stored = getStored(categoryId);
-    const next = reconcileFiltersWithBounds(
-      normalizeFilters(stored ?? createDefaultFilters(config.priceBounds), config.priceBounds),
-      config.priceBounds,
-      { productsReady: hasCatalog },
-    );
-    setActiveFilters(next);
-    setDraftFilters(cloneFilters(next));
-    setSearchInput(next.search);
-  }, [categoryId, config.priceBounds, getStored, hasCatalog]);
+    const defaults = createDefaultFilters(config.priceBounds);
+    setActiveFilters(defaults);
+    setDraftFilters(cloneFilters(defaults));
+    setSearchInput('');
+  }, [categoryId, config.priceBounds]);
 
   /**
    * Synchronous reconcile: when products arrive and bounds change, correct
@@ -82,6 +79,7 @@ export function useFilterState({
     () =>
       reconcileFiltersWithBounds(activeFilters, config.priceBounds, {
         productsReady: hasCatalog,
+        previousBounds: previousBoundsRef.current,
       }),
     [activeFilters, config.priceBounds, hasCatalog],
   );
@@ -90,9 +88,16 @@ export function useFilterState({
     () =>
       reconcileFiltersWithBounds(draftFilters, config.priceBounds, {
         productsReady: hasCatalog,
+        previousBounds: previousBoundsRef.current,
       }),
     [draftFilters, config.priceBounds, hasCatalog],
   );
+
+  // Track catalog bounds so pagination expansions widen an unset full range
+  useEffect(() => {
+    if (!hasCatalog) return;
+    previousBoundsRef.current = [...config.priceBounds] as [number, number];
+  }, [config.priceBounds, hasCatalog]);
 
   // Persist the reconciled shape back into state (avoids repeated reconcile work)
   useEffect(() => {
@@ -107,11 +112,21 @@ export function useFilterState({
     }
   }, [draftFilters, resolvedDraftFilters]);
 
-  // Persist filters so product detail → back keeps them
+  // Keep store empty unless the user has explicit filters — prevents Categories →
+  // Cement from reopening with a phantom price/brand seed on the product API.
   useEffect(() => {
-    if (!categoryId || isLoadingProducts) return;
-    setStored(categoryId, resolvedActiveFilters);
-  }, [resolvedActiveFilters, categoryId, setStored, isLoadingProducts]);
+    if (!categoryId || isLoadingProducts || !hasCatalog) return;
+    if (!hasExplicitFilters(resolvedActiveFilters, config.priceBounds)) {
+      clearStored(categoryId);
+    }
+  }, [
+    resolvedActiveFilters,
+    categoryId,
+    clearStored,
+    isLoadingProducts,
+    hasCatalog,
+    config.priceBounds,
+  ]);
 
   const syncDraft = useCallback(() => {
     setDraftFilters(cloneFilters(resolvedActiveFilters));

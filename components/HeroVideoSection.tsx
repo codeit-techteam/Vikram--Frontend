@@ -13,6 +13,7 @@ import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
 
 import { ExpoVideoPlayer } from '@components/video/ExpoVideoPlayer';
 import type { CmsBanner } from '@/types/cms';
+import { normalizeMediaUrl } from '@utils/media';
 import { resolveCmsVideoSource } from '@utils/cmsMedia';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -24,6 +25,7 @@ interface VideoBannerProps {
 
 export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
   const [isMuted, setIsMuted] = useState(true);
+  const [playerReady, setPlayerReady] = useState(false);
   const isFocused = useSafeIsFocused();
   const [paused, setPaused] = useState(!isFocused);
 
@@ -32,6 +34,13 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
   }, [isFocused]);
 
   if (!banner?.videoUrl) return null;
+
+  const videoSource = resolveCmsVideoSource(banner.videoUrl);
+  if (!videoSource) return null;
+
+  const posterUrl =
+    normalizeMediaUrl(banner.thumbnailUrl) ??
+    normalizeMediaUrl(banner.imageUrl);
 
   const toggleMute = () => {
     setIsMuted((current) => !current);
@@ -42,9 +51,6 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onShopNow?.();
   };
-
-  const videoSource = resolveCmsVideoSource(banner.videoUrl);
-  if (!videoSource) return null;
 
   const badge = banner.badge ?? '';
   const title = banner.title;
@@ -60,7 +66,8 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
         autoPlay
         paused={paused}
         contentFit="cover"
-        posterUrl={banner.thumbnailUrl ?? banner.imageUrl}
+        posterUrl={posterUrl}
+        onReadyChange={setPlayerReady}
       />
 
       <LinearGradient
@@ -84,16 +91,18 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
         ) : null}
       </View>
 
-      <TouchableOpacity
-        onPress={toggleMute}
-        style={styles.muteBtn}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={16}
-          color="#fff"
-        />
-      </TouchableOpacity>
+      {playerReady ? (
+        <TouchableOpacity
+          onPress={toggleMute}
+          style={styles.muteBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-high'}
+            size={16}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      ) : null}
 
       <View style={styles.bottomContent}>
         <Text style={styles.title}>{title.replace(/\\n/g, '\n')}</Text>

@@ -7,6 +7,7 @@ import type { CatalogCategory } from '@/types/catalog';
 import {
   resolveCmsImageSource,
   resolveCmsVideoSource,
+  extractVideoUri,
 } from '@utils/cmsMedia';
 import { resolveCategoryImageSource } from '@utils/catalogPlaceholders';
 import { normalizeMediaUrl } from '@utils/media';
@@ -28,8 +29,10 @@ export interface CmsHeroSlide {
 export interface CmsTestimonialVideoView {
   id: string;
   video: VideoSource;
+  /** Remote HTTPS URI when available — used to generate matching frame thumbnails. */
+  videoUri: string | null;
   videoModule: number | null;
-  thumbnail: ImageSourcePropType;
+  thumbnail: ImageSourcePropType | null;
   customerName: string;
   location: string;
   rating: number;
@@ -87,31 +90,35 @@ export function adaptCmsCategories(categories: CmsCategory[]): CatalogCategory[]
 export function adaptTestimonialVideos(
   items: CmsTestimonial[],
 ): CmsTestimonialVideoView[] {
-  return items
-    .filter((t) => t.type === 'VIDEO' && Boolean(t.videoUrl))
-    .map((t) => {
-      const video = resolveCmsVideoSource(t.videoUrl);
-      if (!video && !t.videoUrl) {
-        if (__DEV__) {
-          console.warn(
-            `[cms] Testimonial ${t.id} (${t.customerName}) has unavailable video media`,
-            t.videoUrl,
-          );
-        }
-        return null;
+  const result: CmsTestimonialVideoView[] = [];
+
+  for (const t of items) {
+    if (t.type !== 'VIDEO' || !t.videoUrl) continue;
+    const video = resolveCmsVideoSource(t.videoUrl);
+    if (!video) {
+      if (__DEV__) {
+        console.warn(
+          `[cms] Testimonial ${t.id} (${t.customerName}) has unavailable video media`,
+          t.videoUrl,
+        );
       }
-      return {
-        id: t.id,
-        video: video ?? { uri: t.videoUrl! },
-        videoModule: typeof video === 'number' ? video : null,
-        thumbnail: resolveCmsImageSource(t.thumbnailUrl),
-        customerName: t.customerName,
-        location: t.location ?? t.city ?? '',
-        rating: t.rating,
-        quote: t.review ?? '',
-      };
-    })
-    .filter((t): t is CmsTestimonialVideoView => t != null && t.video != null);
+      continue;
+    }
+    result.push({
+      id: t.id,
+      video,
+      videoUri: extractVideoUri(video),
+      videoModule: typeof video === 'number' ? video : null,
+      // Preview is always generated from the video file — ignore CMS thumbnail URLs.
+      thumbnail: null,
+      customerName: t.customerName,
+      location: t.location ?? t.city ?? '',
+      rating: t.rating,
+      quote: t.review ?? '',
+    });
+  }
+
+  return result;
 }
 
 export function adaptTestimonialReviews(
@@ -133,7 +140,7 @@ export function adaptTestimonialReviews(
         rating: t.rating,
         review: t.review ?? '',
         photo: photoSource
-          ? resolveCmsImageSource(photoSource)
+          ? resolveCmsImageSource(photoSource) ?? undefined
           : undefined,
       };
     });

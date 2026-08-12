@@ -71,7 +71,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     name: 'RMC M25',
     brand: 'Bajriwala Concrete',
     price: 4800,
-    unit: 'Cum',
+    unit: 'Cubic Meter',
     image: 'ready mix concrete mixer truck',
   },
   {
@@ -82,7 +82,7 @@ export const ALL_PRODUCTS: SearchProduct[] = [
     name: 'RMC M30',
     brand: 'Bajriwala Concrete',
     price: 5200,
-    unit: 'Cum',
+    unit: 'Cubic Meter',
     image: 'ready mix concrete mixer truck',
   },
   {

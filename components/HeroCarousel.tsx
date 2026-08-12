@@ -134,7 +134,7 @@ export function HeroCarousel({ slides, onShopNow, onBulkInquiry }: HeroCarouselP
         ))}
       </ScrollView>
       {slides.length > 1 ? (
-        <View className="mt-3 flex-row items-center justify-center gap-2">
+        <View className="mt-2 flex-row items-center justify-center gap-2">
           {slides.map((slide, i) => (
             <View
               key={slide.id ?? i}

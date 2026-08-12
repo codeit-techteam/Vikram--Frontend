@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
+
+const LOAD_TIMEOUT_MS = 12_000;
 
 interface ExpoVideoPlayerProps {
   source: VideoSource;
@@ -15,6 +17,8 @@ interface ExpoVideoPlayerProps {
   posterUrl?: string | null;
   /** Max silent retries after a playback error. */
   maxRetries?: number;
+  /** Fired when the player becomes ready (or fails after retries). */
+  onReadyChange?: (ready: boolean) => void;
 }
 
 export function ExpoVideoPlayer({
@@ -27,11 +31,19 @@ export function ExpoVideoPlayer({
   surfaceType = 'textureView',
   posterUrl,
   maxRetries = 2,
+  onReadyChange,
 }: ExpoVideoPlayerProps) {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
+  const onReadyChangeRef = useRef(onReadyChange);
+  onReadyChangeRef.current = onReadyChange;
+
+  const markReady = (next: boolean) => {
+    setReady(next);
+    onReadyChangeRef.current?.(next);
+  };
 
   const player = useVideoPlayer(source, (instance) => {
     instance.loop = loop;
@@ -55,12 +67,17 @@ export function ExpoVideoPlayer({
   }, [autoPlay, paused, player]);
 
   useEffect(() => {
-    setReady(false);
+    markReady(false);
     setFailed(false);
+
+    // Sync immediately — readyToPlay can fire before the listener attaches
+    if (player.status === 'readyToPlay') {
+      markReady(true);
+    }
 
     const statusSub = player.addListener('statusChange', (payload) => {
       if (payload.status === 'readyToPlay') {
-        setReady(true);
+        markReady(true);
         setFailed(false);
       }
       if (payload.status === 'error') {
@@ -72,16 +89,28 @@ export function ExpoVideoPlayer({
             if (autoPlay && !paused) player.play();
           } catch {
             setFailed(true);
+            markReady(false);
           }
         } else {
           setFailed(true);
+          markReady(false);
         }
       }
     });
 
+    const timeout = setTimeout(() => {
+      if (player.status !== 'readyToPlay') {
+        setFailed(true);
+        markReady(false);
+      }
+    }, LOAD_TIMEOUT_MS);
+
     return () => {
       statusSub.remove();
+      clearTimeout(timeout);
     };
+    // reloadToken intentionally retriggers the subscription after retries
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player, retryCount, maxRetries, autoPlay, paused, reloadToken]);
 
   if (failed) {
@@ -95,11 +124,11 @@ export function ExpoVideoPlayer({
           onPress={() => {
             setRetryCount(0);
             setFailed(false);
-            setReady(false);
+            markReady(false);
             setReloadToken((n) => n + 1);
             try {
-              player.replay();
-              player.play();
+              player.replace(source);
+              if (autoPlay && !paused) player.play();
             } catch {
               setFailed(true);
             }

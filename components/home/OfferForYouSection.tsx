@@ -5,6 +5,7 @@ import { router, type Href } from 'expo-router';
 
 import type { CmsOffer } from '@/types/cms';
 import { resolveCmsImageSource } from '@utils/cmsMedia';
+import { MEDIA_EMPTY_URI } from '@utils/media';
 
 interface OfferForYouSectionProps {
   offers: CmsOffer[];
@@ -38,7 +39,7 @@ export function OfferForYouSection({
             style={styles.card}
             accessibilityRole="button">
             <Image
-              source={resolveCmsImageSource(offer.imageUrl)}
+              source={resolveCmsImageSource(offer.imageUrl) ?? { uri: MEDIA_EMPTY_URI }}
               style={styles.image}
               contentFit="cover"
               transition={200}
