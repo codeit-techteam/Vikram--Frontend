@@ -36,10 +36,10 @@ const TIER_TITLES: Record<LoyaltyTier, string> = {
 type ActivityFilter = 'all' | 'earned' | 'redeemed';
 
 const TIER_BENEFITS = [
-  'Earn 1 point for every ₹100 spent',
-  '50 bonus points on your first eligible order',
+  'Earn 1 BajriPro Point for every ₹100 spent',
+  '50 welcome BajriPro Points on registration',
   'Redeem points on orders ₹500+',
-  'Use points directly as a bill deduction',
+  '100 points = ₹1 off your bill',
   'First 3 bike deliveries free',
 ] as const;
 
@@ -51,8 +51,8 @@ const HOW_POINTS_WORK = [
   },
   {
     step: '2',
-    title: 'First Order Bonus',
-    body: 'Receive 50 bonus points once on your first eligible completed order.',
+    title: 'Welcome Bonus',
+    body: 'Receive 50 BajriPro Points once when you register — never credited again on later logins.',
   },
   {
     step: '3',
@@ -366,7 +366,7 @@ export default function LoyaltyScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }} edges={['top']}>
       <BackHeader
-        title="Loyalty Rewards"
+        title="BajriPro Points"
         titleColor="#FEB623"
         backgroundColor="#F5F5F5"
         borderBottom={false}
@@ -536,7 +536,7 @@ export default function LoyaltyScreen() {
               elevation: 2,
             }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
-              Membership Progress
+              Loyalty Progress
             </Text>
             <Text style={{ fontSize: 13, color: '#888', marginTop: 2, marginBottom: 14 }}>
               {nextTier

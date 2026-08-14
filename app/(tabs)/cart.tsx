@@ -21,7 +21,11 @@ import type { DeliverySite } from '@store/deliveryStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { requireAuthOr } from '@utils/requireAuth';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import {
+  calculateLoyaltyDiscountPreview,
+  formatPointsInr,
+} from '@utils/loyaltyPricing';
 
 function SummaryRow({
   label,
@@ -65,6 +69,8 @@ function BajriProPointsBanner({
   availableValue,
   itemsTotal,
   minOrderValue = 500,
+  redeemablePoints = 0,
+  discountAmount = 0,
 }: {
   pointsApplied: boolean;
   onToggle: () => void;
@@ -72,10 +78,25 @@ function BajriProPointsBanner({
   availableValue: number;
   itemsTotal: number;
   minOrderValue?: number;
+  redeemablePoints?: number;
+  discountAmount?: number;
 }) {
   const { t } = useTranslation();
   const eligible = itemsTotal >= minOrderValue;
-  const disabled = !eligible || availablePoints <= 0;
+  const zeroBalance = availablePoints <= 0;
+  const disabled = !eligible || zeroBalance;
+  const shortfall = Math.max(0, minOrderValue - itemsTotal);
+
+  let hint: string;
+  if (zeroBalance) {
+    hint = 'Earn BajriPro Points on eligible orders';
+  } else if (!eligible) {
+    hint = `Add ₹${shortfall.toLocaleString('en-IN')} more to use BajriPro Points`;
+  } else if (pointsApplied && discountAmount > 0) {
+    hint = `✓ ${redeemablePoints.toLocaleString('en-IN')} BajriPro Points applied · You saved ₹${formatPointsInr(discountAmount)}`;
+  } else {
+    hint = 'Apply BajriPro Points at checkout (orders ₹500+)';
+  }
 
   return (
     <View style={[styles.pointsBanner, disabled && { opacity: 0.85 }]}>
@@ -83,16 +104,12 @@ function BajriProPointsBanner({
         <View style={styles.pointsLeft}>
           <BrandLogo size="sm" />
           <View>
-            <Text style={styles.pointsTitle}>{t('buildProPoints')}</Text>
+            <Text style={styles.pointsTitle}>BajriPro Points</Text>
             <Text style={styles.pointsBalance}>
               {t('balance')}: {availablePoints.toLocaleString('en-IN')} Points
             </Text>
             <Text style={{ fontSize: 11, color: '#8A6A00', marginTop: 2 }}>
-              ≈ ₹
-              {availableValue.toLocaleString('en-IN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              ≈ ₹{formatPointsInr(availableValue)}
             </Text>
           </View>
         </View>
@@ -105,22 +122,18 @@ function BajriProPointsBanner({
           disabled={disabled}
           style={[
             styles.toggle,
-            pointsApplied && eligible && styles.toggleOn,
+            pointsApplied && eligible && !zeroBalance && styles.toggleOn,
             disabled && { backgroundColor: '#E8E8E8' },
           ]}>
           <View
             style={[
               styles.toggleKnob,
-              pointsApplied && eligible && styles.toggleKnobOn,
+              pointsApplied && eligible && !zeroBalance && styles.toggleKnobOn,
             ]}
           />
         </Pressable>
       </View>
-      <Text style={styles.pointsHint}>
-        {eligible
-          ? 'Apply loyalty points at checkout (orders ₹500+)'
-          : `Spend ₹${minOrderValue.toLocaleString('en-IN')} or more to unlock loyalty redemption.`}
-      </Text>
+      <Text style={styles.pointsHint}>{hint}</Text>
     </View>
   );
 }
@@ -148,10 +161,10 @@ function OrderSummaryCard({
         showInfo
       />
       <SummaryRow
-        label={t('loyaltyDiscount')}
+        label="BajriPro Discount"
         value={
           pointsApplied && loyaltyDiscount > 0
-            ? `-₹${loyaltyDiscount.toLocaleString('en-IN')}`
+            ? `-₹${formatPointsInr(loyaltyDiscount)}`
             : '-₹0'
         }
         valueColor="#FEB623"
@@ -166,10 +179,10 @@ function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
   const { label, deliveringBy, isLoading } = useDeliveryEta({ autoFetch: true });
   const etaText = deliveringBy
     ? `${t('etaLabel')}: ${deliveringBy}`
-    : label
-      ? `${t('etaLabel')}: ${label}`
-      : isLoading
-        ? `${t('etaLabel')}: …`
+    : isLoading
+      ? `${t('etaLabel')}: Updating delivery estimate...`
+      : label
+        ? `${t('etaLabel')}: ${label}`
         : `${t('etaLabel')}: —`;
 
   return (
@@ -226,12 +239,14 @@ function CheckoutBar({
       <View style={styles.checkoutTotalRow}>
         <View>
           <Text style={styles.totalLabel}>{t('totalPrice')}</Text>
-          <Text style={styles.totalValue}>₹{grandTotal.toLocaleString('en-IN')}</Text>
+          <Text style={styles.totalValue}>
+            ₹{formatPointsInr(grandTotal)}
+          </Text>
         </View>
-        {pointsApplied && (
+        {pointsApplied && loyaltyDiscount > 0 && (
           <View style={styles.savingsPill}>
             <Text style={styles.savingsText}>
-              {t('youAreSaving')} ₹{loyaltyDiscount.toLocaleString('en-IN')}
+              {t('youAreSaving')} ₹{formatPointsInr(loyaltyDiscount)}
             </Text>
           </View>
         )}
@@ -261,13 +276,36 @@ export default function CartScreen() {
   const togglePoints = useCartStore((s) => s.togglePoints);
   const itemsTotal = useCartStore((s) => s.itemsTotal());
   const deliveryCharge = useCartStore((s) => s.deliveryCharge());
-  const loyaltyDiscount = useCartStore((s) => s.loyaltyDiscount());
-  const grandTotal = useCartStore((s) => s.grandTotal());
   const availablePoints = useLoyaltyStore((s) => s.totalPoints);
   const availableValue = useLoyaltyStore((s) => s.availableValue);
   const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
   const minRedeemOrderValue =
     useLoyaltyStore((s) => s.summary?.minRedeemOrderValue) ?? 500;
+  const pointValueInr = useLoyaltyStore((s) => s.summary?.pointValueInr) ?? 0.01;
+  const maxRedeemPercent =
+    useLoyaltyStore((s) => s.summary?.maxOrderRedeemPercent) ?? 0.3;
+
+  const loyaltyPreview = useMemo(
+    () =>
+      calculateLoyaltyDiscountPreview({
+        pointsApplied:
+          pointsApplied && itemsTotal >= minRedeemOrderValue && availablePoints > 0,
+        availablePoints,
+        orderValueInr: itemsTotal + deliveryCharge,
+        minOrderValue: minRedeemOrderValue,
+        maxRedeemPercent,
+        pointValueInr,
+      }),
+    [
+      pointsApplied,
+      itemsTotal,
+      deliveryCharge,
+      availablePoints,
+      minRedeemOrderValue,
+      maxRedeemPercent,
+      pointValueInr,
+    ],
+  );
 
   useEffect(() => {
     void refreshLoyalty();
@@ -290,6 +328,13 @@ export default function CartScreen() {
     if (!requireAuthOr(() => router.push('/checkout'))) return;
     router.push('/checkout');
   };
+
+  const appliedDiscount = loyaltyPreview.discountAmount;
+  const appliedPoints = loyaltyPreview.redeemablePoints;
+  const displayGrandTotal = Math.max(
+    0,
+    itemsTotal + deliveryCharge - appliedDiscount,
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -323,13 +368,15 @@ export default function CartScreen() {
                 availableValue={availableValue}
                 itemsTotal={itemsTotal}
                 minOrderValue={minRedeemOrderValue}
+                redeemablePoints={appliedPoints}
+                discountAmount={appliedDiscount}
               />
 
               <OrderSummaryCard
                 itemsTotal={itemsTotal}
                 deliveryCharge={deliveryCharge}
-                pointsApplied={pointsApplied && itemsTotal >= minRedeemOrderValue}
-                loyaltyDiscount={loyaltyDiscount}
+                pointsApplied={appliedDiscount > 0}
+                loyaltyDiscount={appliedDiscount}
               />
 
               <SiteLogisticsCard site={selectedSite} />
@@ -350,9 +397,9 @@ export default function CartScreen() {
 
         {items.length > 0 && (
           <CheckoutBar
-            grandTotal={grandTotal}
-            pointsApplied={pointsApplied}
-            loyaltyDiscount={loyaltyDiscount}
+            grandTotal={displayGrandTotal}
+            pointsApplied={appliedDiscount > 0}
+            loyaltyDiscount={appliedDiscount}
             onCheckout={goCheckout}
           />
         )}

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { useTranslation } from '@store/languageStore';
 
@@ -9,6 +10,16 @@ interface ProductStockInfoProps {
   /** Card list: one horizontal meta row. Detail: stacked. */
   variant?: 'row' | 'stack';
   compact?: boolean;
+  vehicleIcon?: 'bicycle-outline' | 'car-outline' | 'bus-outline' | 'trail-sign-outline';
+}
+
+function displayEtaText(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (/^(estimated delivery|delivery estimate|updating delivery)/i.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed;
 }
 
 export function ProductStockInfo({
@@ -16,8 +27,10 @@ export function ProductStockInfo({
   deliveryEta,
   variant = 'stack',
   compact = false,
+  vehicleIcon = 'bus-outline',
 }: ProductStockInfoProps) {
   const { t } = useTranslation();
+  const etaText = displayEtaText(deliveryEta);
 
   if (variant === 'row') {
     return (
@@ -27,11 +40,15 @@ export function ProductStockInfo({
             {t('onlyXLeft').replace('{count}', String(stockLeft))}
           </Text>
         ) : null}
-        {stockLeft !== null ? <Text style={styles.dot}>·</Text> : null}
-        <Ionicons name="bicycle-outline" size={12} color="#2E7D32" />
-        <Text style={styles.etaInline} numberOfLines={1}>
-          {deliveryEta}
-        </Text>
+        {stockLeft !== null && etaText ? <Text style={styles.dot}>·</Text> : null}
+        {etaText ? (
+          <>
+            <Ionicons name={vehicleIcon} size={12} color="#2E7D32" />
+            <Text style={styles.etaInline} numberOfLines={1}>
+              {etaText}
+            </Text>
+          </>
+        ) : null}
       </View>
     );
   }
@@ -43,13 +60,18 @@ export function ProductStockInfo({
           {t('onlyXLeft').replace('{count}', String(stockLeft))}
         </Text>
       ) : null}
-      <View style={styles.deliveryRow}>
-        <Ionicons name="bicycle-outline" size={compact ? 13 : 15} color="#2E7D32" />
-        <Text style={[styles.deliveryLabel, compact && styles.deliveryLabelCompact]}>
-          {t('deliveryEtaLabel')}
-        </Text>
-        <Text style={[styles.deliveryEta, compact && styles.deliveryEtaCompact]}>{deliveryEta}</Text>
-      </View>
+      {etaText ? (
+        <Animated.View
+          key={etaText}
+          entering={FadeIn.duration(250)}
+          style={styles.deliveryRow}
+        >
+          <Ionicons name={vehicleIcon} size={compact ? 13 : 15} color="#2E7D32" />
+          <Text style={[styles.deliveryEta, compact && styles.deliveryEtaCompact]}>
+            {etaText}
+          </Text>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -96,14 +118,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  deliveryLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#2E7D32',
-  },
-  deliveryLabelCompact: {
-    fontSize: 11,
   },
   deliveryEta: {
     fontSize: 12,

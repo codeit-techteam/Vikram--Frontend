@@ -267,4 +267,9 @@ export interface ProductQueryParams {
   minPrice?: number;
   maxPrice?: number;
   hubId?: string;
+  latitude?: number;
+  longitude?: number;
+  pincode?: string;
+  /** Comma-separated product UUIDs for offer / curated grids */
+  ids?: string;
 }

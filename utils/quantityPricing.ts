@@ -1,7 +1,6 @@
 import {
-  CATEGORY_WEIGHT_KG,
-  DEFAULT_WEIGHT_PER_UNIT_KG,
-  resolveVehicleForQuantity,
+  resolvePlaceholderVehicle,
+  resolveDisplayWeightKg,
   type VehicleTier,
   type DeliveryVehicleType,
 } from '@constants/deliveryVehicles';
@@ -38,18 +37,19 @@ export interface QuantityPriceBreakdown {
   vehicle: VehicleTier;
   vehicleType: DeliveryVehicleType;
   deliveryMode: string;
+  /** Placeholder until backend `/delivery/eta` responds — never a static "23 mins". */
   eta: string;
   modeTitle: string;
   deliveryMessage: string;
 }
 
 export function resolveWeightPerUnitKg(product: Product): number {
-  if (typeof product.weightPerUnit === 'number' && product.weightPerUnit > 0) {
-    return product.weightPerUnit;
-  }
-  const fromCategory = CATEGORY_WEIGHT_KG[product.categoryType];
-  if (fromCategory != null) return fromCategory;
-  return DEFAULT_WEIGHT_PER_UNIT_KG;
+  return resolveDisplayWeightKg({
+    weightPerUnit: product.weightPerUnit,
+    categoryType: product.categoryType,
+    unit: product.unit,
+    quantity: 1,
+  });
 }
 
 /**
@@ -98,7 +98,8 @@ export function computeQuantityPricing(
 
   const weightPerUnitKg = resolveWeightPerUnitKg(product);
   const estimatedWeightKg = Math.round(weightPerUnitKg * qty * 100) / 100;
-  const vehicle = resolveVehicleForQuantity(qty);
+  const vehicle = resolvePlaceholderVehicle(product.categoryType, product.name);
+  const modeTitle = vehicle.label;
 
   return {
     basePrice: retailUnitPrice,
@@ -124,9 +125,9 @@ export function computeQuantityPricing(
     vehicle,
     vehicleType: vehicle.type,
     deliveryMode: vehicle.label,
-    eta: vehicle.etaLabel,
-    modeTitle: vehicle.modeTitle,
-    deliveryMessage: vehicle.message,
+    eta: '',
+    modeTitle,
+    deliveryMessage: '',
   };
 }
 

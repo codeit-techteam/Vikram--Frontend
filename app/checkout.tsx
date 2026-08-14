@@ -29,6 +29,7 @@ import { useDeliveryStore } from '@store/deliveryStore';
 import { useEtaStore } from '@store/etaStore';
 import { useGstStore } from '@store/gstStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { useLoyaltyStore } from '@store/loyaltyStore';
 import { useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { normalizeApiOrder } from '@utils/orderAdapters';
@@ -64,14 +65,12 @@ type ActiveSheet =
   | null;
 
 function CheckoutEtaInline() {
-  const { deliveringBy, deliveryMessage, estimatedMinutes, isLoading } = useDeliveryEta({
+  const { deliveringBy, deliveryMessage, isLoading } = useDeliveryEta({
     autoFetch: true,
   });
   const text = deliveringBy
     ? deliveringBy
-    : estimatedMinutes
-      ? `${estimatedMinutes} mins`
-      : deliveryMessage || (isLoading ? '…' : '—');
+    : deliveryMessage || (isLoading ? 'Updating delivery option…' : '—');
   return <Text className="font-bold text-primary">{text}</Text>;
 }
 
@@ -80,7 +79,6 @@ function CheckoutEtaCard() {
   const {
     deliveryMessage,
     deliveringBy,
-    estimatedMinutes,
     isLoading,
   } = useDeliveryEta({ autoFetch: true });
   const { serviceable } = useServiceability({ autoCheck: false });
@@ -94,12 +92,12 @@ function CheckoutEtaCard() {
       <View className="flex-row items-center gap-2">
         <Ionicons name="time-outline" size={18} color="#FEB623" />
         <Text className="flex-1 text-sm font-bold text-text">
-          {isLoading ? 'Calculating delivery…' : headline}
+          {isLoading ? 'Updating delivery option…' : headline}
         </Text>
       </View>
-      {estimatedMinutes ? (
+      {deliveryMessage ? (
         <Text className="mt-1 text-xs text-text-secondary">
-          {deliveryMessage || `Delivery in ${estimatedMinutes} mins`}
+          {deliveryMessage}
         </Text>
       ) : null}
       {!serviceable && !isLoading ? (
@@ -140,7 +138,6 @@ export default function CheckoutScreen() {
 
   const {
     deliveryMessage: etaLabel,
-    estimatedMinutes,
     deliveringBy,
     refresh: refreshEta,
   } = useDeliveryEta({ autoFetch: true });
@@ -179,6 +176,14 @@ export default function CheckoutScreen() {
 
   const savingsOpacity = useSharedValue(1);
 
+  const cartSignature = useMemo(
+    () =>
+      items
+        .map((i) => `${i.id}:${i.quantity}:${i.unitPrice}:${i.bulkPrice}`)
+        .join('|'),
+    [items],
+  );
+
   const localSubtotal = useMemo(
     () => items.reduce((sum, i) => sum + getLineTotal(i), 0),
     [items],
@@ -203,10 +208,11 @@ export default function CheckoutScreen() {
 
         if (!base.redemptionEligible || base.maxRedeemablePoints <= 0) {
           setUseLoyalty(false);
+          useCartStore.setState({ pointsApplied: false });
           setCheckoutPreview(base);
           setLoyaltyError(
             base.loyaltyMessage ||
-              `Loyalty points can be redeemed on orders of ₹${base.minRedeemOrderValue} or more.`,
+              `BajriPro Points can be redeemed on orders of ₹${base.minRedeemOrderValue} or more.`,
           );
           return;
         }
@@ -224,7 +230,7 @@ export default function CheckoutScreen() {
         setLoyaltyError(
           e instanceof Error
             ? e.message
-            : 'Unable to apply loyalty points. Please try again.',
+            : 'Unable to apply BajriPro Points. Please try again.',
         );
       } finally {
         setLoyaltyLoading(false);
@@ -235,8 +241,9 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     void refreshCheckoutPreview(useLoyalty);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load when cart/site changes
-  }, [items.length, selectedSite?.id]);
+    // Recalculate when cart contents or site change
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: useLoyalty handled by toggle
+  }, [cartSignature, selectedSite?.id]);
 
   const subtotal = checkoutPreview?.subtotal ?? localSubtotal;
   const deliveryCharge = checkoutPreview?.deliveryCharge ?? 0;
@@ -291,6 +298,7 @@ export default function CheckoutScreen() {
 
   const onToggleLoyalty = (enabled: boolean) => {
     setUseLoyalty(enabled);
+    useCartStore.setState({ pointsApplied: enabled });
     void refreshCheckoutPreview(enabled);
   };
 
@@ -372,9 +380,8 @@ export default function CheckoutScreen() {
       const deliveryEtaLabel =
         apiOrder.expectedDelivery ||
         etaLabel ||
-        (estimatedMinutes ? `Delivery in ${estimatedMinutes} mins` : '') ||
         deliveringBy ||
-        'Calculating…';
+        'Updating delivery estimate...';
 
       // Seed React Query so Track/Details bind to API order immediately.
       if (orderId) {
@@ -398,6 +405,8 @@ export default function CheckoutScreen() {
       );
 
       clearCart();
+      useCartStore.setState({ pointsApplied: false });
+      void useLoyaltyStore.getState().refresh();
       setPaying(false);
       router.replace({
         pathname: '/order-success',
@@ -477,20 +486,20 @@ export default function CheckoutScreen() {
           checkoutPreview &&
           !checkoutPreview.redemptionEligible ? (
             <Text className="mt-2 text-xs text-text-secondary">
-              Spend ₹{checkoutPreview.minRedeemOrderValue} or more to unlock
-              loyalty redemption.
+              {localSubtotal < checkoutPreview.minRedeemOrderValue
+                ? `Add ₹${Math.max(0, checkoutPreview.minRedeemOrderValue - localSubtotal).toLocaleString('en-IN')} more to use BajriPro Points`
+                : `Spend ₹${checkoutPreview.minRedeemOrderValue} or more to unlock BajriPro Points.`}
             </Text>
           ) : (
             <Text className="mt-2 text-xs text-text-secondary">
-              Apply loyalty points at checkout (orders ₹
+              Apply BajriPro Points at checkout (orders ₹
               {checkoutPreview?.minRedeemOrderValue ?? 500}+). 100 points = ₹1.
             </Text>
           )}
           {useLoyalty && loyaltyRedemption > 0 ? (
             <>
               <Text className="mt-2 text-xs text-text-secondary">
-                {loyaltyPoints.toLocaleString('en-IN')} Points ={' '}
-                {formatINR(loyaltyRedemption)} Discount
+                ✓ {loyaltyPoints.toLocaleString('en-IN')} BajriPro Points applied
               </Text>
               <Animated.View
                 style={savingsAnimStyle}

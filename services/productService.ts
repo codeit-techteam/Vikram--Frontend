@@ -47,6 +47,10 @@ function buildQuery(params: ProductQueryParams = {}): string {
   if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
   if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
   if (params.hubId) query.set('hubId', params.hubId);
+  if (params.latitude != null) query.set('latitude', String(params.latitude));
+  if (params.longitude != null) query.set('longitude', String(params.longitude));
+  if (params.pincode) query.set('pincode', params.pincode);
+  if (params.ids) query.set('ids', params.ids);
 
   const qs = query.toString();
   return qs ? `?${qs}` : '';
@@ -85,9 +89,11 @@ export async function fetchHomeProducts(params?: {
 
 export async function fetchProducts(
   params: ProductQueryParams = {},
+  signal?: AbortSignal,
 ): Promise<ProductListPage> {
   const { data } = await api.get<ApiResponse<ApiProductList>>(
     `${PRODUCTS_BASE}${buildQuery(params)}`,
+    { signal },
   );
   const payload = data.data;
   return {

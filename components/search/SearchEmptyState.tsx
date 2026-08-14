@@ -1,18 +1,24 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-import { POPULAR_SEARCH_TERMS } from '@utils/searchUtils';
+import type { SearchCategoryChip } from '@components/search/RecentSearches';
 import { useTranslation } from '@store/languageStore';
 
 interface SearchEmptyStateProps {
   query: string;
+  categories?: SearchCategoryChip[];
   onSuggestionPress: (term: string) => void;
+  onCategorySelect?: (term: string, slug?: string) => void;
 }
 
-export function SearchEmptyState({ query, onSuggestionPress }: SearchEmptyStateProps) {
+export function SearchEmptyState({
+  query,
+  categories = [],
+  onSuggestionPress,
+  onCategorySelect,
+}: SearchEmptyStateProps) {
   const { t } = useTranslation();
 
   return (
@@ -21,37 +27,50 @@ export function SearchEmptyState({ query, onSuggestionPress }: SearchEmptyStateP
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}>
       <View style={styles.illustration}>
-        <Ionicons name="cube-outline" size={48} color="#FEB623" />
+        <Ionicons name="search-outline" size={40} color="#FEB623" />
       </View>
 
-      <Text style={styles.title}>
-        {t('noResultsFor')} &quot;{query}&quot;
+      <Text style={styles.title}>No products found</Text>
+      <Text style={styles.subtitle}>
+        We couldn’t find anything matching{'\n'}“{query}”
       </Text>
 
-      <Text style={styles.subtitle}>{t('trySearchingFor')}</Text>
+      <Text style={styles.hintTitle}>Try:</Text>
+      <Text style={styles.hint}>• checking the spelling</Text>
+      <Text style={styles.hint}>• searching by brand</Text>
+      <Text style={styles.hint}>• searching by material / category</Text>
 
-      <View style={styles.chipRow}>
-        {POPULAR_SEARCH_TERMS.map((term) => (
-          <ScaledPressable
-            key={term}
-            style={styles.chip}
-            onPress={async () => {
-              await Haptics.selectionAsync();
-              onSuggestionPress(term);
-            }}>
-            <Text style={styles.chipText}>{term}</Text>
-          </ScaledPressable>
-        ))}
-      </View>
+      {categories.length > 0 ? (
+        <>
+          <Text style={styles.sectionTitle}>{t('popularCategories')}</Text>
+          <View style={styles.chipRow}>
+            {categories.slice(0, 6).map((cat) => (
+              <ScaledPressable
+                key={cat.id}
+                style={styles.chip}
+                onPress={async () => {
+                  await Haptics.selectionAsync();
+                  if (onCategorySelect) onCategorySelect(cat.label, cat.id);
+                  else onSuggestionPress(cat.label);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={cat.label}>
+                <Text style={styles.chipIcon}>{cat.icon}</Text>
+                <Text style={styles.chipText}>{cat.label}</Text>
+              </ScaledPressable>
+            ))}
+          </View>
+        </>
+      ) : null}
 
       <Pressable
         style={styles.browseLink}
         onPress={async () => {
           await Haptics.selectionAsync();
-          router.push('/(tabs)/catalog' as Href);
-        }}>
-        <Text style={styles.browseText}>{t('browseAllCategories')}</Text>
-        <Ionicons name="arrow-forward" size={16} color="#FEB623" />
+          onSuggestionPress('Cement');
+        }}
+        accessibilityRole="button">
+        <Text style={styles.browseText}>{t('trySearching')}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -61,57 +80,83 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 48,
+    paddingTop: 36,
     paddingBottom: 32,
   },
   illustration: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: '#FFF4D1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   title: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1A1A1A',
     textAlign: 'center',
   },
   subtitle: {
-    marginTop: 16,
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#666',
+    textAlign: 'center',
+  },
+  hintTitle: {
+    marginTop: 20,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    alignSelf: 'flex-start',
+  },
+  hint: {
+    marginTop: 4,
     fontSize: 14,
     color: '#666',
+    alignSelf: 'flex-start',
+  },
+  sectionTitle: {
+    marginTop: 24,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    alignSelf: 'flex-start',
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: 12,
   },
   chip: {
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 44,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#FEB623',
-    backgroundColor: '#FFF8F3',
+    borderColor: '#E8E8E8',
+    backgroundColor: '#FFFFFF',
+  },
+  chipIcon: {
+    fontSize: 13,
   },
   chipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#FEB623',
+    color: '#1A1A1A',
   },
   browseLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 28,
+    marginTop: 24,
   },
   browseText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FEB623',
   },

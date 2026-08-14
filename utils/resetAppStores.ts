@@ -19,7 +19,7 @@ export async function resetAppStores() {
   useCartStore.setState({
     items: [],
     savedForLater: [],
-    pointsApplied: true,
+    pointsApplied: false,
   });
   useOrderStore.setState({
     orders: [],

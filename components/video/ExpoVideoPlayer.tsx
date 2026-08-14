@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
 
-const LOAD_TIMEOUT_MS = 12_000;
+const LOAD_TIMEOUT_MS = 20_000;
 
 interface ExpoVideoPlayerProps {
   source: VideoSource;

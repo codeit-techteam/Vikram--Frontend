@@ -6,34 +6,39 @@ import type { CmsHomeResponse } from '@/types/cms';
 
 export const CMS_HOME_QUERY_KEY = 'cms-home';
 /** Short stale window so Super Admin → R2 → DB edits appear without rebuild. */
-export const CMS_HOME_STALE_TIME = 1000 * 30;
+export const CMS_HOME_STALE_TIME = 1000 * 10;
 
 export function useCmsHome(options?: { enabled?: boolean }) {
   const query = useQuery({
     queryKey: [CMS_HOME_QUERY_KEY],
     queryFn: fetchCmsHome,
     staleTime: CMS_HOME_STALE_TIME,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: 1000 * 60,
+    refetchInterval: 1000 * 30,
     enabled: options?.enabled !== false,
   });
 
+  const refetch = query.refetch;
   const refresh = useCallback(async () => {
-    await query.refetch();
-  }, [query]);
+    await refetch();
+  }, [refetch]);
 
   const cms: CmsHomeResponse | null = query.data ?? null;
 
   return {
     cms,
     sections: cms?.sections ?? [],
-    banners: (cms?.banners ?? []).filter((b) => b.placement === 'HOME_HERO'),
+    banners:
+      cms?.heroBanners ??
+      (cms?.banners ?? []).filter((b) => b.placement === 'HOME_HERO'),
     heroBanners:
       cms?.heroBanners ??
       (cms?.banners ?? []).filter((b) => b.placement === 'HOME_HERO'),
     promoBanners:
       cms?.promoBanners ??
       (cms?.banners ?? []).filter((b) => b.placement === 'HOME_PROMO'),
+    deliveryPromotions: cms?.deliveryPromotions ?? [],
     videoBanners: cms?.videoBanners ?? [],
     heroVideo: cms?.heroVideo ?? cms?.videoBanners?.[0] ?? null,
     ads: cms?.ads ?? cms?.brandAdvertisements ?? cms?.catalogs ?? [],

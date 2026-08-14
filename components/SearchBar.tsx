@@ -67,6 +67,8 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
     onSubmitEditing: onSubmit,
     autoFocus,
     editable,
+    blurOnSubmit: false,
+    accessibilityLabel: t('searchPlaceholder'),
     style: styles.input,
   };
 
@@ -89,6 +91,8 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
             await Haptics.selectionAsync();
             onVoicePress();
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Voice search"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="mic-outline" size={20} color="#FEB623" />
         </Pressable>
@@ -101,14 +105,19 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(function Searc
       <Ionicons name="search-outline" size={18} color="#FEB623" />
       <TextInput ref={inputRef} {...inputProps} />
       {query.length > 0 ? (
-        <Pressable onPress={onClear} hitSlop={10}>
+        <Pressable onPress={onClear} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear search">
           <Ionicons name="close-circle" size={20} color="#999" />
         </Pressable>
-      ) : (
-        <Pressable onPress={onVoicePress} hitSlop={10}>
-          <Ionicons name="mic-outline" size={20} color="#FEB623" />
-        </Pressable>
-      )}
+      ) : null}
+      <View style={styles.inputDivider} />
+      <Pressable
+        onPress={onVoicePress}
+        hitSlop={10}
+        style={styles.micButton}
+        accessibilityRole="button"
+        accessibilityLabel="Voice search">
+        <Ionicons name="mic-outline" size={20} color="#FEB623" />
+      </Pressable>
     </View>
   );
 });
@@ -159,5 +168,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1A1A1A',
     paddingVertical: 0,
+  },
+  inputDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E0E0E0',
+  },
+  micButton: {
+    minWidth: 36,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

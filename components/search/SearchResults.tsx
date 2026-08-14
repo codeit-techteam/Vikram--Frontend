@@ -14,11 +14,10 @@ import type { SearchSortOption } from '@utils/searchUtils';
 
 const RESULT_CARD_HEIGHT = 168;
 
-const SORT_OPTIONS: { id: SearchSortOption; labelKey: 'relevance' | 'priceLowHigh' | 'priceHighLow' | 'newestFirst' }[] = [
+const SORT_OPTIONS: { id: SearchSortOption; labelKey: 'relevance' | 'priceLowHigh' | 'priceHighLow' }[] = [
   { id: 'relevance', labelKey: 'relevance' },
   { id: 'price_asc', labelKey: 'priceLowHigh' },
   { id: 'price_desc', labelKey: 'priceHighLow' },
-  { id: 'newest', labelKey: 'newestFirst' },
 ];
 
 interface SearchResultsProps {

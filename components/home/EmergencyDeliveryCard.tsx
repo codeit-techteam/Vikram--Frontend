@@ -13,7 +13,7 @@ export function EmergencyDeliveryCard({
   onOrderNow,
   promotion,
 }: EmergencyDeliveryCardProps) {
-  const { estimatedMinutes, deliveryMessage } = useDeliveryEta({ autoFetch: false });
+  const { deliveryMessage } = useDeliveryEta({ autoFetch: false });
 
   if (!promotion) return null;
 
@@ -28,7 +28,6 @@ export function EmergencyDeliveryCard({
   const eta =
     promotion.badge ||
     deliveryMessage ||
-    (estimatedMinutes ? `Delivery in ${estimatedMinutes} mins` : null) ||
     '';
   const title = promotion.title;
   const subtitle = promotion.subtitle ?? '';

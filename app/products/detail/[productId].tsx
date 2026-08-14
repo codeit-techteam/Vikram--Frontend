@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -22,7 +23,7 @@ import {
   isVisibleProductBrand,
   normalizeCategoryDisplayName,
 } from '@utils/categoryDisplay';
-import { DeliveryOptions, type DeliveryType } from '@components/DeliveryOptions';
+import { DeliveryOptions } from '@components/DeliveryOptions';
 import { FrequentlyBoughtTogether } from '@components/FrequentlyBoughtTogether';
 import { PricingSummary } from '@components/PricingSummary';
 import { ProductImageCarousel } from '@components/ProductImageCarousel';
@@ -44,11 +45,12 @@ import {
 import { useSearchStore } from '@store/searchStore';
 import { useProductDetail, useRelatedProducts } from '@hooks/useProducts';
 import { useAddToCart } from '@hooks/useAddToCart';
-import { useDeliveryEta } from '@hooks/useDeliveryEta';
+import { useProductDeliveryEstimate } from '@hooks/useProductDeliveryEstimate';
 import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
+import { getVehicleTier } from '@constants/deliveryVehicles';
 import { specsMapToTechItems, productToSearchProduct } from '@utils/catalogAdapters';
 import {
   getDeliveryEta,
@@ -58,10 +60,13 @@ import {
 import { computeQuantityPricing } from '@utils/quantityPricing';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 
+function compactEtaRange(label: string): string {
+  return label.trim().replace(/^estimated delivery\s+/i, '');
+}
+
 export default function ProductDetailScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
-  const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: true });
   const { productId, categoryName, productName, categoryId } = useLocalSearchParams<{
     productId: string;
     categoryName?: string;
@@ -87,7 +92,6 @@ export default function ProductDetailScreen() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(undefined);
   const [localQty, setLocalQty] = useState(1);
   const [specsExpanded, setSpecsExpanded] = useState(true);
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>('priority');
 
   const sites = useDeliveryStore((s) => s.sites);
   const selectedSiteId = useDeliveryStore((s) => s.selectedSiteId);
@@ -143,20 +147,33 @@ export default function ProductDetailScreen() {
     return computeQuantityPricing(product, localQty, selectedVariant, pricing);
   }, [product, pricing, localQty, selectedVariant]);
 
+  const {
+    estimate: pdpEta,
+    label: liveDeliveryMessage,
+    isCalculating: etaUpdating,
+  } = useProductDeliveryEstimate({
+    productId: product?.id,
+    variantId: selectedVariant?.id,
+    quantity: localQty,
+    enabled: Boolean(product?.id && localQty > 0),
+  });
+
+  const liveVehicle = pdpEta?.deliveryVehicleType
+    ? getVehicleTier(pdpEta.deliveryVehicleType)
+    : quote?.vehicle;
+  const liveModeTitle = pdpEta?.deliveryModeTitle || liveVehicle?.label || quote?.modeTitle;
+
   const unitPrice = quote?.appliedUnitPrice ?? pricing?.sellingPrice ?? 0;
   const subtotal = quote?.subtotalBeforeGst ?? localQty * unitPrice;
   const gst = quote?.gstAmount ?? subtotal * ((product?.gst ?? 18) / 100);
-  const logistics = deliveryType === 'priority' ? 250 : 0;
-  const estimatedTotal = (quote?.estimatedTotal ?? subtotal + gst) + logistics;
+  const estimatedTotal = quote?.estimatedTotal ?? subtotal + gst;
 
   const priceUnitLabel = hasVariants
     ? getVariantDisplayUnit(selectedVariant) || selectedVariant?.label || skuUnit
     : product?.unit ?? '';
 
   const stockLeft = product ? getStockLeft(product) : null;
-  const deliveryEta = product
-    ? getDeliveryEta(product, estimatedMinutes, etaLabel)
-    : etaLabel || '';
+  const deliveryEta = liveDeliveryMessage || (product ? getDeliveryEta(product) : '');
   const mode = getAddToCartMode(localQty, cartQty);
 
   const carouselImages = useMemo(
@@ -382,9 +399,20 @@ export default function ProductDetailScreen() {
               <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
                 {t('shipping')}
               </Text>
-              <Text className="mt-1 text-sm font-semibold text-text">
-                {deliveryEta || t('flatbedLogistics')}
+              <Text className="mt-1 text-[11px] font-semibold text-text-secondary">
+                Estimated delivery
               </Text>
+              <Animated.Text
+                key={deliveryEta || 'shipping-eta'}
+                entering={FadeIn.duration(250)}
+                className="mt-0.5 text-sm font-semibold text-text"
+              >
+                {compactEtaRange(
+                  etaUpdating && pdpEta
+                    ? liveDeliveryMessage
+                    : deliveryEta || 'Select delivery location to calculate ETA',
+                )}
+              </Animated.Text>
             </View>
           </View>
         </View>
@@ -402,7 +430,11 @@ export default function ProductDetailScreen() {
             <>
               <ProductPrice pricing={pricing} size="lg" showUnit />
               <View className="mt-2">
-                <ProductStockInfo stockLeft={stockLeft} deliveryEta={deliveryEta} />
+                <ProductStockInfo
+                  stockLeft={stockLeft}
+                  deliveryEta={deliveryEta}
+                  vehicleIcon={liveVehicle?.icon ?? 'bus-outline'}
+                />
               </View>
               <ProductBulkPrice pricing={pricing} />
 
@@ -436,10 +468,14 @@ export default function ProductDetailScreen() {
 
               {quote ? (
                 <View className="mt-3 flex-row items-center gap-2 rounded-lg bg-trust px-3 py-2">
-                  <Text className="text-base">{quote.vehicle.emoji}</Text>
+                  <Text className="text-base">{liveVehicle?.emoji ?? quote.vehicle.emoji}</Text>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-text">{quote.modeTitle}</Text>
-                    <Text className="text-xs text-text-secondary">{quote.deliveryMessage}</Text>
+                    <Text className="text-sm font-bold text-text">
+                      {liveModeTitle || quote.modeTitle}
+                    </Text>
+                    <Text className="text-xs text-text-secondary">
+                      {liveDeliveryMessage}
+                    </Text>
                   </View>
                   {quote.bulkApplied ? (
                     <Text className="text-xs font-extrabold" style={{ color: '#2E7D32' }}>
@@ -497,10 +533,8 @@ export default function ProductDetailScreen() {
         )}
 
         <DeliveryOptions
-          selected={deliveryType}
-          onSelect={setDeliveryType}
           siteName={selectedSite?.name ?? 'your site'}
-          deliveryMessage={deliveryEta || etaLabel || undefined}
+          deliveryMessage={deliveryEta || undefined}
         />
 
         {relatedItems.length > 0 ? <FrequentlyBoughtTogether items={relatedItems} /> : null}

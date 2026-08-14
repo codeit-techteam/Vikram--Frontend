@@ -21,12 +21,11 @@ export function ProductStock({ stockLeft, deliveryEta, compact = false }: Produc
       ) : null}
       <View style={styles.deliveryRow}>
         <Text style={styles.truck}>🚚</Text>
-        <Text style={[styles.deliveryLabel, compact && styles.deliveryLabelCompact]}>
-          {t('deliveryEtaLabel')}
-        </Text>
-        <Text style={[styles.deliveryEta, compact && styles.deliveryEtaCompact]}>
-          {deliveryEta}
-        </Text>
+        {deliveryEta ? (
+          <Text style={[styles.deliveryEta, compact && styles.deliveryEtaCompact]}>
+            {deliveryEta}
+          </Text>
+        ) : null}
       </View>
     </View>
   );

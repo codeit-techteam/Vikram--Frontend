@@ -4,6 +4,7 @@ import {
   type SearchProduct,
 } from '@constants/searchData';
 import { getExtensionSearchProducts } from '@constants/catalogExtensions';
+import type { Product } from '@/types/catalog';
 
 export interface TextSegment {
   text: string;
@@ -17,7 +18,22 @@ export interface Suggestion {
   type: 'product' | 'brand' | 'category' | 'grade';
 }
 
-export type SearchSortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newest';
+export type SearchSortOption =
+  | 'relevance'
+  | 'price_asc'
+  | 'price_desc'
+  | 'popular'
+  | 'fastest';
+
+export interface SearchFilters {
+  category?: string | null;
+  inStock: boolean;
+}
+
+export const EMPTY_SEARCH_FILTERS: SearchFilters = {
+  category: null,
+  inStock: false,
+};
 
 export const POPULAR_SEARCH_TERMS = [
   'UltraTech Cement',
@@ -25,25 +41,41 @@ export const POPULAR_SEARCH_TERMS = [
   'Sand & Gravel',
 ] as const;
 
+export const POPULAR_CATEGORY_ICONS: Record<string, string> = {
+  cement: '🧱',
+  rmc: '🚛',
+  steel: '🚛',
+  aggregates: '🪨',
+  stone: '🪨',
+  'stone-chips': '🪨',
+  sand: '🏖',
+  bricks: '🧱',
+  waterproofing: '💧',
+  adhesives: '🧴',
+  putty: '🪣',
+  paint: '🎨',
+};
+
 export const POPULAR_CATEGORIES = [
   { id: 'cement', label: 'Cement', icon: '🧱' },
   { id: 'rmc', label: 'RMC', icon: '🚛' },
-  { id: 'stone', label: 'Aggregates', icon: '🪨' },
-  { id: 'bricks', label: 'Bricks', icon: '🪵' },
+  { id: 'aggregates', label: 'Aggregates', icon: '🪨' },
+  { id: 'bricks', label: 'Bricks', icon: '🧱' },
+  { id: 'sand', label: 'Sand', icon: '🏖' },
+  { id: 'waterproofing', label: 'Waterproofing', icon: '💧' },
+] as const;
+
+const PREFERRED_CATEGORY_ORDER = [
+  'cement',
+  'rmc',
+  'aggregates',
+  'stone-chips',
+  'bricks',
+  'sand',
+  'waterproofing',
 ] as const;
 
 const GRADE_TERMS = ['OPC 53', 'M25', 'M20', 'A+', 'A', 'B+', 'PPC'];
-
-const BRAND_NAMES = [...new Set(ALL_PRODUCTS.map((p) => p.brand))];
-
-const CATEGORY_LABELS: Record<string, string> = {
-  cement: 'Cement',
-  rmc: 'RMC',
-  steel: 'RMC',
-  stone: 'Aggregates',
-  sand: 'Sand',
-  bricks: 'Bricks',
-};
 
 export function highlightMatch(text: string, query: string): TextSegment[] {
   const trimmed = query.trim();
@@ -71,37 +103,76 @@ export function highlightMatch(text: string, query: string): TextSegment[] {
   return segments;
 }
 
-function scoreProduct(product: SearchProduct, query: string): number {
-  const q = query.toLowerCase();
-  const name = product.name.toLowerCase();
-  const brand = product.brand.toLowerCase();
-  const category = product.category.toLowerCase();
-
-  if (name === q) return 100;
-  if (name.startsWith(q)) return 90;
-  if (brand.startsWith(q)) return 80;
-  if (name.includes(q)) return 70;
-  if (brand.includes(q)) return 60;
-  if (category.includes(q)) return 50;
-  return 0;
+export function getCategoryIcon(slug: string): string {
+  return POPULAR_CATEGORY_ICONS[slug.toLowerCase()] ?? '📦';
 }
 
-export function searchProducts(query: string): SearchProduct[] {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-
-  const q = trimmed.toLowerCase();
-  const catalog = [...ALL_PRODUCTS, ...getExtensionSearchProducts()];
-  return catalog.filter(
-    (p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.brand.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
-      (CATEGORY_LABELS[p.category]?.toLowerCase().includes(q) ?? false),
-  ).sort((a, b) => scoreProduct(b, trimmed) - scoreProduct(a, trimmed));
+export function sortCategoriesForSearch<T extends { slug: string }>(
+  categories: T[],
+): T[] {
+  const rank = (slug: string) => {
+    const idx = PREFERRED_CATEGORY_ORDER.indexOf(
+      slug.toLowerCase() as (typeof PREFERRED_CATEGORY_ORDER)[number],
+    );
+    return idx === -1 ? PREFERRED_CATEGORY_ORDER.length + 1 : idx;
+  };
+  return [...categories].sort((a, b) => rank(a.slug) - rank(b.slug));
 }
 
-export function fetchSuggestions(query: string): Suggestion[] {
+export function sortSearchProducts(
+  products: Product[],
+  sort: SearchSortOption,
+): Product[] {
+  const copy = [...products];
+  switch (sort) {
+    case 'price_asc':
+      return copy.sort((a, b) => a.retailPriceValue - b.retailPriceValue);
+    case 'price_desc':
+      return copy.sort((a, b) => b.retailPriceValue - a.retailPriceValue);
+    case 'popular':
+      return copy.sort((a, b) => Number(b.isBestSelling) - Number(a.isBestSelling));
+    case 'fastest':
+      return copy.sort((a, b) => {
+        const etaA = a.estimatedDeliveryMinutes ?? Number.POSITIVE_INFINITY;
+        const etaB = b.estimatedDeliveryMinutes ?? Number.POSITIVE_INFINITY;
+        return etaA - etaB;
+      });
+    case 'relevance':
+    default:
+      return copy;
+  }
+}
+
+export function mapSortToProductQuery(sort: SearchSortOption): {
+  sortBy?: 'price' | 'retailPrice' | 'name' | 'sales' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+} {
+  switch (sort) {
+    case 'price_asc':
+      return { sortBy: 'price', sortOrder: 'asc' };
+    case 'price_desc':
+      return { sortBy: 'price', sortOrder: 'desc' };
+    case 'popular':
+      return { sortBy: 'sales', sortOrder: 'desc' };
+    case 'fastest':
+    case 'relevance':
+    default:
+      return {};
+  }
+}
+
+export function isOfflineError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { message?: string; code?: string; response?: unknown };
+  if (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED') return true;
+  if (!err.response && typeof err.message === 'string' && /network/i.test(err.message)) {
+    return true;
+  }
+  return false;
+}
+
+/** Local fallback suggestions when the suggestions API is slow or empty. */
+export function fetchLocalSuggestions(query: string): Suggestion[] {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
@@ -115,26 +186,6 @@ export function fetchSuggestions(query: string): Suggestion[] {
     seen.add(key);
     suggestions.push(suggestion);
   };
-
-  const catalog = [...ALL_PRODUCTS, ...getExtensionSearchProducts()];
-
-  catalog.filter((p) => p.name.toLowerCase().includes(q))
-    .sort((a, b) => scoreProduct(b, trimmed) - scoreProduct(a, trimmed))
-    .slice(0, 4)
-    .forEach((p) => {
-      add({
-        id: `product-${p.id}`,
-        text: p.name,
-        category: CATEGORY_LABELS[p.category] ?? p.category,
-        type: 'product',
-      });
-    });
-
-  BRAND_NAMES.filter((b) => b.toLowerCase().includes(q))
-    .slice(0, 2)
-    .forEach((brand) => {
-      add({ id: `brand-${brand}`, text: brand, type: 'brand' });
-    });
 
   SEARCH_CATEGORIES.filter(
     (c) => c.label.toLowerCase().includes(q) || c.id.includes(q),
@@ -164,12 +215,8 @@ export function sortSearchResults(
       return copy.sort((a, b) => a.price - b.price);
     case 'price_desc':
       return copy.sort((a, b) => b.price - a.price);
-    case 'newest':
-      return copy.sort((a, b) => {
-        const numA = parseInt(a.id.replace(/\D/g, ''), 10) || 0;
-        const numB = parseInt(b.id.replace(/\D/g, ''), 10) || 0;
-        return numB - numA;
-      });
+    case 'popular':
+    case 'fastest':
     case 'relevance':
     default:
       return copy;
@@ -177,5 +224,20 @@ export function sortSearchResults(
 }
 
 export function getCategoryLabel(categoryId: string): string {
-  return CATEGORY_LABELS[categoryId] ?? categoryId;
+  const match = POPULAR_CATEGORIES.find((c) => c.id === categoryId);
+  return match?.label ?? categoryId;
+}
+
+/** Kept for catalogExtensions / older local fallbacks. */
+export function searchProducts(query: string): SearchProduct[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const q = trimmed.toLowerCase();
+  const catalog = [...ALL_PRODUCTS, ...getExtensionSearchProducts()];
+  return catalog.filter(
+    (p) =>
+      p.name.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q),
+  );
 }

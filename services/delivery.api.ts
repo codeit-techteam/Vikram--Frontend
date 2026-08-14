@@ -8,10 +8,29 @@ export interface DeliveryEtaCartItem {
   quantity: number;
 }
 
+export interface DeliveryEtaTiming {
+  preparationMinutes: number;
+  pickingMinutes: number;
+  packingMinutes: number;
+  vehicleAssignmentMinutes: number;
+  queueMinutes: number;
+  loadingMinutes: number;
+  travelMinutes: number;
+  unloadingMinutes: number;
+  siteAccessMinutes: number;
+  bufferMinutes: number;
+  plantPreparationMinutes: number;
+  mixerLoadingMinutes: number;
+}
+
 export interface DeliveryEtaResult {
   serviceable: boolean;
   deliveryETA: number;
+  etaMinMinutes?: number;
+  etaMaxMinutes?: number;
+  etaConfidence?: 'HIGH' | 'MEDIUM' | 'LOW';
   deliveryMessage: string;
+  deliveryModeTitle?: string;
   deliveryDay: 'Today' | 'Tomorrow' | 'Later' | 'Unavailable';
   deliveringBy?: string | null;
   deliveryCharge: number;
@@ -22,8 +41,14 @@ export interface DeliveryEtaResult {
   deliveryVehicleCount?: number;
   deliveryDistanceKm?: number;
   deliveryTotalWeightKg?: number | null;
+  deliveryTotalVolumeCft?: number | null;
   deliveryCapacityUsed?: number | null;
   deliveryCapacityLimit?: number | null;
+  deliveryLogisticsType?: string;
+  deliverySelectionReason?: string;
+  timing?: DeliveryEtaTiming;
+  trafficDataAvailable?: boolean;
+  calculationVersion?: number;
 }
 
 export interface FetchEtaParams {
@@ -34,7 +59,7 @@ export interface FetchEtaParams {
 }
 
 export async function fetchDeliveryEta(
-  params: FetchEtaParams,
+  params: FetchEtaParams & { signal?: AbortSignal },
 ): Promise<DeliveryEtaResult> {
   if (params.cartItems && params.cartItems.length > 0) {
     const { data } = await api.post<ApiResponse<DeliveryEtaResult>>('/delivery/eta', {
@@ -42,7 +67,7 @@ export async function fetchDeliveryEta(
       longitude: params.longitude,
       pincode: params.pincode,
       cartItems: params.cartItems,
-    });
+    }, { signal: params.signal });
     return data.data;
   }
 
@@ -54,14 +79,43 @@ export async function fetchDeliveryEta(
 
   const { data } = await api.get<ApiResponse<DeliveryEtaResult>>(
     `/delivery/eta?${query.toString()}`,
+    { signal: params.signal },
   );
   return data.data;
 }
 
 export function formatEtaLabel(eta: DeliveryEtaResult | null | undefined): string {
   if (!eta) return '';
-  if (!eta.serviceable) return eta.message || 'Not serviceable';
-  return eta.deliveryMessage || buildDeliveryMessage(eta.deliveryETA, {
+  const hasRange =
+    (eta.etaMinMinutes != null && eta.etaMinMinutes > 0) ||
+    (eta.deliveryETA != null && eta.deliveryETA > 0);
+  const message = eta.deliveryMessage?.trim() ?? '';
+  const looksUnavailable = /unavailable/i.test(message);
+
+  if (hasRange && message && !looksUnavailable) return message;
+  if (hasRange) {
+    return buildDeliveryMessage(eta.deliveryETA, {
+      deliveringBy: eta.deliveringBy,
+      preorder: eta.deliveryDay === 'Tomorrow',
+      serviceable: true,
+      etaMinMinutes: eta.etaMinMinutes,
+      etaMaxMinutes: eta.etaMaxMinutes,
+    });
+  }
+  if (!eta.serviceable) {
+    return message || eta.message || 'Not serviceable';
+  }
+  if (message && !looksUnavailable) return message;
+  if (eta.etaMinMinutes && eta.etaMaxMinutes) {
+    return buildDeliveryMessage(eta.deliveryETA, {
+      deliveringBy: eta.deliveringBy,
+      preorder: eta.deliveryDay === 'Tomorrow',
+      serviceable: eta.serviceable,
+      etaMinMinutes: eta.etaMinMinutes,
+      etaMaxMinutes: eta.etaMaxMinutes,
+    });
+  }
+  return buildDeliveryMessage(eta.deliveryETA, {
     deliveringBy: eta.deliveringBy,
     preorder: eta.deliveryDay === 'Tomorrow',
     serviceable: eta.serviceable,

@@ -4,13 +4,14 @@ import { router, type Href } from 'expo-router';
 
 import type { CmsBanner, CmsCategory, CmsPromotion, CmsTestimonial } from '@/types/cms';
 import type { CatalogCategory } from '@/types/catalog';
+import { images } from '@constants/images';
 import {
   resolveCmsImageSource,
   resolveCmsVideoSource,
   extractVideoUri,
 } from '@utils/cmsMedia';
 import { resolveCategoryImageSource } from '@utils/catalogPlaceholders';
-import { normalizeMediaUrl } from '@utils/media';
+import { normalizeMediaUrl, isEmptyPlaceholderUri } from '@utils/media';
 
 export interface CmsHeroSlide {
   id: string;
@@ -48,22 +49,89 @@ export interface CmsTestimonialReviewView {
   photo?: ImageSourcePropType;
 }
 
-export function adaptHeroSlides(banners: CmsBanner[]): CmsHeroSlide[] {
-  return banners
-    .filter((b) => Boolean(b.imageUrl))
+export interface CmsPromoSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  ctaLabel: string;
+  imageUrl: string;
+  backgroundColor: string | null;
+  ctaColor: string | null;
+  linkType: string | null;
+  linkTarget: string | null;
+  targetAudience: string;
+  priority: number;
+  displayOrder: number;
+  localImage?: ImageSourcePropType;
+}
+
+function localPromoArt(title: string, badge?: string | null): ImageSourcePropType {
+  const haystack = `${title} ${badge ?? ''}`.toLowerCase();
+  if (/\bbid/.test(haystack)) return images.productJswNeosteel;
+  if (/\bsav/.test(haystack) && !haystack.includes('bulk')) {
+    return images.productAcc;
+  }
+  return images.productUltratech;
+}
+
+export function adaptPromoSlides(banners: CmsBanner[]): CmsPromoSlide[] {
+  return [...banners]
+    .filter((b) => String(b.bannerType || '').toUpperCase() !== 'VIDEO')
+    .filter((b) =>
+      Boolean(b.title || b.mobileUrl || b.imageUrl || b.desktopUrl),
+    )
+    .sort(
+      (a, b) =>
+        (a.priority || 0) - (b.priority || 0) ||
+        a.displayOrder - b.displayOrder,
+    )
     .map((b) => ({
       id: b.id,
-      badge: b.badge ?? '',
       title: b.title,
       subtitle: b.subtitle ?? '',
-      shopNow: b.buttonText ?? '',
-      bulkInquiry: b.secondaryButtonText ?? '',
-      imageUrl: b.imageUrl,
+      badge: b.badge ?? '',
+      ctaLabel: b.buttonText ?? '',
+      imageUrl: b.mobileUrl || b.imageUrl || b.desktopUrl || '',
+      backgroundColor: b.backgroundColor ?? null,
+      ctaColor: b.ctaColor ?? null,
       linkType: b.linkType ?? b.buttonAction ?? 'ROUTE',
       linkTarget: b.linkTarget ?? b.linkUrl,
-      secondaryLinkType: b.secondaryLinkType ?? 'ROUTE',
-      secondaryLinkTarget: b.secondaryLinkTarget ?? b.secondaryLinkUrl,
+      targetAudience: b.targetAudience ?? 'ALL',
+      priority: b.priority ?? 0,
+      displayOrder: b.displayOrder ?? 0,
+      localImage: localPromoArt(b.title, b.badge),
     }));
+}
+
+export function adaptHeroSlides(banners: CmsBanner[]): CmsHeroSlide[] {
+  return [...banners]
+    .filter((b) => String(b.bannerType || '').toUpperCase() !== 'VIDEO')
+    .sort(
+      (a, b) =>
+        (a.priority || 0) - (b.priority || 0) ||
+        a.displayOrder - b.displayOrder,
+    )
+    .map((b) => {
+      const imageUrl = b.mobileUrl || b.imageUrl || b.desktopUrl || '';
+      return {
+        id: b.id,
+        badge: b.badge ?? '',
+        title: b.title,
+        subtitle: b.subtitle ?? '',
+        shopNow: b.buttonText ?? '',
+        bulkInquiry: b.secondaryButtonText ?? '',
+        imageUrl,
+        linkType: b.linkType ?? b.buttonAction ?? 'ROUTE',
+        linkTarget: b.linkTarget ?? b.linkUrl,
+        secondaryLinkType: b.secondaryLinkType ?? 'ROUTE',
+        secondaryLinkTarget: b.secondaryLinkTarget ?? b.secondaryLinkUrl,
+      };
+    })
+    .filter((slide) => {
+      const remote = normalizeMediaUrl(slide.imageUrl);
+      return Boolean(remote && !isEmptyPlaceholderUri(remote));
+    });
 }
 
 export function adaptCmsCategories(categories: CmsCategory[]): CatalogCategory[] {
@@ -152,8 +220,29 @@ export function navigateCmsRedirect(
 ): void {
   if (!redirectId) return;
 
-  const type = (redirectType || 'ROUTE').toUpperCase();
+  let type = (redirectType || 'ROUTE').toUpperCase();
   let target = redirectId.trim();
+
+  if (!target || target === '/') {
+    router.push('/(tabs)/catalog' as Href);
+    return;
+  }
+
+  const categoryPath = target.match(/^\/category\/([^/?#]+)/i);
+  if (categoryPath?.[1]) {
+    type = 'CATEGORY';
+    target = categoryPath[1];
+  }
+  const productPath = target.match(/^\/products\/(?:detail\/)?([^/?#]+)/i);
+  if (productPath?.[1]) {
+    type = 'PRODUCT';
+    target = productPath[1];
+  }
+  const offerPath = target.match(/^\/offers\/([^/?#]+)/i);
+  if (offerPath?.[1]) {
+    type = 'OFFER';
+    target = offerPath[1];
+  }
 
   // Heal legacy mistaken nested catalog paths: /(tabs)/catalog/adhesives
   const nestedCatalog = target.match(/^\/\(tabs\)\/catalog\/([^/?#]+)/);
@@ -166,6 +255,11 @@ export function navigateCmsRedirect(
         categoryName: nestedCatalog[1],
       },
     } as Href);
+    return;
+  }
+
+  if (type === 'MEMBERSHIP' || target === '/membership') {
+    router.push('/account/loyalty' as Href);
     return;
   }
 
@@ -195,12 +289,12 @@ export function navigateCmsRedirect(
         params: { q: target },
       } as Href);
       break;
-    case 'MEMBERSHIP':
-      router.push((target.startsWith('/') ? target : '/membership') as Href);
+    case 'LOYALTY':
+      router.push((target.startsWith('/') ? target : '/account/loyalty') as Href);
       break;
     case 'BULK_INQUIRY':
       router.push(
-        (target.startsWith('/') ? target : '/bulk-procurement') as Href,
+        (target.startsWith('/') ? target : '/bulk-procurement/enquiry') as Href,
       );
       break;
     case 'MATERIAL_EXPERT':
@@ -212,6 +306,10 @@ export function navigateCmsRedirect(
     case 'EXTERNAL':
     case 'BRAND':
     case 'ROUTE':
+      if (target === '/(tabs)' || target === '/(tabs)/index') {
+        router.push('/(tabs)' as Href);
+        break;
+      }
       router.push(target as Href);
       break;
     default:

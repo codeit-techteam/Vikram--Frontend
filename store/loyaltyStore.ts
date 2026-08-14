@@ -59,6 +59,15 @@ function mapTransactionTitle(tx: LoyaltyTransaction): {
   icon: string;
 } {
   const ref = tx.referenceId ?? '';
+  const reason = tx.reason ?? '';
+
+  if (ref.startsWith('SEED_LOYALTY') || /dev only/i.test(reason)) {
+    return {
+      title: 'Opening Balance',
+      subtitle: 'BajriPro Points wallet balance',
+      icon: 'wallet-outline',
+    };
+  }
   if (ref === 'FIRST_ORDER_BONUS') {
     return {
       title: 'First Order Bonus',
@@ -69,30 +78,30 @@ function mapTransactionTitle(tx: LoyaltyTransaction): {
   if (ref === 'WELCOME_BONUS') {
     return {
       title: 'Welcome Bonus',
-      subtitle: tx.reason,
+      subtitle: 'Registration BajriPro Points',
       icon: 'gift-outline',
     };
   }
   if (ref.startsWith('ORDER_EARNED:')) {
     return {
-      title: tx.reason || 'Order reward',
+      title: tx.reason || 'Points earned on order',
       icon: 'bag-handle-outline',
     };
   }
   if (ref.startsWith('REDEEM:') || tx.type === 'REDEEM') {
     return {
-      title: tx.reason || 'Used on order',
+      title: tx.reason || 'BajriPro Points used on order',
       icon: 'card-outline',
     };
   }
   if (ref.includes('REVERSAL') || ref.includes('REFUND')) {
     return {
-      title: tx.reason || 'Points adjusted',
+      title: tx.reason || 'Points restored',
       icon: 'refresh-outline',
     };
   }
   return {
-    title: tx.reason || 'Loyalty update',
+    title: tx.reason || 'BajriPro Points update',
     icon: 'star-outline',
   };
 }

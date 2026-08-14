@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { router, useFocusEffect, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -23,27 +23,31 @@ import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
 import { HeroCarousel } from '@components/HeroCarousel';
-import { MembershipBanner } from '@components/membership';
-import { LoyaltyCard } from '@components/home/LoyaltyCard';
 import { MaterialCategoriesGrid } from '@components/home/MaterialCategoriesGrid';
 import { BulkProcurementCard } from '@components/home/BulkProcurementCard';
 import { BrandAdsSection } from '@components/home/BrandAdsSection';
-import { OfferForYouSection } from '@components/home/OfferForYouSection';
+import { OfferForYouSection, OfferForYouSkeleton } from '@components/home/OfferForYouSection';
 import { QuickActionsRow } from '@components/home/QuickActionsRow';
 import { HomeProductDiscovery } from '@components/home/HomeProductDiscovery';
 import { HomeProductSection } from '@components/home/HomeProductSection';
-import { HomePromoBanners } from '@components/home/HomePromoBanners';
+import {
+  HomePromoBanners,
+  HomePromoBannerSkeleton,
+} from '@components/home/HomePromoBanners';
+import { DeliveryPromotionBanner } from '@components/home/DeliveryPromotionBanner';
 import { TestimonialCarousel } from '@components/home/TestimonialSection';
 import { VideoBanner } from '@components/home/VideoBanner';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
 import { useCategories } from '@hooks/useCategories';
 import { useCmsHome } from '@hooks/useCmsHome';
+import { useDeliveryPromotions } from '@hooks/useDeliveryPromotions';
 import { useHomeCatalog } from '@hooks/useHome';
 import { useHomeProducts } from '@hooks/useHomeProducts';
 import { useSites } from '@hooks/useSites';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
+import { useLoyaltyStore } from '@store/loyaltyStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
 import { useSearch } from '@hooks/useSearch';
 import { requireAuth } from '@utils/requireAuth';
@@ -57,22 +61,31 @@ import {
 import {
   adaptCmsCategories,
   adaptHeroSlides,
+  adaptPromoSlides,
   adaptTestimonialReviews,
   adaptTestimonialVideos,
   navigateBannerPrimary,
   navigateCmsRedirect,
-  navigatePromotion,
 } from '@utils/cmsAdapters';
+import { isPromoBannerEligible } from '@utils/bannerAudience';
 
 const SECTION_GAP = 24;
-/** Tighter stack for hero → membership → loyalty */
+/** Tighter gap when adjacent CMS banner sections sit next to each other. */
 const TOP_CLUSTER_GAP = 12;
-const TOP_CLUSTER = new Set(['HERO_BANNER', 'MEMBERSHIP', 'LOYALTY']);
+const TOP_CLUSTER = new Set([
+  'DELIVERY_PROMOTION',
+  'PROMO_BANNER',
+  'HOME_PROMO',
+  'HERO_BANNER',
+]);
 const H_PAD = 16;
 
 export default function HomeScreen() {
   const { t, language } = useTranslation();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const freeBikeRemaining = useLoyaltyStore((s) => s.freeBikeDeliveriesRemaining);
+  const freeBikeUsed = useLoyaltyStore((s) => s.freeBikeDeliveriesUsed);
+  const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
   useSites(isLoggedIn);
   const homeScrollY = useSharedValue(0);
   const onHomeScroll = useAnimatedScrollHandler({
@@ -80,6 +93,11 @@ export default function HomeScreen() {
       homeScrollY.value = event.contentOffset.y;
     },
   });
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    void refreshLoyalty();
+  }, [isLoggedIn, refreshLoyalty]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -108,6 +126,7 @@ export default function HomeScreen() {
   const {
     sections,
     banners,
+    heroBanners,
     promoBanners,
     videoBanners,
     heroVideo,
@@ -124,6 +143,19 @@ export default function HomeScreen() {
   } = useCmsHome();
 
   const {
+    featured: deliveryPromotion,
+    isLoading: deliveryPromoLoading,
+    refresh: refreshDeliveryPromotions,
+  } = useDeliveryPromotions();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshCms();
+      void refreshDeliveryPromotions();
+    }, [refreshCms, refreshDeliveryPromotions]),
+  );
+
+  const {
     featured: featuredProducts,
     offers: topDealProducts,
     recentlyAdded: recentlyAddedProducts,
@@ -132,11 +164,19 @@ export default function HomeScreen() {
     refresh: refreshHomeProducts,
   } = useHomeProducts();
 
-  const heroSlides = useMemo(() => adaptHeroSlides(banners), [banners]);
-  const promoSlides = useMemo(
-    () => adaptHeroSlides(promoBanners),
-    [promoBanners],
+  const heroSlides = useMemo(
+    () => adaptHeroSlides(heroBanners.length > 0 ? heroBanners : banners),
+    [heroBanners, banners],
   );
+  const promoAudience = useMemo(
+    () => ({ isLoggedIn, freeBikeRemaining, freeBikeUsed }),
+    [isLoggedIn, freeBikeRemaining, freeBikeUsed],
+  );
+  const promoSlides = useMemo(() => {
+    return adaptPromoSlides(promoBanners).filter((slide) =>
+      isPromoBannerEligible(slide.targetAudience, promoAudience),
+    );
+  }, [promoBanners, promoAudience]);
   const testimonialVideos = useMemo(
     () => adaptTestimonialVideos(testimonials),
     [testimonials],
@@ -208,15 +248,6 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [drawerOpen, closeDrawer]);
 
-  useEffect(() => {
-    if (!search.isActive) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      search.deactivateSearch();
-      return true;
-    });
-    return () => sub.remove();
-  }, [search.isActive, search.deactivateSearch]);
-
   const toggleDrawer = () => {
     if (drawerOpen) closeDrawer();
     else openDrawer();
@@ -243,26 +274,11 @@ export default function HomeScreen() {
     router.push('/(tabs)/catalog' as Href);
   }, []);
 
-  const goLoyalty = useCallback(async () => {
-    await Haptics.selectionAsync();
-    if (!requireAuth('Please log in to view loyalty wallet.')) return;
-    router.push('/account/loyalty' as Href);
-  }, []);
-
-  const onOpenMembership = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/membership' as Href);
-  }, []);
-
   const onBulkProcurement = useCallback(async () => {
     await Haptics.selectionAsync();
     if (!requireAuth('Please log in for bulk procurement.')) return;
-    if (bulkProcurement?.redirectId) {
-      navigatePromotion(bulkProcurement);
-      return;
-    }
-    router.push('/bulk-procurement' as Href);
-  }, [bulkProcurement]);
+    router.push('/bulk-procurement/enquiry' as Href);
+  }, []);
 
   const onVideoShopNow = useCallback(() => {
     if (videoBanner) {
@@ -278,17 +294,40 @@ export default function HomeScreen() {
       refreshCategories(),
       refreshCms(),
       refreshHomeProducts(),
+      refreshDeliveryPromotions(),
     ]);
-  }, [refreshCatalog, refreshCategories, refreshCms, refreshHomeProducts]);
+  }, [
+    refreshCatalog,
+    refreshCategories,
+    refreshCms,
+    refreshHomeProducts,
+    refreshDeliveryPromotions,
+  ]);
 
   const sectionMeta = (type: string) =>
     enabledSections.find((s) => s.sectionType === type);
 
-  const sectionWrapStyle = (sectionType: string) =>
-    TOP_CLUSTER.has(sectionType) ? styles.sectionTight : styles.section;
+  // Follow Super Admin Homepage Layout order (displayOrder / enabled).
+  const sectionOrder = useMemo(
+    () => enabledSections.map((s) => s.sectionType),
+    [enabledSections],
+  );
 
-  const renderSection = (sectionType: string) => {
-    const wrap = sectionWrapStyle(sectionType);
+  const hasDeliveryPromo =
+    Boolean(deliveryPromotion?.bannerImage) || deliveryPromoLoading;
+
+  const sectionWrapStyle = (sectionType: string, index: number) => {
+    if (index === 0 && !hasDeliveryPromo) return styles.sectionFlush;
+    if (index === 0 && hasDeliveryPromo) return styles.sectionTight;
+    const prev = sectionOrder[index - 1];
+    if (TOP_CLUSTER.has(sectionType) && TOP_CLUSTER.has(prev)) {
+      return styles.sectionTight;
+    }
+    return styles.section;
+  };
+
+  const renderSection = (sectionType: string, index: number) => {
+    const wrap = sectionWrapStyle(sectionType, index);
 
     switch (sectionType) {
       case 'HERO_BANNER':
@@ -313,7 +352,7 @@ export default function HomeScreen() {
                     slide.secondaryLinkTarget,
                   );
                 } else {
-                  router.push('/bulk-procurement' as Href);
+                  router.push('/bulk-procurement/enquiry' as Href);
                 }
               }}
             />
@@ -322,17 +361,28 @@ export default function HomeScreen() {
 
       case 'PROMO_BANNER':
       case 'HOME_PROMO':
+        if (cmsLoading && promoSlides.length === 0) {
+          return (
+            <View key={sectionType} style={wrap}>
+              <HomePromoBannerSkeleton />
+            </View>
+          );
+        }
         return promoSlides.length > 0 ? (
-          <View key={sectionType} style={styles.section}>
+          <View key={sectionType} style={wrap}>
             <HomePromoBanners
               slides={promoSlides}
               onPress={(slide) => {
-                if (slide.linkTarget) {
-                  navigateCmsRedirect(
-                    slide.linkType ?? 'ROUTE',
-                    slide.linkTarget,
-                  );
-                } else {
+                try {
+                  if (slide.linkTarget) {
+                    navigateCmsRedirect(
+                      slide.linkType ?? 'ROUTE',
+                      slide.linkTarget,
+                    );
+                  } else {
+                    router.push('/(tabs)/catalog' as Href);
+                  }
+                } catch {
                   router.push('/(tabs)/catalog' as Href);
                 }
               }}
@@ -341,11 +391,8 @@ export default function HomeScreen() {
         ) : null;
 
       case 'LOYALTY':
-        return (
-          <View key={sectionType} style={wrap}>
-            <LoyaltyCard onPress={goLoyalty} />
-          </View>
-        );
+      case 'MEMBERSHIP':
+        return null;
 
       case 'MATERIAL_CATEGORIES': {
         if (categoriesLoading && homeCategories.length === 0) {
@@ -427,6 +474,19 @@ export default function HomeScreen() {
         ) : null;
 
       case 'OFFER_FOR_YOU':
+        if (cmsLoading && offers.length === 0) {
+          return (
+            <View key={sectionType} style={styles.section}>
+              <OfferForYouSkeleton />
+            </View>
+          );
+        }
+        if (cmsError && offers.length === 0) {
+          if (__DEV__) {
+            console.warn('[cms-home] Offers For You failed', cmsError);
+          }
+          return null;
+        }
         return offers.length > 0 ? (
           <View key={sectionType} style={styles.section}>
             <OfferForYouSection
@@ -455,13 +515,6 @@ export default function HomeScreen() {
             />
           </View>
         ) : null;
-
-      case 'MEMBERSHIP':
-        return (
-          <View key={sectionType} style={wrap}>
-            <MembershipBanner onPress={onOpenMembership} />
-          </View>
-        );
 
       case 'BULK_PROCUREMENT':
         return bulkProcurement ? (
@@ -538,23 +591,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Prefer CMS Homepage Layout order. Only auto-insert promo if layout has no
-  // PROMO_BANNER row yet (pre-migration) and live HOME_PROMO banners exist.
-  const sectionOrder = useMemo(() => {
-    const order = enabledSections.map((s) => s.sectionType);
-    const hasPromoSlot =
-      order.includes('PROMO_BANNER') || order.includes('HOME_PROMO');
-    if (promoSlides.length > 0 && !hasPromoSlot) {
-      const heroIdx = order.indexOf('HERO_BANNER');
-      if (heroIdx >= 0) {
-        order.splice(heroIdx + 1, 0, 'PROMO_BANNER');
-      } else {
-        order.unshift('PROMO_BANNER');
-      }
-    }
-    return order;
-  }, [enabledSections, promoSlides.length]);
-
   const showCmsFallback =
     Boolean(cmsError) && !cmsLoading && enabledSections.length === 0;
 
@@ -616,7 +652,27 @@ export default function HomeScreen() {
                   />
                 </View>
               ) : (
-                sectionOrder.map((type) => renderSection(type))
+                <>
+                  <View style={styles.sectionFlush}>
+                    <DeliveryPromotionBanner
+                      promotion={deliveryPromotion}
+                      loading={deliveryPromoLoading}
+                      onPress={(promo) => {
+                        try {
+                          if (promo.cta.enabled && promo.cta.value) {
+                            navigateCmsRedirect(
+                              promo.cta.type ?? 'ROUTE',
+                              promo.cta.value,
+                            );
+                          }
+                        } catch {
+                          router.push('/(tabs)/catalog' as Href);
+                        }
+                      }}
+                    />
+                  </View>
+                  {sectionOrder.map((type, index) => renderSection(type, index))}
+                </>
               )}
 
               <View style={styles.bottomSpacer} />
@@ -663,13 +719,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 8,
-    paddingTop: 8,
+    paddingTop: 0,
   },
   section: {
     marginTop: SECTION_GAP,
   },
   sectionTight: {
     marginTop: TOP_CLUSTER_GAP,
+  },
+  sectionFlush: {
+    marginTop: 0,
   },
   sectionHeader: {
     flexDirection: 'row',

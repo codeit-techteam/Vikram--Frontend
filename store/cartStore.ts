@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { resolveVehicleForQuantity } from '@constants/deliveryVehicles';
+import { getVehicleTier } from '@constants/deliveryVehicles';
 import { useEtaStore } from '@store/etaStore';
+import { useLoyaltyStore } from '@store/loyaltyStore';
+import { calculateLoyaltyDiscountPreview, toMoney } from '@utils/loyaltyPricing';
 
 export interface CartItem {
   id: string;
@@ -63,16 +65,18 @@ function withQuantityDerivedFields(item: CartItem, quantity: number): CartItem {
     item.bulkPrice > 0 &&
     item.bulkPrice < item.unitPrice;
   const appliedPrice = bulkApplied ? item.bulkPrice : item.unitPrice;
-  const vehicle = resolveVehicleForQuantity(quantity);
+  const vehicle = item.vehicleType
+    ? getVehicleTier(item.vehicleType)
+    : null;
   const weightPerUnitKg = item.weightPerUnitKg;
   return {
     ...item,
     quantity,
     appliedPrice,
     bulkApplied,
-    vehicleType: vehicle.type,
-    deliveryMode: vehicle.label,
-    eta: vehicle.etaLabel,
+    vehicleType: vehicle?.type ?? item.vehicleType,
+    deliveryMode: vehicle?.label ?? item.deliveryMode,
+    eta: item.eta && !/23\s*mins?/i.test(item.eta) ? item.eta : '',
     estimatedWeightKg:
       weightPerUnitKg != null
         ? Math.round(weightPerUnitKg * quantity * 100) / 100
@@ -113,8 +117,6 @@ interface CartState {
   loyaltyDiscount: () => number;
   grandTotal: () => number;
 }
-
-const LOYALTY_DISCOUNT = 0; // Applied at checkout via backend — not a flat cart discount
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -297,11 +299,26 @@ export const useCartStore = create<CartState>()(
         return 0;
       },
 
-      loyaltyDiscount: () => (get().pointsApplied ? LOYALTY_DISCOUNT : 0),
+      loyaltyDiscount: () => {
+        if (!get().pointsApplied) return 0;
+        const loyalty = useLoyaltyStore.getState();
+        const pointValueInr = loyalty.summary?.pointValueInr ?? 0.01;
+        const minOrderValue = loyalty.summary?.minRedeemOrderValue ?? 500;
+        const maxRedeemPercent = loyalty.summary?.maxOrderRedeemPercent ?? 0.3;
+        const orderValueInr = get().itemsTotal() + get().deliveryCharge();
+        return calculateLoyaltyDiscountPreview({
+          pointsApplied: true,
+          availablePoints: loyalty.totalPoints,
+          orderValueInr,
+          minOrderValue,
+          maxRedeemPercent,
+          pointValueInr,
+        }).discountAmount;
+      },
 
       grandTotal: () => {
         const s = get();
-        return s.itemsTotal() + s.deliveryCharge() - s.loyaltyDiscount();
+        return toMoney(s.itemsTotal() + s.deliveryCharge() - s.loyaltyDiscount());
       },
     }),
     {

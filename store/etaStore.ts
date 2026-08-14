@@ -23,6 +23,7 @@ interface EtaState {
 }
 
 const ETA_STALE_MS = 1000 * 60 * 2;
+let etaRequestSeq = 0;
 
 export const useEtaStore = create<EtaState>()(
   persist(
@@ -41,10 +42,11 @@ export const useEtaStore = create<EtaState>()(
       fetchEta: async (cartItems) => {
         const { latitude, longitude, pincode } = get();
         if (latitude == null || longitude == null) {
-          set({ error: 'Location required for ETA', eta: null });
-          return null;
+          set({ error: 'Select delivery location to calculate ETA' });
+          return get().eta;
         }
 
+        const requestId = ++etaRequestSeq;
         set({ isLoading: true, error: null });
         try {
           const eta = await fetchDeliveryEta({
@@ -53,13 +55,23 @@ export const useEtaStore = create<EtaState>()(
             pincode: pincode ?? undefined,
             cartItems,
           });
+          if (requestId !== etaRequestSeq) return eta;
           set({ eta, isLoading: false, fetchedAt: Date.now(), error: null });
           return eta;
         } catch (err) {
+          if (requestId !== etaRequestSeq) return null;
           const message =
-            err instanceof Error ? err.message : 'Failed to calculate ETA';
+            err instanceof Error
+              ? err.message
+              : err && typeof err === 'object' && 'message' in err
+                ? String((err as { message?: unknown }).message ?? '')
+                : 'Failed to calculate ETA';
+          if (/cancel/i.test(message)) {
+            set({ isLoading: false });
+            return get().eta;
+          }
           set({ isLoading: false, error: message });
-          return null;
+          return get().eta;
         }
       },
 
@@ -74,11 +86,9 @@ export const useEtaStore = create<EtaState>()(
       name: 'bajriwala-eta',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        eta: state.eta,
         latitude: state.latitude,
         longitude: state.longitude,
         pincode: state.pincode,
-        fetchedAt: state.fetchedAt,
       }),
     },
   ),

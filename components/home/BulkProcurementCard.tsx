@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
+import { useTranslation } from '@store/languageStore';
 import type { CmsPromotion } from '@/types/cms';
 
 interface BulkProcurementCardProps {
@@ -9,10 +10,24 @@ interface BulkProcurementCardProps {
   promotion?: CmsPromotion | null;
 }
 
+function isRemovedBenefit(label: string): boolean {
+  const value = label.trim().toLowerCase();
+  return (
+    value.includes('unlock discount') ||
+    value.includes('international trips') ||
+    value.includes('lucky draw') ||
+    value.includes('15% तक छूट') ||
+    value.includes('अंतरराष्ट्रीय यात्राएं') ||
+    value.includes('लकी ड्रॉ')
+  );
+}
+
 export function BulkProcurementCard({
   onKnowMore,
   promotion,
 }: BulkProcurementCardProps) {
+  const { t } = useTranslation();
+
   if (!promotion) return null;
 
   const handlePress = async () => {
@@ -20,34 +35,47 @@ export function BulkProcurementCard({
     onKnowMore();
   };
 
-  const eyebrow = promotion.description ?? 'Bulk Procurement';
-  const badge = promotion.badge ?? 'Unlock';
-  const title = promotion.title;
-  const subtitle = promotion.subtitle ?? '';
-  const benefits = promotion.benefits?.length ? promotion.benefits : [];
-  const buttonText = promotion.buttonText ?? 'Know More';
+  const eyebrow = promotion.description ?? t('bulkProcurementSection');
+  const badge = promotion.badge ?? t('enquire');
+  const title = promotion.title || t('bulkProcurementCardTitle');
+  const subtitle = promotion.subtitle ?? t('bulkProcurementCardSubtitle');
+  const sourceBenefits = promotion.benefits?.length
+    ? promotion.benefits
+    : [t('bulkUnlockLoyalty')];
+  const benefits = sourceBenefits.filter((label) => !isRemovedBenefit(label));
+  const cmsCta = promotion.buttonText?.trim();
+  const buttonText =
+    !cmsCta || cmsCta.toLowerCase() === 'enquire'
+      ? t('enquireNow')
+      : cmsCta;
 
   return (
     <View style={styles.card}>
       <View style={styles.topRow}>
         <Text style={styles.eyebrow}>{eyebrow}</Text>
-        <View style={styles.unlockBadge}>
+        <Pressable
+          onPress={handlePress}
+          style={styles.unlockBadge}
+          accessibilityRole="button"
+          accessibilityLabel={buttonText}>
           <Ionicons name="diamond-outline" size={12} color="#1A1A1A" />
           <Text style={styles.unlockBadgeText}>{badge}</Text>
-        </View>
+        </Pressable>
       </View>
 
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
-      <View style={styles.list}>
-        {benefits.map((label) => (
-          <View key={label} style={styles.row}>
-            <Ionicons name="checkmark-circle" size={18} color="#FEB623" />
-            <Text style={styles.rowText}>{label}</Text>
-          </View>
-        ))}
-      </View>
+      {benefits.length > 0 ? (
+        <View style={styles.list}>
+          {benefits.map((label) => (
+            <View key={label} style={styles.row}>
+              <Ionicons name="checkmark-circle" size={18} color="#FEB623" />
+              <Text style={styles.rowText}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       <Pressable onPress={handlePress} style={styles.cta} accessibilityRole="button">
         <Text style={styles.ctaText}>{buttonText}</Text>

@@ -45,7 +45,10 @@ export async function searchCatalog(params: {
   };
 }
 
-export async function fetchSearchSuggestions(q: string): Promise<{
+export async function fetchSearchSuggestions(
+  q: string,
+  signal?: AbortSignal,
+): Promise<{
   suggestions: Suggestion[];
   popular: string[];
 }> {
@@ -53,6 +56,7 @@ export async function fetchSearchSuggestions(q: string): Promise<{
   query.set('q', q);
   const { data } = await api.get<ApiResponse<ApiSearchSuggestions>>(
     `${SEARCH_BASE}/suggestions?${query.toString()}`,
+    { signal },
   );
   const payload = data.data;
 

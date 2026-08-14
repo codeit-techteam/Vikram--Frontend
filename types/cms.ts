@@ -41,6 +41,7 @@ export interface CmsBanner {
   secondaryLinkType: string | null;
   secondaryLinkTarget: string | null;
   placement: string;
+  targetAudience?: string | null;
 }
 
 export interface CmsAdvertisement {
@@ -110,12 +111,21 @@ export interface CmsOffer {
   title: string;
   description: string | null;
   imageUrl: string | null;
+  mobileImageUrl?: string | null;
   discountLabel: string | null;
+  discountPercent?: number | null;
+  discountValue?: number | null;
   badge: string | null;
+  ctaLabel?: string | null;
+  ctaAction?: string | null;
   offerType: string;
   displayOrder: number;
   priority: number;
+  startsAt?: string | null;
   endsAt: string | null;
+  startingFrom?: number | null;
+  productCount?: number;
+  isFeatured?: boolean;
 }
 
 export interface CmsQuickAction {
@@ -136,6 +146,29 @@ export interface CmsEmergencyBanner {
   linkUrl: string | null;
   linkTarget: string | null;
   dismissible: boolean;
+}
+
+export interface CmsDeliveryPromotionCta {
+  enabled: boolean;
+  label: string | null;
+  type: string | null;
+  value: string | null;
+}
+
+export interface CmsDeliveryPromotion {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  badge: string | null;
+  bannerImage: string;
+  mobileBannerImage?: string | null;
+  desktopBannerImage?: string | null;
+  placement: string;
+  cta: CmsDeliveryPromotionCta;
+  priority: number;
+  startAt?: string | null;
+  endAt?: string | null;
+  targetAudience?: string | null;
 }
 
 export interface CmsCategory {
@@ -170,4 +203,5 @@ export interface CmsHomeResponse {
   bulkProcurement: CmsPromotion | null;
   priorityExpress: CmsPromotion | null;
   membership: CmsPromotion | null;
+  deliveryPromotions?: CmsDeliveryPromotion[];
 }

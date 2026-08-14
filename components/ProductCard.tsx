@@ -21,7 +21,6 @@ import type { Product } from '@/types/catalog';
 import { useLanguageStore } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
 import { useVariantStore } from '@store/variantStore';
-import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import {
   getDeliveryEta,
   getOfferLabel,
@@ -50,7 +49,6 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
   const openSheet = useVariantStore((s) => s.open);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const getLineIdForProduct = useCartStore((s) => s.getLineIdForProduct);
-  const { estimatedMinutes, deliveryMessage: etaLabel } = useDeliveryEta({ autoFetch: false });
 
   const cartQty = useCartStore((s) => s.getProductQuantity(product.id));
   const minOrder = getMinOrderQuantity(product);
@@ -65,7 +63,7 @@ function ProductCardComponent({ product, categoryId, categoryName, highlightQuer
 
   const pricing = getProductPricing(product);
   const stockLeft = getStockLeft(product);
-  const deliveryEta = getDeliveryEta(product, estimatedMinutes, etaLabel);
+  const deliveryEta = getDeliveryEta(product);
   const offer = getOfferLabel(product);
 
   const imageSource = resolveProductImageSource({

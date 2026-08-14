@@ -1,31 +1,44 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard } from 'react-native';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
 import { useSearchStore } from '@store/searchStore';
-import type { SearchProduct } from '@constants/searchData';
+import { useEtaStore } from '@store/etaStore';
+import { fetchProducts } from '@services/productService';
+import { fetchSearchSuggestions } from '@services/searchService';
+import { useVoiceSearchInput } from '@hooks/useVoiceSearchInput';
+import type { Product } from '@/types/catalog';
+import type { ProductQueryParams } from '@/types/api-catalog';
 import {
-  sortSearchResults,
+  EMPTY_SEARCH_FILTERS,
+  fetchLocalSuggestions,
+  isOfflineError,
+  mapSortToProductQuery,
+  sortSearchProducts,
+  type SearchFilters,
   type SearchSortOption,
   type Suggestion,
 } from '@utils/searchUtils';
-import {
-  fetchSearchSuggestions,
-  searchCatalog,
-} from '@services/searchService';
 
-export type { Suggestion, SearchSortOption };
+const DEBOUNCE_MS = 300;
+const PAGE_SIZE = 20;
+const SEARCH_STALE_TIME = 30_000;
 
 export interface UseSearchReturn {
   query: string;
   isActive: boolean;
   isLoading: boolean;
+  isFetchingNextPage: boolean;
+  hasNextPage: boolean;
   isLoadingRecent: boolean;
-  hasSubmitted: boolean;
   suggestions: Suggestion[];
-  results: SearchProduct[];
-  sortedResults: SearchProduct[];
+  products: Product[];
+  total: number;
+  error: unknown;
+  isOffline: boolean;
   recentSearches: string[];
   sortOption: SearchSortOption;
+  filters: SearchFilters;
   isVoiceActive: boolean;
   voiceError: string | null;
 
@@ -37,30 +50,21 @@ export interface UseSearchReturn {
   removeRecentSearch: (term: string) => void;
   clearAllRecent: () => void;
   setSortOption: (option: SearchSortOption) => void;
+  setFilters: (next: SearchFilters) => void;
+  clearFilters: () => void;
+  loadMore: () => void;
+  retry: () => void;
   startVoiceSearch: () => void;
   cancelVoiceSearch: () => void;
 }
 
-const VOICE_FALLBACK_TERMS = ['UltraTech cement', 'TMT bars 12mm', 'River sand', 'Stone aggregate'];
-
-const SORT_API_MAP: Record<SearchSortOption, string> = {
-  relevance: 'relevance',
-  price_asc: 'price_asc',
-  price_desc: 'price_desc',
-  newest: 'newest',
-};
-
-export function useSearch(): UseSearchReturn {
+export function useSearch(options?: { alwaysActive?: boolean }): UseSearchReturn {
+  const alwaysActive = options?.alwaysActive === true;
   const [query, setQueryState] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [isActive, setIsActive] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [results, setResults] = useState<SearchProduct[]>([]);
+  const [isActive, setIsActive] = useState(alwaysActive);
   const [sortOption, setSortOption] = useState<SearchSortOption>('relevance');
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<SearchFilters>(EMPTY_SEARCH_FILTERS);
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 
   const recentSearches = useSearchStore((s) => s.recentSearches);
@@ -68,112 +72,110 @@ export function useSearch(): UseSearchReturn {
   const removeRecentSearch = useSearchStore((s) => s.removeRecentSearch);
   const clearAllRecent = useSearchStore((s) => s.clearRecentSearches);
 
+  const latitude = useEtaStore((s) => s.latitude);
+  const longitude = useEtaStore((s) => s.longitude);
+  const pincode = useEtaStore((s) => s.pincode);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const suggestionAbortRef = useRef(0);
-  const voiceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const voiceHandlersRef = useRef<{
-    onResult: (text: string) => void;
-    onError: (msg: string) => void;
-  } | null>(null);
+  const lastRecordedQuery = useRef('');
+
+  const trimmedDebounced = debouncedQuery.trim();
+  const searchEnabled = (alwaysActive || isActive) && trimmedDebounced.length > 0;
+  const sortQuery = mapSortToProductQuery(sortOption);
+
+  const productParams = useMemo<Omit<ProductQueryParams, 'page'>>(
+    () => ({
+      search: trimmedDebounced || undefined,
+      category: filters.category || undefined,
+      sortBy: sortQuery.sortBy,
+      sortOrder: sortQuery.sortOrder,
+      latitude: latitude ?? undefined,
+      longitude: longitude ?? undefined,
+      pincode: pincode ?? undefined,
+    }),
+    [
+      trimmedDebounced,
+      filters.category,
+      sortQuery.sortBy,
+      sortQuery.sortOrder,
+      latitude,
+      longitude,
+      pincode,
+    ],
+  );
+
+  const productsQuery = useInfiniteQuery({
+    queryKey: ['catalog-search', productParams, PAGE_SIZE],
+    queryFn: ({ pageParam, signal }) =>
+      fetchProducts(
+        {
+          ...productParams,
+          page: pageParam,
+          limit: PAGE_SIZE,
+        },
+        signal,
+      ),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
+    enabled: searchEnabled,
+    staleTime: SEARCH_STALE_TIME,
+    refetchOnWindowFocus: false,
+  });
+
+  const suggestionsQuery = useQuery({
+    queryKey: ['search-suggestions', trimmedDebounced],
+    queryFn: ({ signal }) => fetchSearchSuggestions(trimmedDebounced, signal),
+    enabled: searchEnabled && trimmedDebounced.length >= 1,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive && !alwaysActive) return;
     setIsLoadingRecent(true);
-    const timer = setTimeout(() => setIsLoadingRecent(false), 150);
+    const timer = setTimeout(() => setIsLoadingRecent(false), 120);
     return () => clearTimeout(timer);
-  }, [isActive]);
+  }, [alwaysActive, isActive]);
 
-  const cancelVoiceSearchInternal = useCallback(() => {
-    if (voiceTimeoutRef.current) {
-      clearTimeout(voiceTimeoutRef.current);
-      voiceTimeoutRef.current = null;
+  useEffect(() => {
+    if (!searchEnabled || !productsQuery.isSuccess || !trimmedDebounced) return;
+    if (lastRecordedQuery.current.toLowerCase() === trimmedDebounced.toLowerCase()) return;
+    lastRecordedQuery.current = trimmedDebounced;
+    addRecentSearch(trimmedDebounced);
+  }, [addRecentSearch, productsQuery.isSuccess, searchEnabled, trimmedDebounced]);
+
+  const setQuery = useCallback((text: string) => {
+    setQueryState(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setDebouncedQuery('');
+      return;
     }
-    setIsVoiceActive(false);
-  }, []);
 
-  const runSuggestions = useCallback(async (text: string) => {
-    const requestId = ++suggestionAbortRef.current;
-    setIsLoading(true);
-
-    try {
-      const { suggestions: next } = await fetchSearchSuggestions(text);
-      if (requestId !== suggestionAbortRef.current) return;
-      setSuggestions(next);
-    } catch {
-      if (requestId !== suggestionAbortRef.current) return;
-      setSuggestions([]);
-    } finally {
-      if (requestId === suggestionAbortRef.current) {
-        setIsLoading(false);
-      }
-    }
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(trimmed);
+    }, DEBOUNCE_MS);
   }, []);
 
   const submitSearch = useCallback(
-    async (term?: string) => {
+    (term?: string) => {
       const searchTerm = (term ?? query).trim();
       if (!searchTerm) return;
-
-      suggestionAbortRef.current += 1;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       setQueryState(searchTerm);
       setDebouncedQuery(searchTerm);
-      setHasSubmitted(true);
-      setSuggestions([]);
-      setIsLoading(true);
-
-      try {
-        const page = await searchCatalog({
-          q: searchTerm,
-          sort: SORT_API_MAP[sortOption],
-          limit: 40,
-        });
-        setResults(page.products);
-        addRecentSearch(searchTerm);
-      } catch {
-        setResults([]);
-      } finally {
-        setIsLoading(false);
-        Keyboard.dismiss();
-      }
+      addRecentSearch(searchTerm);
     },
-    [query, addRecentSearch, sortOption],
-  );
-
-  const setQuery = useCallback(
-    (text: string) => {
-      setQueryState(text);
-      setHasSubmitted(false);
-      setResults([]);
-
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-
-      if (!text.trim()) {
-        suggestionAbortRef.current += 1;
-        setSuggestions([]);
-        setIsLoading(false);
-        setDebouncedQuery('');
-        return;
-      }
-
-      debounceRef.current = setTimeout(() => {
-        setDebouncedQuery(text);
-        void runSuggestions(text);
-      }, 300);
-    },
-    [runSuggestions],
+    [addRecentSearch, query],
   );
 
   const clearQuery = useCallback(() => {
-    suggestionAbortRef.current += 1;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setQueryState('');
     setDebouncedQuery('');
-    setSuggestions([]);
-    setResults([]);
-    setHasSubmitted(false);
-    setIsLoading(false);
   }, []);
 
   const activateSearch = useCallback(() => {
@@ -181,87 +183,98 @@ export function useSearch(): UseSearchReturn {
   }, []);
 
   const deactivateSearch = useCallback(() => {
-    suggestionAbortRef.current += 1;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    cancelVoiceSearchInternal();
-    setIsActive(false);
+    if (!alwaysActive) setIsActive(false);
     setQueryState('');
     setDebouncedQuery('');
-    setSuggestions([]);
-    setResults([]);
-    setHasSubmitted(false);
-    setIsLoading(false);
     setSortOption('relevance');
-    setVoiceError(null);
+    setFilters(EMPTY_SEARCH_FILTERS);
     Keyboard.dismiss();
-  }, [cancelVoiceSearchInternal]);
+  }, [alwaysActive]);
 
-  const cancelVoiceSearch = useCallback(() => {
-    setVoiceError(null);
-    cancelVoiceSearchInternal();
-  }, [cancelVoiceSearchInternal]);
+  const handleVoiceTranscript = useCallback(
+    (text: string) => {
+      submitSearch(text);
+    },
+    [submitSearch],
+  );
+
+  const voice = useVoiceSearchInput(handleVoiceTranscript);
 
   const startVoiceSearch = useCallback(() => {
-    setVoiceError(null);
     setIsActive(true);
-    setIsVoiceActive(true);
+    void voice.start();
+  }, [voice]);
 
-    const handleResult = (text: string) => {
-      cancelVoiceSearchInternal();
-      void submitSearch(text);
-    };
+  const loadMore = useCallback(() => {
+    if (productsQuery.hasNextPage && !productsQuery.isFetchingNextPage) {
+      void productsQuery.fetchNextPage();
+    }
+  }, [productsQuery]);
 
-    voiceHandlersRef.current = {
-      onResult: handleResult,
-      onError: (msg: string) => {
-        cancelVoiceSearchInternal();
-        setVoiceError(msg);
-      },
-    };
+  const retry = useCallback(() => {
+    void productsQuery.refetch();
+    void suggestionsQuery.refetch();
+  }, [productsQuery, suggestionsQuery]);
 
-    voiceTimeoutRef.current = setTimeout(() => {
-      const term =
-        VOICE_FALLBACK_TERMS[Math.floor(Math.random() * VOICE_FALLBACK_TERMS.length)];
-      voiceHandlersRef.current?.onResult(term);
-    }, 2200);
-  }, [cancelVoiceSearchInternal, submitSearch]);
+  const rawProducts = useMemo(
+    () => productsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [productsQuery.data?.pages],
+  );
+
+  const products = useMemo(() => {
+    const filtered = filters.inStock
+      ? rawProducts.filter((product) => (product.availableStock ?? product.stockLeft ?? 1) > 0)
+      : rawProducts;
+    return sortSearchProducts(filtered, sortOption);
+  }, [filters.inStock, rawProducts, sortOption]);
+
+  const apiSuggestions = suggestionsQuery.data?.suggestions ?? [];
+  const suggestions = useMemo(() => {
+    if (apiSuggestions.length > 0) return apiSuggestions.slice(0, 8);
+    return fetchLocalSuggestions(trimmedDebounced);
+  }, [apiSuggestions, trimmedDebounced]);
+
+  const total = productsQuery.data?.pages[0]?.meta.total ?? products.length;
+  const error = productsQuery.error;
+  const isOffline = isOfflineError(error);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      cancelVoiceSearchInternal();
     };
-  }, [cancelVoiceSearchInternal]);
-
-  const sortedResults = useMemo(
-    () => sortSearchResults(results, sortOption),
-    [results, sortOption],
-  );
+  }, []);
 
   return {
     query,
     isActive,
-    isLoading: isLoading && (debouncedQuery.length > 0 || hasSubmitted),
+    isLoading: searchEnabled && productsQuery.isLoading && products.length === 0,
+    isFetchingNextPage: productsQuery.isFetchingNextPage,
+    hasNextPage: productsQuery.hasNextPage ?? false,
     isLoadingRecent,
-    hasSubmitted,
     suggestions,
-    results,
-    sortedResults,
+    products,
+    total,
+    error,
+    isOffline,
     recentSearches,
     sortOption,
-    isVoiceActive,
-    voiceError,
+    filters,
+    isVoiceActive: voice.isListening,
+    voiceError: voice.error,
     setQuery,
-    submitSearch: (term?: string) => {
-      void submitSearch(term);
-    },
+    submitSearch,
     clearQuery,
     activateSearch,
     deactivateSearch,
     removeRecentSearch,
     clearAllRecent,
     setSortOption,
+    setFilters,
+    clearFilters: () => setFilters(EMPTY_SEARCH_FILTERS),
+    loadMore,
+    retry,
     startVoiceSearch,
-    cancelVoiceSearch,
+    cancelVoiceSearch: voice.cancel,
   };
 }

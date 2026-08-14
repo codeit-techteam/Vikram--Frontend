@@ -15,6 +15,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -133,15 +134,23 @@ function isValidEmail(value: string): boolean {
 function SectionLabel({
   icon,
   text,
+  step,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
+  step?: number;
 }) {
   return (
     <View style={sectionStyles.container}>
-      <View style={sectionStyles.iconBox}>
-        <Ionicons name={icon} size={15} color="#FEB623" />
-      </View>
+      {step != null ? (
+        <View style={sectionStyles.stepBadge}>
+          <Text style={sectionStyles.stepText}>{step}</Text>
+        </View>
+      ) : (
+        <View style={sectionStyles.iconBox}>
+          <Ionicons name={icon} size={15} color="#FEB623" />
+        </View>
+      )}
       <Text style={sectionStyles.text}>{text}</Text>
     </View>
   );
@@ -151,21 +160,35 @@ const sectionStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
+    gap: 10,
+    marginBottom: 16,
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: '#1A2332',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FEB623',
   },
   iconBox: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 9,
     backgroundColor: '#FFF4D1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: '#1A1A1A',
+    letterSpacing: -0.2,
   },
 });
 
@@ -672,8 +695,8 @@ export default function BulkEnquiryScreen() {
 
   if (!authChecked || (!isLoggedIn || isGuest)) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }} edges={['top']}>
-        <BackHeader title="Bulk Enquiry" backgroundColor="#F5F5F5" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F4F7' }} edges={['top']}>
+        <BackHeader title="Bulk Enquiry" backgroundColor="#F3F4F7" />
         <View style={styles.gatedState}>
           <View style={styles.emptyIcon}>
             <Ionicons name="lock-closed-outline" size={28} color="#FEB623" />
@@ -688,8 +711,8 @@ export default function BulkEnquiryScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5F5' }} edges={['top']}>
-      <BackHeader title="Bulk Enquiry" backgroundColor="#F5F5F5" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F3F4F7' }} edges={['top']}>
+      <BackHeader title="Bulk Enquiry" backgroundColor="#F3F4F7" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -704,19 +727,38 @@ export default function BulkEnquiryScreen() {
         ) : (
           <>
             <ScrollView
-              contentContainerStyle={{ padding: 16, paddingBottom: 140 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: 148 }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
-              <View style={styles.heroBanner}>
+              <LinearGradient
+                colors={['#1A2332', '#243044']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroBanner}>
+                <View style={styles.heroGlow} />
                 <View style={styles.heroIconCircle}>
-                  <Ionicons name="cube-outline" size={22} color="#1A1A1A" />
+                  <Ionicons name="cube" size={18} color="#1A1A1A" />
                 </View>
                 <Text style={styles.heroTitle}>Get a Custom Bulk Quote</Text>
                 <Text style={styles.heroSubtitle}>
                   Tell us what you need — our procurement team will contact you shortly
                   with the best pricing.
                 </Text>
-              </View>
+                <View style={styles.heroPills}>
+                  <View style={styles.heroPill}>
+                    <Ionicons name="flash" size={11} color="#FEB623" />
+                    <Text style={styles.heroPillText}>Fast response</Text>
+                  </View>
+                  <View style={styles.heroPill}>
+                    <Ionicons name="pricetag" size={11} color="#FEB623" />
+                    <Text style={styles.heroPillText}>Custom pricing</Text>
+                  </View>
+                  <View style={styles.heroPill}>
+                    <Ionicons name="people" size={11} color="#FEB623" />
+                    <Text style={styles.heroPillText}>Dedicated team</Text>
+                  </View>
+                </View>
+              </LinearGradient>
 
               {profileIncomplete ? (
                 <TouchableOpacity
@@ -735,7 +777,7 @@ export default function BulkEnquiryScreen() {
               ) : null}
 
               <View style={styles.formCard}>
-                <SectionLabel icon="layers-outline" text="Tell us what you need" />
+                <SectionLabel icon="layers-outline" text="Tell us what you need" step={1} />
 
                 <View style={styles.labelRow}>
                   <Text style={styles.fieldLabel}>
@@ -766,17 +808,29 @@ export default function BulkEnquiryScreen() {
                       <TouchableOpacity
                         key={material.id}
                         onPress={() => toggleCategory(material.slug)}
-                        style={[styles.chip, selected && styles.chipActive]}
+                        style={[styles.materialChip, selected && styles.materialChipActive]}
                         activeOpacity={0.8}>
-                        <Ionicons
-                          name={icon}
-                          size={14}
-                          color={selected ? '#1A1A1A' : '#888'}
-                        />
+                        <View
+                          style={[
+                            styles.materialIcon,
+                            selected && styles.materialIconActive,
+                          ]}>
+                          <Ionicons
+                            name={icon}
+                            size={14}
+                            color={selected ? '#1A1A1A' : '#6B7280'}
+                          />
+                        </View>
                         <Text
-                          style={[styles.chipText, selected && styles.chipTextActive]}>
-                          {selected ? `✓ ${material.name}` : material.name}
+                          style={[
+                            styles.materialChipText,
+                            selected && styles.materialChipTextActive,
+                          ]}>
+                          {material.name}
                         </Text>
+                        {selected ? (
+                          <Ionicons name="checkmark-circle" size={16} color="#1A1A1A" />
+                        ) : null}
                       </TouchableOpacity>
                     );
                   })}
@@ -932,9 +986,10 @@ export default function BulkEnquiryScreen() {
                   </Text>
                 ) : null}
 
-                <View style={styles.divider} />
+              </View>
 
-                <SectionLabel icon="call-outline" text="Your contact details" />
+              <View style={styles.formCard}>
+                <SectionLabel icon="call-outline" text="Your contact details" step={2} />
 
                 <Text style={styles.fieldLabel}>
                   Mobile Number <Text style={styles.required}>*</Text>
@@ -985,9 +1040,10 @@ export default function BulkEnquiryScreen() {
                   <Text style={styles.errorText}>{errors.contactEmail}</Text>
                 ) : null}
 
-                <View style={styles.divider} />
+              </View>
 
-                <SectionLabel icon="location-outline" text="Delivery location" />
+              <View style={styles.formCard}>
+                <SectionLabel icon="location-outline" text="Delivery location" step={3} />
 
                 {sites.length > 0 ? (
                   <View style={{ marginBottom: 10, gap: 8 }}>
@@ -1340,7 +1396,9 @@ export default function BulkEnquiryScreen() {
                   </View>
                 ) : null}
 
-                <View style={styles.divider} />
+              </View>
+
+              <View style={styles.formCard}>
                 <SectionLabel icon="eye-outline" text="Review" />
                 <View style={styles.reviewBox}>
                   <ReviewRow
@@ -1420,6 +1478,7 @@ export default function BulkEnquiryScreen() {
           onPress={() => setUnitPickerOpen(false)}
           style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Select Unit</Text>
             {availableUnits.map((unit) => (
               <TouchableOpacity
@@ -1460,39 +1519,69 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   heroBanner: {
-    backgroundColor: '#FEB623',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: '#1A2332',
+    borderRadius: 22,
+    padding: 20,
     marginBottom: 14,
+    overflow: 'hidden',
+  },
+  heroGlow: {
+    position: 'absolute',
+    right: -36,
+    top: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(254,182,35,0.14)',
   },
   heroIconCircle: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: '#FEB623',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   heroTitle: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 4,
+    color: '#FFFFFF',
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   heroSubtitle: {
-    fontSize: 12,
-    color: '#1A1A1A',
-    opacity: 0.75,
-    lineHeight: 17,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
+    lineHeight: 19,
+  },
+  heroPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  heroPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
   },
   profilePrompt: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#FFF4D1',
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: '#FFF8E6',
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: '#FEB623',
@@ -1509,8 +1598,14 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: '#fff',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
+    marginBottom: 12,
+    shadowColor: '#1A2332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
   },
   labelRow: {
     flexDirection: 'row',
@@ -1520,7 +1615,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1A1A1A',
     marginBottom: 7,
   },
@@ -1528,7 +1623,8 @@ const styles = StyleSheet.create({
   hintText: {
     fontSize: 12,
     color: '#888',
-    marginBottom: 8,
+    marginBottom: 10,
+    lineHeight: 17,
   },
   charCount: {
     fontSize: 11,
@@ -1566,11 +1662,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 13,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#F8F8F8',
+    borderColor: '#E6E8EC',
+    backgroundColor: '#F7F8FA',
   },
   chipActive: {
     backgroundColor: '#FEB623',
@@ -1584,19 +1680,55 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#1A1A1A',
   },
+  materialChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingLeft: 6,
+    paddingRight: 12,
+    paddingVertical: 6,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#E6E8EC',
+    backgroundColor: '#F7F8FA',
+  },
+  materialChipActive: {
+    backgroundColor: '#FEB623',
+    borderColor: '#FEB623',
+  },
+  materialIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  materialIconActive: {
+    backgroundColor: 'rgba(255,255,255,0.72)',
+  },
+  materialChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  materialChipTextActive: {
+    color: '#1A1A1A',
+  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: '#E6E8EC',
+    borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#F8F8F8',
+    paddingVertical: 13,
+    backgroundColor: '#FAFBFC',
   },
   inputWrapperError: {
     borderColor: '#FF3B30',
+    backgroundColor: '#FFF5F5',
   },
   input: {
     flex: 1,
@@ -1609,11 +1741,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: '#E6E8EC',
+    borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 13,
-    backgroundColor: '#F8F8F8',
+    paddingVertical: 14,
+    backgroundColor: '#FAFBFC',
   },
   unitPickerText: {
     fontSize: 14,
@@ -1629,10 +1761,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: '#E6E8EC',
+    borderRadius: 14,
     padding: 12,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FAFBFC',
   },
   savedSiteActive: {
     borderColor: '#FEB623',
@@ -1654,10 +1786,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: '#E6E8EC',
+    borderRadius: 14,
     paddingVertical: 13,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FAFBFC',
   },
   locationBtnActive: {
     backgroundColor: '#FFF4D1',
@@ -1693,10 +1825,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: '#E6E8EC',
+    borderRadius: 14,
     paddingVertical: 13,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FAFBFC',
   },
   enterCityBtnText: {
     fontSize: 14,
@@ -1720,7 +1852,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
   },
   projectToggleText: {
     fontSize: 13,
@@ -1728,10 +1863,12 @@ const styles = StyleSheet.create({
     color: '#444',
   },
   reviewBox: {
-    backgroundColor: '#F8F8F8',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FEB623',
   },
   reviewRow: {
     flexDirection: 'row',
@@ -1752,9 +1889,14 @@ const styles = StyleSheet.create({
   stickyFooter: {
     backgroundColor: '#fff',
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 16,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: '#EEF0F3',
+    shadowColor: '#1A2332',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 8,
   },
   submitBtn: {
     backgroundColor: '#FEB623',
@@ -1826,10 +1968,18 @@ const styles = StyleSheet.create({
   },
   modalSheet: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: 32,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 14,
   },
   modalTitle: {
     fontSize: 16,

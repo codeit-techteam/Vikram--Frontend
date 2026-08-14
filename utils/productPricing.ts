@@ -84,26 +84,16 @@ export function getStockLeft(product: Product): number | null {
 }
 
 /**
- * Prefer API/ETA-store values. Never invent static ETAs.
+ * Prefer the live engine label. Never invent a static "Delivery in 23 mins"
+ * from a shared minute count that belongs to another product or an empty cart.
  */
 export function getDeliveryEta(
   product: Product,
-  dynamicEtaMinutes?: number | null,
+  _dynamicEtaMinutes?: number | null,
   dynamicEtaLabel?: string | null,
 ): string {
-  if (dynamicEtaLabel) return dynamicEtaLabel;
+  if (dynamicEtaLabel && dynamicEtaLabel.trim()) return dynamicEtaLabel;
   if (product.deliveryMessage) return product.deliveryMessage;
-  if (dynamicEtaMinutes != null && dynamicEtaMinutes > 0) {
-    return `Delivery in ${dynamicEtaMinutes} mins`;
-  }
-  if (product.estimatedDeliveryMinutes != null && product.estimatedDeliveryMinutes > 0) {
-    return `Delivery in ${product.estimatedDeliveryMinutes} mins`;
-  }
-  if (product.deliveryETA) {
-    return product.deliveryETA.startsWith('Delivery')
-      ? product.deliveryETA
-      : `Delivery in ${product.deliveryETA}`;
-  }
   return '';
 }
 

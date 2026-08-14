@@ -21,7 +21,9 @@ export function SearchSuggestions({ suggestions, query, onSelect }: SearchSugges
           onPress={async () => {
             await Haptics.selectionAsync();
             onSelect(item.text);
-          }}>
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={item.text}>
           <Ionicons name="search-outline" size={18} color="#FEB623" />
           <View style={styles.content}>
             <HighlightedText text={item.text} query={query} style={styles.title} />

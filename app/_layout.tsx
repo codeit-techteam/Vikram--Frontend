@@ -28,15 +28,9 @@ function isTabRoot(pathname: string) {
   return TAB_ROUTES.includes(pathname);
 }
 
-export default function RootLayout() {
-  const hydrateSession = useAuthStore((s) => s.hydrateSession);
+/** Keep this out of RootLayout so the Stack does not remount on every route change. */
+function AndroidTabExitHandler() {
   const pathname = usePathname();
-
-  useEffect(() => {
-    SplashScreen.hideAsync();
-    void hydrateSession();
-    void useGstStore.getState().fetchGST();
-  }, [hydrateSession]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -56,6 +50,18 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [pathname]);
 
+  return null;
+}
+
+export default function RootLayout() {
+  const hydrateSession = useAuthStore((s) => s.hydrateSession);
+
+  useEffect(() => {
+    SplashScreen.hideAsync();
+    void hydrateSession();
+    void useGstStore.getState().fetchGST();
+  }, [hydrateSession]);
+
   return (
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
@@ -64,10 +70,12 @@ export default function RootLayout() {
           <BottomSheetModalProvider>
             <StatusBar style="auto" />
             <Stack
+              detachInactiveScreens={false}
               screenOptions={{
                 headerShown: false,
                 animation: 'slide_from_right',
                 contentStyle: { backgroundColor: '#FFFFFF' },
+                freezeOnBlur: false,
               }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -76,7 +84,10 @@ export default function RootLayout() {
               <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
               <Stack.Screen name="delivery-location" options={{ headerShown: false }} />
               <Stack.Screen name="confirm-location" options={{ headerShown: false }} />
-              <Stack.Screen name="search" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="search"
+                options={{ headerShown: false, animation: 'fade' }}
+              />
               <Stack.Screen name="cart" options={{ headerShown: false }} />
               <Stack.Screen
                 name="checkout"
@@ -89,16 +100,7 @@ export default function RootLayout() {
               <Stack.Screen name="emergency-order" options={{ headerShown: false }} />
               <Stack.Screen name="notifications" options={{ headerShown: false }} />
               <Stack.Screen name="support" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="voice-assistant"
-                options={{
-                  headerShown: false,
-                  presentation: 'modal',
-                  animation: 'slide_from_bottom',
-                }}
-              />
-              <Stack.Screen name="products/[categoryId]" options={{ headerShown: false }} />
-              <Stack.Screen name="products/detail/[productId]" options={{ headerShown: false }} />
+              <Stack.Screen name="products" options={{ headerShown: false }} />
               <Stack.Screen name="orders/view/[orderId]" options={{ headerShown: false }} />
               <Stack.Screen name="orders/details/[orderId]" options={{ headerShown: false }} />
               <Stack.Screen name="orders/history" options={{ headerShown: false }} />
@@ -109,7 +111,7 @@ export default function RootLayout() {
               <Stack.Screen name="account/add-sites" options={{ headerShown: false }} />
               <Stack.Screen name="account/gst-compliance" options={{ headerShown: false }} />
               <Stack.Screen name="account/terms" options={{ headerShown: false }} />
-              <Stack.Screen name="bulk-procurement" options={{ headerShown: false }} />
+              <Stack.Screen name="bulk-procurement/index" options={{ headerShown: false }} />
               <Stack.Screen name="bulk-procurement/enquiry" options={{ headerShown: false }} />
               <Stack.Screen
                 name="bulk-procurement/enquiry-success"
@@ -117,8 +119,9 @@ export default function RootLayout() {
               />
               <Stack.Screen name="bulk-procurement/my-enquiries" options={{ headerShown: false }} />
               <Stack.Screen name="bulk-procurement/enquiry-detail" options={{ headerShown: false }} />
-              <Stack.Screen name="membership" options={{ headerShown: false }} />
+              <Stack.Screen name="offers" options={{ headerShown: false }} />
             </Stack>
+            <AndroidTabExitHandler />
             <VoiceAssistantSheet />
             <VariantBottomSheet />
             <AddToCartSuccessToast />

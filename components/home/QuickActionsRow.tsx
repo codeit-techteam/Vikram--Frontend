@@ -12,6 +12,7 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   bulk: 'cube-outline',
   whatsapp: 'logo-whatsapp',
   call: 'call-outline',
+  loyalty: 'diamond-outline',
   membership: 'diamond-outline',
   track: 'navigate-outline',
   refer: 'gift-outline',

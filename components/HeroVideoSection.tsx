@@ -13,7 +13,6 @@ import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
 
 import { ExpoVideoPlayer } from '@components/video/ExpoVideoPlayer';
 import type { CmsBanner } from '@/types/cms';
-import { normalizeMediaUrl } from '@utils/media';
 import { resolveCmsVideoSource } from '@utils/cmsMedia';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -37,10 +36,6 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
 
   const videoSource = resolveCmsVideoSource(banner.videoUrl);
   if (!videoSource) return null;
-
-  const posterUrl =
-    normalizeMediaUrl(banner.thumbnailUrl) ??
-    normalizeMediaUrl(banner.imageUrl);
 
   const toggleMute = () => {
     setIsMuted((current) => !current);
@@ -66,7 +61,6 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
         autoPlay
         paused={paused}
         contentFit="cover"
-        posterUrl={posterUrl}
         onReadyChange={setPlayerReady}
       />
 

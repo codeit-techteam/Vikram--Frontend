@@ -30,7 +30,8 @@ import {
   sheetShowsVariantPicker,
 } from '@constants/catalogVariantHelpers';
 import { useAddToCart } from '@hooks/useAddToCart';
-import { useEtaStore } from '@store/etaStore';
+import { useProductDeliveryEstimate } from '@hooks/useProductDeliveryEstimate';
+import { getVehicleTier, formatLoadLabel } from '@constants/deliveryVehicles';
 import { useVariantStore } from '@store/variantStore';
 import { isVisibleProductBrand } from '@utils/categoryDisplay';
 import { formatINR } from '@utils/formatCurrency';
@@ -75,7 +76,6 @@ function VariantBottomSheetComponent() {
   const selectVariant = useVariantStore((s) => s.selectVariant);
   const setQuantity = useVariantStore((s) => s.setQuantity);
   const { addToCart, buttonState } = useAddToCart();
-  const liveEta = useEtaStore((s) => s.eta?.deliveryETA);
 
   const variants = product?.productVariants ?? [];
   const showVariants = product ? sheetShowsVariantPicker(product) : false;
@@ -89,6 +89,31 @@ function VariantBottomSheetComponent() {
     if (!product || !pricing) return null;
     return computeQuantityPricing(product, quantity, selected, pricing);
   }, [product, pricing, quantity, selected]);
+
+  const {
+    estimate: liveEtaResult,
+    label: liveEtaLabel,
+    isCalculating: etaUpdating,
+  } = useProductDeliveryEstimate({
+    productId: product?.id,
+    variantId: selected?.id,
+    quantity,
+    enabled: Boolean(visible && product?.id && quantity > 0),
+  });
+
+  const liveVehicle = liveEtaResult?.deliveryVehicleType
+    ? getVehicleTier(liveEtaResult.deliveryVehicleType)
+    : quote?.vehicle;
+  const liveModeTitle =
+    liveEtaResult?.deliveryModeTitle ||
+    liveVehicle?.label ||
+    quote?.modeTitle;
+  const liveWeightKg =
+    liveEtaResult?.deliveryTotalWeightKg != null &&
+    liveEtaResult.deliveryTotalWeightKg > 0
+      ? liveEtaResult.deliveryTotalWeightKg
+      : quote?.estimatedWeightKg ?? 0;
+  const liveLoadLabel = formatLoadLabel(liveWeightKg);
 
   const sheetY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
@@ -230,12 +255,7 @@ function VariantBottomSheetComponent() {
     quote.originalUnitPrice,
     pricing.discountPercent,
   );
-  const etaLabel =
-    liveEta != null
-      ? `Delivery in ${liveEta} mins`
-      : quote.eta
-        ? `Delivery in ${quote.eta}`
-        : null;
+  const etaLabel = liveEtaLabel || null;
 
   const ctaPrimary = outOfStock
     ? 'Out of Stock'
@@ -243,11 +263,12 @@ function VariantBottomSheetComponent() {
       ? `Add ${quantity} × ${variantLabel}`
       : `Add ${formatUnitCount(quantity, quote.unit)}`;
 
+  const displayVehicle = liveVehicle ?? quote.vehicle;
   const summaryLine = [
     `${quantity} Qty`,
     variantLabel,
-    `${quote.vehicle.shortLabel} Delivery`,
-    quote.estimatedWeightKg > 0 ? `${quote.estimatedWeightKg} kg` : null,
+    `${displayVehicle.shortLabel} Delivery`,
+    liveLoadLabel ? `Load ${liveLoadLabel}` : null,
   ]
     .filter(Boolean)
     .join('  ·  ');
@@ -395,29 +416,29 @@ function VariantBottomSheetComponent() {
               </View>
             </View>
 
-            <Animated.View
-              key={quote.vehicleType}
-              entering={FadeIn.duration(160)}
-              style={[styles.section, styles.deliveryCard]}>
+            <View style={[styles.section, styles.deliveryCard]}>
               <View style={styles.deliveryIconWrap}>
-                <Ionicons name={quote.vehicle.icon} size={22} color={DARK} />
+                <Ionicons name={displayVehicle.icon} size={22} color={DARK} />
               </View>
               <View style={styles.deliveryTextWrap}>
                 <Text style={styles.deliveryMode} numberOfLines={1}>
-                  {quote.modeTitle}
+                  {liveModeTitle || displayVehicle.label}
                 </Text>
-                <Text style={styles.deliveryEta} numberOfLines={1}>
-                  ETA {quote.eta}
-                  {quote.estimatedWeightKg > 0
-                    ? `  ·  Est. ${quote.estimatedWeightKg} kg`
+                <Text style={styles.deliveryEta} numberOfLines={2}>
+                  {liveEtaLabel}
+                  {etaUpdating && liveEtaResult ? '  ·  updating' : ''}
+                  {liveLoadLabel ? `  ·  Load ${liveLoadLabel}` : ''}
+                  {liveEtaResult?.deliveryVehicleCount &&
+                  liveEtaResult.deliveryVehicleCount > 1
+                    ? `  ·  ${liveEtaResult.deliveryVehicleCount} trips`
                     : ''}
                 </Text>
               </View>
               <View style={styles.vehiclePill}>
-                <Ionicons name={quote.vehicle.icon} size={12} color={DARK} />
-                <Text style={styles.vehiclePillText}>{quote.vehicle.shortLabel}</Text>
+                <Ionicons name={displayVehicle.icon} size={12} color={DARK} />
+                <Text style={styles.vehiclePillText}>{displayVehicle.shortLabel}</Text>
               </View>
-            </Animated.View>
+            </View>
 
             {pricing.hasBulk ? (
               <View style={styles.section}>
