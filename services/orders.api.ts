@@ -171,6 +171,9 @@ export async function placeOrder(payload: {
   notes?: string;
   paymentMethod?: 'CASH' | 'MANUAL';
   loyaltyPointsToRedeem?: number;
+  deliveryPreferenceType?: 'ASAP' | 'TODAY' | 'TOMORROW' | 'SCHEDULED';
+  scheduledSlotId?: string;
+  deliveryCustomerRemark?: string;
 }): Promise<Record<string, unknown>> {
   const { data } = await api.post<ApiResponse<Record<string, unknown>>>(
     ORDERS_BASE,
@@ -179,6 +182,9 @@ export async function placeOrder(payload: {
       notes: payload.notes,
       paymentMethod: payload.paymentMethod ?? 'CASH',
       loyaltyPointsToRedeem: payload.loyaltyPointsToRedeem,
+      deliveryPreferenceType: payload.deliveryPreferenceType,
+      scheduledSlotId: payload.scheduledSlotId,
+      deliveryCustomerRemark: payload.deliveryCustomerRemark,
     },
   );
   return data.data;

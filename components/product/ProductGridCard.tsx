@@ -133,7 +133,9 @@ function ProductGridCardComponent({
       openSheet(product);
       return;
     }
-    const next = cartQty + step;
+    const lineQty =
+      useCartStore.getState().items.find((i) => i.id === lineId)?.quantity ?? cartQty;
+    const next = lineQty + step;
     const capped =
       typeof product.maxOrder === 'number' ? Math.min(product.maxOrder, next) : next;
     updateQuantity(lineId, capped);
@@ -162,8 +164,9 @@ function ProductGridCardComponent({
     const lineId = resolveLineId();
     if (!lineId) return;
 
-    const next = cartQty - step;
-    // Below MOQ → remove line (Blinkit-style clear)
+    const lineQty =
+      useCartStore.getState().items.find((i) => i.id === lineId)?.quantity ?? cartQty;
+    const next = lineQty - step;
     updateQuantity(lineId, next < minOrder ? 0 : next);
   }, [cartQty, minOrder, multiVariant, product.id, resolveLineId, step, updateQuantity]);
 

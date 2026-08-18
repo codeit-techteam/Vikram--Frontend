@@ -6,7 +6,8 @@ import { useTranslation } from '@store/languageStore';
 
 interface ProductStockInfoProps {
   stockLeft: number | null;
-  deliveryEta: string;
+  /** Optional. When omitted, ETA is hidden. */
+  deliveryEta?: string;
   /** Card list: one horizontal meta row. Detail: stacked. */
   variant?: 'row' | 'stack';
   compact?: boolean;
@@ -24,7 +25,7 @@ function displayEtaText(raw: string): string {
 
 export function ProductStockInfo({
   stockLeft,
-  deliveryEta,
+  deliveryEta = '',
   variant = 'stack',
   compact = false,
   vehicleIcon = 'bus-outline',

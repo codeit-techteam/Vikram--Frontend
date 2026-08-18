@@ -24,7 +24,13 @@ export const CURRENT_SITE_QUERY_KEY = 'customer-current-site';
 export const SITES_STALE_TIME = 1000 * 60 * 10;
 
 async function resolveServiceability(site?: DeliverySite | null) {
-  if (!site?.latitude || !site?.longitude) {
+  if (
+    site?.latitude == null ||
+    site?.longitude == null ||
+    !Number.isFinite(site.latitude) ||
+    !Number.isFinite(site.longitude) ||
+    (site.latitude === 0 && site.longitude === 0)
+  ) {
     useServiceabilityStore.getState().clear();
     return;
   }
@@ -41,13 +47,23 @@ function syncDeliveryStore(sites: DeliverySite[]) {
     name: s.siteName,
     address: [s.fullAddress, s.city].filter(Boolean).join(', '),
   }));
+  const store = useDeliveryStore.getState();
+  store.setSites(mapped);
+  store.setProfileSitesFromDeliverySites(sites);
+
+  const currentSelected = store.selectedSiteId;
+  const selectedStillExists = sites.some((s) => s.id === currentSelected);
   const primary = sites.find((s) => s.isPrimary) ?? sites[0];
-  useDeliveryStore.getState().setSites(mapped);
-  if (primary) {
-    useDeliveryStore.getState().setSelectedSite(primary.id);
+  const nextSelectedId = selectedStillExists
+    ? currentSelected
+    : (primary?.id ?? null);
+  if (nextSelectedId && nextSelectedId !== currentSelected) {
+    store.setSelectedSite(nextSelectedId);
   }
-  useDeliveryStore.getState().setProfileSitesFromDeliverySites(sites);
-  void resolveServiceability(primary);
+
+  const forServiceability =
+    sites.find((s) => s.id === nextSelectedId) ?? primary ?? null;
+  void resolveServiceability(forServiceability);
 }
 
 export function useSites(enabled = true) {

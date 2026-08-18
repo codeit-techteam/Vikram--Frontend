@@ -6,6 +6,7 @@ export interface ServiceabilityResult {
   deliveryETA: number;
   deliveryMessage: string;
   reason?: string;
+  hubName?: string;
 }
 
 export async function checkServiceability(params: {

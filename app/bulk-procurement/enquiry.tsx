@@ -23,7 +23,7 @@ import { BackHeader } from '@components/BackHeader';
 import {
   getCategoryIcon,
   getDefaultUnit,
-  getUnitsForSlugs,
+  getUnitsForSlug,
   isBricksSlug,
   isRmcSlug,
   MIXED_LOAD_SLUG,
@@ -50,14 +50,15 @@ const NOTES_MAX = 1000;
 
 type LocationSource = 'saved' | 'gps' | 'manual' | null;
 
+type QuantityLine = { quantity: string; unit: string };
+
 type FormState = {
   selectedSlugs: string[];
   isMixedMode: boolean;
   productType: string;
   grade: string;
   materialTypeLabel: string;
-  quantity: string;
-  unit: string;
+  quantityBySlug: Record<string, QuantityLine>;
   contactPhone: string;
   contactEmail: string;
   location: string;
@@ -84,7 +85,6 @@ type FormErrors = Partial<
     | 'materials'
     | 'productType'
     | 'quantity'
-    | 'unit'
     | 'contactPhone'
     | 'contactEmail'
     | 'location'
@@ -92,7 +92,9 @@ type FormErrors = Partial<
     | 'notes',
     string
   >
->;
+> & {
+  quantityBySlug?: Record<string, string>;
+};
 
 const EMPTY_FORM: FormState = {
   selectedSlugs: [],
@@ -100,8 +102,7 @@ const EMPTY_FORM: FormState = {
   productType: '',
   grade: '',
   materialTypeLabel: '',
-  quantity: '',
-  unit: '',
+  quantityBySlug: {},
   contactPhone: '',
   contactEmail: '',
   location: '',
@@ -114,7 +115,7 @@ const EMPTY_FORM: FormState = {
   addressId: null,
   locationSource: null,
   deliveryRequirement: '',
-  preferredContact: 'BOTH',
+  preferredContact: 'CALL',
   notes: '',
   projectName: '',
   siteType: '',
@@ -199,8 +200,7 @@ function draftPayload(form: FormState) {
     productType: form.productType,
     grade: form.grade,
     materialTypeLabel: form.materialTypeLabel,
-    quantity: form.quantity,
-    unit: form.unit,
+    quantityBySlug: form.quantityBySlug,
     contactPhone: form.contactPhone,
     contactEmail: form.contactEmail,
     location: form.location,
@@ -238,7 +238,7 @@ export default function BulkEnquiryScreen() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const [unitPickerOpen, setUnitPickerOpen] = useState(false);
+  const [unitPickerSlug, setUnitPickerSlug] = useState<string | null>(null);
   const [addressMode, setAddressMode] = useState(false);
   const [locating, setLocating] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -248,7 +248,13 @@ export default function BulkEnquiryScreen() {
 
   const categories = formConfig?.categories ?? [];
   const deliveryOptions = formConfig?.deliveryRequirements ?? [];
-  const contactOptions = formConfig?.preferredContacts ?? [];
+  const contactOptions = useMemo(
+    () =>
+      (formConfig?.preferredContacts ?? []).filter(
+        (option) => option.value !== 'BOTH',
+      ),
+    [formConfig?.preferredContacts],
+  );
   const brickTypes = formConfig?.brickProductTypes ?? [];
   const brickGrades = formConfig?.brickGrades ?? [];
 
@@ -267,12 +273,12 @@ export default function BulkEnquiryScreen() {
   );
 
   const availableUnits = useMemo(
-    () => getUnitsForSlugs(materialSlugs.length ? materialSlugs : form.selectedSlugs, formConfig?.units ?? []),
-    [materialSlugs, form.selectedSlugs, formConfig?.units],
+    () =>
+      unitPickerSlug
+        ? getUnitsForSlug(unitPickerSlug, formConfig?.units ?? [])
+        : [],
+    [unitPickerSlug, formConfig?.units],
   );
-
-  const unitLabel =
-    availableUnits.length > 1 && !form.unit ? 'Select Unit' : form.unit || 'Unit';
 
   const selectedCategoryNames = useMemo(() => {
     return form.selectedSlugs
@@ -348,7 +354,33 @@ export default function BulkEnquiryScreen() {
               text: 'Restore',
               onPress: () => {
                 skipNextDraftSave.current = true;
-                setForm((prev) => ({ ...prev, ...parsed }));
+                const parsedForm = parsed as Partial<FormState> & {
+                  quantity?: string;
+                  unit?: string;
+                  preferredContact?: string;
+                };
+                const restored: Partial<FormState> = { ...parsedForm };
+                if (
+                  !parsedForm.quantityBySlug &&
+                  (parsedForm.quantity || parsedForm.unit)
+                ) {
+                  const slugs = (parsedForm.selectedSlugs ?? []).filter(
+                    (s) => s !== MIXED_LOAD_SLUG,
+                  );
+                  restored.quantityBySlug = Object.fromEntries(
+                    slugs.map((slug) => [
+                      slug,
+                      {
+                        quantity: parsedForm.quantity ?? '',
+                        unit: parsedForm.unit ?? '',
+                      },
+                    ]),
+                  );
+                }
+                if (parsedForm.preferredContact === 'BOTH') {
+                  restored.preferredContact = 'CALL';
+                }
+                setForm((prev) => ({ ...prev, ...restored }));
                 if (
                   parsed.locationSource === 'manual' ||
                   parsed.addressLine ||
@@ -382,19 +414,33 @@ export default function BulkEnquiryScreen() {
   }, [form, draftChecked]);
 
   useEffect(() => {
-    const defaultUnit = getDefaultUnit(
-      materialSlugs.length ? materialSlugs : form.selectedSlugs,
-      formConfig?.units ?? [],
-    );
-    if (defaultUnit) {
-      setForm((prev) => ({ ...prev, unit: defaultUnit }));
-      return;
-    }
-    setForm((prev) => ({
-      ...prev,
-      unit: availableUnits.includes(prev.unit) ? prev.unit : '',
-    }));
-  }, [materialSlugs, form.selectedSlugs, availableUnits, formConfig?.units]);
+    setForm((prev) => {
+      const fallbackUnits = formConfig?.units ?? [];
+      const next: Record<string, QuantityLine> = { ...prev.quantityBySlug };
+      let changed = false;
+
+      for (const slug of materialSlugs) {
+        const units = getUnitsForSlug(slug, fallbackUnits);
+        const current = next[slug] ?? { quantity: '', unit: '' };
+        const nextUnit = units.includes(current.unit)
+          ? current.unit
+          : (getDefaultUnit([slug], fallbackUnits) ?? units[0] ?? '');
+        if (!next[slug] || next[slug].unit !== nextUnit) {
+          next[slug] = { ...current, unit: nextUnit };
+          changed = true;
+        }
+      }
+
+      for (const slug of Object.keys(next)) {
+        if (!materialSlugs.includes(slug)) {
+          delete next[slug];
+          changed = true;
+        }
+      }
+
+      return changed ? { ...prev, quantityBySlug: next } : prev;
+    });
+  }, [materialSlugs, formConfig?.units]);
 
   useEffect(() => {
     if (user.company && !form.companyName) {
@@ -422,6 +468,30 @@ export default function BulkEnquiryScreen() {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (key in errors) {
       setErrors((prev) => ({ ...prev, [key]: undefined }));
+    }
+  };
+
+  const updateQuantityLine = (slug: string, patch: Partial<QuantityLine>) => {
+    setForm((prev) => ({
+      ...prev,
+      quantityBySlug: {
+        ...prev.quantityBySlug,
+        [slug]: {
+          ...(prev.quantityBySlug[slug] ?? { quantity: '', unit: '' }),
+          ...patch,
+        },
+      },
+    }));
+    if (errors.quantity || errors.quantityBySlug?.[slug]) {
+      setErrors((prev) => {
+        const nextBySlug = { ...(prev.quantityBySlug ?? {}) };
+        delete nextBySlug[slug];
+        return {
+          ...prev,
+          quantity: Object.keys(nextBySlug).length ? prev.quantity : undefined,
+          quantityBySlug: nextBySlug,
+        };
+      });
     }
   };
 
@@ -456,6 +526,21 @@ export default function BulkEnquiryScreen() {
         : [...withoutMixed, slug];
       const keepMixedChip = prev.selectedSlugs.includes(MIXED_LOAD_SLUG);
       const isMixedMode = keepMixedChip || nextMaterials.length > 1;
+      const fallbackUnits = formConfig?.units ?? [];
+      const quantityBySlug: Record<string, QuantityLine> = {};
+      for (const materialSlug of nextMaterials) {
+        const existing = prev.quantityBySlug[materialSlug];
+        const units = getUnitsForSlug(materialSlug, fallbackUnits);
+        quantityBySlug[materialSlug] = {
+          quantity: existing?.quantity ?? '',
+          unit:
+            existing?.unit && units.includes(existing.unit)
+              ? existing.unit
+              : (getDefaultUnit([materialSlug], fallbackUnits) ??
+                units[0] ??
+                ''),
+        };
+      }
 
       return {
         ...prev,
@@ -463,6 +548,7 @@ export default function BulkEnquiryScreen() {
         selectedSlugs: keepMixedChip
           ? [MIXED_LOAD_SLUG, ...nextMaterials]
           : nextMaterials,
+        quantityBySlug,
         productType: nextMaterials.some((s) => isBricksSlug(s))
           ? prev.productType
           : '',
@@ -567,12 +653,20 @@ export default function BulkEnquiryScreen() {
       newErrors.productType = 'Brick type is required';
     }
 
-    const qty = Number(form.quantity);
-    if (!form.quantity.trim() || !Number.isFinite(qty) || qty <= 0) {
-      newErrors.quantity = 'Enter a quantity greater than 0';
+    const quantityBySlug: Record<string, string> = {};
+    for (const slug of materials) {
+      const line = form.quantityBySlug[slug];
+      const qty = Number(line?.quantity);
+      if (!line?.quantity?.trim() || !Number.isFinite(qty) || qty <= 0) {
+        quantityBySlug[slug] = 'Enter a quantity greater than 0';
+      } else if (!line.unit?.trim()) {
+        quantityBySlug[slug] = 'Select a unit';
+      }
     }
-
-    if (!form.unit.trim()) newErrors.unit = 'Select a unit';
+    if (Object.keys(quantityBySlug).length > 0) {
+      newErrors.quantity = 'Enter quantity and unit for each selected material';
+      newErrors.quantityBySlug = quantityBySlug;
+    }
 
     const phone = normalizePhoneDigits(form.contactPhone);
     if (!phone || phone.length !== 10) {
@@ -617,9 +711,21 @@ export default function BulkEnquiryScreen() {
       materials.length > 1 ||
       form.selectedSlugs.includes(MIXED_LOAD_SLUG);
 
+    const materialQuantities = materials.map((slug) => {
+      const line = form.quantityBySlug[slug];
+      const unit = normalizeUnitLabel(line?.unit) || line?.unit || '';
+      return {
+        slug,
+        quantity: Number(line?.quantity),
+        unit,
+      };
+    });
+    const firstLine = materialQuantities[0];
+
     const payload: CreateBulkEnquiryPayload = {
-      estimatedQuantity: Number(form.quantity),
-      unit: normalizeUnitLabel(form.unit) || form.unit,
+      estimatedQuantity: firstLine?.quantity ?? 0,
+      unit: firstLine?.unit || 'Bags',
+      materialQuantities,
       deliveryRequirement: form.deliveryRequirement as BulkDeliveryRequirement,
       location,
       preferredContact: form.preferredContact,
@@ -796,8 +902,8 @@ export default function BulkEnquiryScreen() {
                 </View>
 
                 <Text style={styles.hintText}>
-                  Select one or more materials (e.g. Bricks + Cement). Units update
-                  based on your selection.
+                  Select one or more materials (e.g. Bricks + Cement). Enter
+                  quantity and unit for each selected material.
                 </Text>
 
                 <View style={styles.chipRow}>
@@ -921,69 +1027,96 @@ export default function BulkEnquiryScreen() {
                   </View>
                 ) : null}
 
-                <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.fieldLabel}>
-                      Estimated Quantity <Text style={styles.required}>*</Text>
-                    </Text>
-                    <View
-                      style={[
-                        styles.inputWrapper,
-                        errors.quantity && styles.inputWrapperError,
-                      ]}>
-                      <Ionicons name="calculator-outline" size={17} color="#999" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Enter quantity"
-                        placeholderTextColor="#AAAAAA"
-                        value={form.quantity}
-                        onChangeText={(v) =>
-                          updateField('quantity', v.replace(/[^\d.]/g, ''))
-                        }
-                        keyboardType="decimal-pad"
-                      />
-                    </View>
-                    {errors.quantity ? (
-                      <Text style={styles.errorText}>{errors.quantity}</Text>
-                    ) : null}
+                {materialSlugs.length > 0 ? (
+                  <View style={{ marginTop: 14, gap: 12 }}>
+                    {materialSlugs.map((slug) => {
+                      const category =
+                        categories.find((c) => c.slug === slug)?.name ?? slug;
+                      const line = form.quantityBySlug[slug] ?? {
+                        quantity: '',
+                        unit: '',
+                      };
+                      const units = getUnitsForSlug(slug, formConfig?.units ?? []);
+                      const lineError = errors.quantityBySlug?.[slug];
+                      const unitLabel =
+                        units.length > 1 && !line.unit
+                          ? 'Select Unit'
+                          : line.unit || 'Unit';
+                      return (
+                        <View key={slug}>
+                          <Text style={styles.fieldLabel}>
+                            {category} quantity{' '}
+                            <Text style={styles.required}>*</Text>
+                          </Text>
+                          <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                              <View
+                                style={[
+                                  styles.inputWrapper,
+                                  lineError && styles.inputWrapperError,
+                                ]}>
+                                <Ionicons
+                                  name="calculator-outline"
+                                  size={17}
+                                  color="#999"
+                                />
+                                <TextInput
+                                  style={styles.input}
+                                  placeholder="Enter quantity"
+                                  placeholderTextColor="#AAAAAA"
+                                  value={line.quantity}
+                                  onChangeText={(v) =>
+                                    updateQuantityLine(slug, {
+                                      quantity: v.replace(/[^\d.]/g, ''),
+                                    })
+                                  }
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+                            </View>
+                            <View style={{ width: 118 }}>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  if (units.length === 0) return;
+                                  void Haptics.selectionAsync();
+                                  setUnitPickerSlug(slug);
+                                }}
+                                disabled={units.length === 0}
+                                style={[
+                                  styles.unitPicker,
+                                  units.length === 0 && { opacity: 0.5 },
+                                  lineError &&
+                                    !line.unit &&
+                                    styles.inputWrapperError,
+                                ]}>
+                                <Text
+                                  style={[
+                                    styles.unitPickerText,
+                                    !line.unit &&
+                                      units.length > 1 && { color: '#888' },
+                                  ]}
+                                  numberOfLines={1}>
+                                  {units.length === 0 ? 'Unit' : unitLabel}
+                                </Text>
+                                <Ionicons
+                                  name="chevron-down"
+                                  size={16}
+                                  color="#888"
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                          {lineError ? (
+                            <Text style={styles.errorText}>{lineError}</Text>
+                          ) : null}
+                        </View>
+                      );
+                    })}
                   </View>
+                ) : null}
 
-                  <View style={{ width: 118 }}>
-                    <Text style={styles.fieldLabel}>
-                      Unit <Text style={styles.required}>*</Text>
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (availableUnits.length === 0) return;
-                        void Haptics.selectionAsync();
-                        setUnitPickerOpen(true);
-                      }}
-                      disabled={availableUnits.length === 0}
-                      style={[
-                        styles.unitPicker,
-                        availableUnits.length === 0 && { opacity: 0.5 },
-                        errors.unit && styles.inputWrapperError,
-                      ]}>
-                      <Text
-                        style={[
-                          styles.unitPickerText,
-                          !form.unit && availableUnits.length > 1 && { color: '#888' },
-                        ]}
-                        numberOfLines={1}>
-                        {availableUnits.length === 0 ? 'Unit' : unitLabel}
-                      </Text>
-                      <Ionicons name="chevron-down" size={16} color="#888" />
-                    </TouchableOpacity>
-                    {errors.unit ? (
-                      <Text style={styles.errorText}>{errors.unit}</Text>
-                    ) : null}
-                  </View>
-                </View>
-
-                {materialSlugs.length > 1 ? (
-                  <Text style={[styles.hintText, { marginTop: 8 }]}>
-                    Units shown are combined for your selected materials.
-                  </Text>
+                {errors.quantity && materialSlugs.length === 0 ? (
+                  <Text style={styles.errorText}>{errors.quantity}</Text>
                 ) : null}
 
               </View>
@@ -1265,7 +1398,6 @@ export default function BulkEnquiryScreen() {
                     : [
                         { value: 'CALL', label: 'Call' },
                         { value: 'WHATSAPP', label: 'WhatsApp' },
-                        { value: 'BOTH', label: 'Call or WhatsApp' },
                       ]
                   ).map((option) => (
                     <TouchableOpacity
@@ -1414,9 +1546,16 @@ export default function BulkEnquiryScreen() {
                   <ReviewRow
                     label="Quantity"
                     value={
-                      form.quantity && form.unit
-                        ? `${form.quantity} ${form.unit}`
-                        : '—'
+                      materialSlugs
+                        .map((slug) => {
+                          const name =
+                            categories.find((c) => c.slug === slug)?.name ?? slug;
+                          const line = form.quantityBySlug[slug];
+                          if (!line?.quantity || !line.unit) return null;
+                          return `${name}: ${line.quantity} ${line.unit}`;
+                        })
+                        .filter(Boolean)
+                        .join(', ') || '—'
                     }
                   />
                   <ReviewRow
@@ -1439,7 +1578,8 @@ export default function BulkEnquiryScreen() {
                     label="Contact"
                     value={
                       contactOptions.find((c) => c.value === form.preferredContact)
-                        ?.label || form.preferredContact
+                        ?.label ||
+                      (form.preferredContact === 'WHATSAPP' ? 'WhatsApp' : 'Call')
                     }
                   />
                 </View>
@@ -1472,31 +1612,44 @@ export default function BulkEnquiryScreen() {
         )}
       </KeyboardAvoidingView>
 
-      <Modal visible={unitPickerOpen} transparent animationType="fade">
+      <Modal visible={unitPickerSlug != null} transparent animationType="fade">
         <TouchableOpacity
           activeOpacity={1}
-          onPress={() => setUnitPickerOpen(false)}
+          onPress={() => setUnitPickerSlug(null)}
           style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Select Unit</Text>
+            <Text style={styles.modalTitle}>
+              {unitPickerSlug
+                ? `Select unit for ${
+                    categories.find((c) => c.slug === unitPickerSlug)?.name ??
+                    'material'
+                  }`
+                : 'Select Unit'}
+            </Text>
             {availableUnits.map((unit) => (
               <TouchableOpacity
                 key={unit}
                 onPress={() => {
+                  if (!unitPickerSlug) return;
                   void Haptics.selectionAsync();
-                  updateField('unit', unit);
-                  setUnitPickerOpen(false);
+                  updateQuantityLine(unitPickerSlug, { unit });
+                  setUnitPickerSlug(null);
                 }}
-                style={[styles.modalOption, form.unit === unit && styles.modalOptionActive]}>
+                style={[
+                  styles.modalOption,
+                  form.quantityBySlug[unitPickerSlug ?? '']?.unit === unit &&
+                    styles.modalOptionActive,
+                ]}>
                 <Text
                   style={[
                     styles.modalOptionText,
-                    form.unit === unit && styles.modalOptionTextActive,
+                    form.quantityBySlug[unitPickerSlug ?? '']?.unit === unit &&
+                      styles.modalOptionTextActive,
                   ]}>
                   {unit}
                 </Text>
-                {form.unit === unit ? (
+                {form.quantityBySlug[unitPickerSlug ?? '']?.unit === unit ? (
                   <Ionicons name="checkmark" size={18} color="#FEB623" />
                 ) : null}
               </TouchableOpacity>

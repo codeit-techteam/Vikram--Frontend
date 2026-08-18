@@ -20,6 +20,7 @@ export type BillSummaryProps = {
   checkoutTotal: number;
   corporateSavings: number;
   bikeDelivery: boolean;
+  gstAmount?: number;
   gstUiState: GstUiState;
   gstBusinessDiscount?: number;
   gstDiscountPercent?: number;
@@ -58,6 +59,7 @@ export function BillSummary({
   checkoutTotal,
   corporateSavings,
   bikeDelivery,
+  gstAmount = 0,
   gstUiState,
   gstBusinessDiscount = 0,
   gstDiscountPercent = 18,
@@ -112,6 +114,9 @@ export function BillSummary({
           value={bikeDelivery || deliveryCharge === 0 ? t('free') : formatINR(deliveryCharge)}
           valueClassName={bikeDelivery || deliveryCharge === 0 ? 'text-success' : ''}
         />
+        {gstAmount > 0 ? (
+          <ChargeRow label={t('gst')} value={formatINR(gstAmount)} />
+        ) : null}
         <ChargeRow label={t('loadingCharges')} value={formatINR(loadingCharges)} />
         <ChargeRow label={t('unloadingCharges')} value={formatINR(unloadingCharges)} />
         {loyaltyRedemption > 0 && (

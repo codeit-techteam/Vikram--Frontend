@@ -16,9 +16,11 @@ function isRemovedBenefit(label: string): boolean {
     value.includes('unlock discount') ||
     value.includes('international trips') ||
     value.includes('lucky draw') ||
+    value.includes('loyalty points') ||
     value.includes('15% तक छूट') ||
     value.includes('अंतरराष्ट्रीय यात्राएं') ||
-    value.includes('लकी ड्रॉ')
+    value.includes('लकी ड्रॉ') ||
+    value.includes('लॉयल्टी पॉइंट्स')
   );
 }
 
@@ -39,9 +41,7 @@ export function BulkProcurementCard({
   const badge = promotion.badge ?? t('enquire');
   const title = promotion.title || t('bulkProcurementCardTitle');
   const subtitle = promotion.subtitle ?? t('bulkProcurementCardSubtitle');
-  const sourceBenefits = promotion.benefits?.length
-    ? promotion.benefits
-    : [t('bulkUnlockLoyalty')];
+  const sourceBenefits = promotion.benefits?.length ? promotion.benefits : [];
   const benefits = sourceBenefits.filter((label) => !isRemovedBenefit(label));
   const cmsCta = promotion.buttonText?.trim();
   const buttonText =

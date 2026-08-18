@@ -17,6 +17,7 @@ import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
 import { RealtimeProvider } from '@providers/RealtimeProvider';
+import { startCartServerSync } from '@services/cart.api';
 import { useAuthStore } from '@store/useAuthStore';
 import { useGstStore } from '@store/gstStore';
 
@@ -58,6 +59,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
+    startCartServerSync();
     void hydrateSession();
     void useGstStore.getState().fetchGST();
   }, [hydrateSession]);

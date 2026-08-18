@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
-  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -11,11 +9,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+import {
   Easing,
   runOnJS,
   useAnimatedReaction,
-  useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -23,25 +20,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
 import { Toast } from '@components/Toast';
-import { useLoyaltyStore, type ActivityItem, type LoyaltyTier } from '@store/loyaltyStore';
+import { useLoyaltyStore, type ActivityItem } from '@store/loyaltyStore';
 import { safeGoBack } from '@utils/navigation';
 
-const TIER_TITLES: Record<LoyaltyTier, string> = {
-  BRONZE: 'Bronze Contractor',
-  SILVER: 'Silver Contractor',
-  GOLD: 'Gold Contractor',
-  PLATINUM: 'Platinum Contractor',
-};
-
 type ActivityFilter = 'all' | 'earned' | 'redeemed';
-
-const TIER_BENEFITS = [
-  'Earn 1 BajriPro Point for every ₹100 spent',
-  '50 welcome BajriPro Points on registration',
-  'Redeem points on orders ₹500+',
-  '100 points = ₹1 off your bill',
-  'First 3 bike deliveries free',
-] as const;
 
 const HOW_POINTS_WORK = [
   {
@@ -166,107 +148,12 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
   );
 }
 
-function TierBenefitsSheet({
-  visible,
-  tier,
-  onClose,
-}: {
-  visible: boolean;
-  tier: LoyaltyTier;
-  onClose: () => void;
-}) {
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-        onPress={onClose}>
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          style={{
-            backgroundColor: '#fff',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 36,
-          }}>
-          <View
-            style={{
-              alignSelf: 'center',
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: '#E0E0E0',
-              marginBottom: 16,
-            }}
-          />
-          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1A1A1A' }}>
-            Your Tier Benefits
-          </Text>
-          <Text
-            style={{
-              marginTop: 6,
-              alignSelf: 'flex-start',
-              backgroundColor: '#FEB623',
-              color: '#fff',
-              overflow: 'hidden',
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: '800',
-              letterSpacing: 0.6,
-            }}>
-            {tier}
-          </Text>
-          <Text style={{ marginTop: 14, marginBottom: 12, color: '#666', fontSize: 14 }}>
-            Your BajriPro loyalty benefits
-          </Text>
-
-          {TIER_BENEFITS.map((benefit) => (
-            <View
-              key={benefit}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                gap: 10,
-                marginBottom: 12,
-              }}>
-              <Ionicons name="checkmark-circle" size={20} color="#34C759" />
-              <Text style={{ flex: 1, fontSize: 14, color: '#1A1A1A', lineHeight: 20 }}>
-                {benefit}
-              </Text>
-            </View>
-          ))}
-
-          <TouchableOpacity
-            onPress={onClose}
-            style={{
-              marginTop: 12,
-              backgroundColor: '#FEB623',
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: 'center',
-            }}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Got it</Text>
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 export default function LoyaltyScreen() {
   const {
     summary,
     totalPoints,
     availableValue,
     lifetimeRedeemed,
-    tier,
-    progressPercent,
-    pointsToNextTier,
-    nextTier,
-    progressTierLabel,
     freeBikeDeliveriesRemaining,
     freeBikeDeliveriesUsed,
     freeBikeDeliveriesAllowed,
@@ -283,25 +170,11 @@ export default function LoyaltyScreen() {
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
-  const [benefitsOpen, setBenefitsOpen] = useState(false);
-
-  const progressWidth = useSharedValue(0);
 
   useEffect(() => {
     void refresh();
     void loadHistory(1);
   }, [refresh, loadHistory]);
-
-  useEffect(() => {
-    progressWidth.value = withTiming(Math.min(100, Math.max(0, progressPercent)) / 100, {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [progressPercent, progressWidth]);
-
-  const progressBarStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value * 100}%`,
-  }));
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -350,7 +223,6 @@ export default function LoyaltyScreen() {
     void loadHistory(1);
   };
 
-  const tierTitle = TIER_TITLES[tier] ?? tier;
   const minOrder = summary?.minRedeemOrderValue ?? 500;
   const pointValue = summary?.pointValueInr ?? 0.01;
   const firstBonus = summary?.firstOrderBonus ?? 50;
@@ -418,7 +290,7 @@ export default function LoyaltyScreen() {
               }}
             />
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 }}>
               <View
                 style={{
                   width: 20,
@@ -438,18 +310,6 @@ export default function LoyaltyScreen() {
                 BajriPro Points
               </Text>
             </View>
-
-            <Text
-              style={{
-                fontSize: 28,
-                fontWeight: '800',
-                color: '#FFFFFF',
-                lineHeight: 34,
-                marginBottom: 20,
-                letterSpacing: -0.5,
-              }}>
-              {tierTitle}
-            </Text>
 
             <View
               style={{
@@ -521,94 +381,6 @@ export default function LoyaltyScreen() {
               </View>
             </View>
           </LinearGradient>
-
-          <View
-            style={{
-              marginHorizontal: 16,
-              marginTop: 14,
-              backgroundColor: '#fff',
-              borderRadius: 16,
-              padding: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.06,
-              shadowRadius: 6,
-              elevation: 2,
-            }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
-              Loyalty Progress
-            </Text>
-            <Text style={{ fontSize: 13, color: '#888', marginTop: 2, marginBottom: 14 }}>
-              {nextTier
-                ? `${pointsToNextTier.toLocaleString('en-IN')} points to reach ${nextTier}`
-                : 'You are at the top tier'}
-            </Text>
-
-            <View style={{ marginBottom: 8 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  marginBottom: 6,
-                }}>
-                <View
-                  style={{
-                    backgroundColor: '#FEB623',
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    borderRadius: 6,
-                  }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
-                    {progressTierLabel}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FEB623' }}>
-                  {progressPercent}%
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  height: 8,
-                  backgroundColor: '#F0F0F0',
-                  borderRadius: 4,
-                  overflow: 'hidden',
-                }}>
-                <Animated.View
-                  style={[
-                    {
-                      height: '100%',
-                      borderRadius: 4,
-                      backgroundColor: '#FEB623',
-                    },
-                    progressBarStyle,
-                  ]}
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setBenefitsOpen(true);
-              }}
-              style={{
-                borderWidth: 1.5,
-                borderColor: '#FEB623',
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: 'center',
-                marginTop: 10,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 6,
-              }}>
-              <Text style={{ color: '#FEB623', fontSize: 14, fontWeight: '700' }}>
-                View Tier Benefits
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color="#FEB623" />
-            </TouchableOpacity>
-          </View>
 
           <View
             style={{
@@ -751,11 +523,6 @@ export default function LoyaltyScreen() {
         </ScrollView>
       )}
 
-      <TierBenefitsSheet
-        visible={benefitsOpen}
-        tier={tier}
-        onClose={() => setBenefitsOpen(false)}
-      />
       <Toast message={toastMsg} visible={toastVisible} />
     </SafeAreaView>
   );

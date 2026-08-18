@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
-  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -23,14 +22,11 @@ import {
   isVisibleProductBrand,
   normalizeCategoryDisplayName,
 } from '@utils/categoryDisplay';
-import { DeliveryOptions } from '@components/DeliveryOptions';
 import { FrequentlyBoughtTogether } from '@components/FrequentlyBoughtTogether';
-import { PricingSummary } from '@components/PricingSummary';
 import { ProductImageCarousel } from '@components/ProductImageCarousel';
 import { ProductSelectionSummary } from '@components/product/ProductSelectionSummary';
 import { SelectedVariantCard } from '@components/product/SelectedVariantCard';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { SiteSelector } from '@components/SiteSelector';
 import { ProductVariantsRow } from '@components/ProductVariantsRow';
 import { TechSpecsGrid } from '@components/TechSpecsGrid';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
@@ -45,24 +41,13 @@ import {
 import { useSearchStore } from '@store/searchStore';
 import { useProductDetail, useRelatedProducts } from '@hooks/useProducts';
 import { useAddToCart } from '@hooks/useAddToCart';
-import { useProductDeliveryEstimate } from '@hooks/useProductDeliveryEstimate';
 import { useCartStore } from '@store/cartStore';
-import { useDeliveryStore } from '@store/deliveryStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { formatINR } from '@utils/formatCurrency';
-import { getVehicleTier } from '@constants/deliveryVehicles';
 import { specsMapToTechItems, productToSearchProduct } from '@utils/catalogAdapters';
-import {
-  getDeliveryEta,
-  getProductPricing,
-  getStockLeft,
-} from '@utils/productPricing';
+import { getProductPricing, getStockLeft } from '@utils/productPricing';
 import { computeQuantityPricing } from '@utils/quantityPricing';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
-
-function compactEtaRange(label: string): string {
-  return label.trim().replace(/^estimated delivery\s+/i, '');
-}
 
 export default function ProductDetailScreen() {
   const language = useLanguageStore((s) => s.language);
@@ -85,6 +70,8 @@ export default function ProductDetailScreen() {
   const { related } = useRelatedProducts(product);
   const addRecentlyViewed = useSearchStore((s) => s.addRecentlyViewed);
   const { addToCart, buttonState } = useAddToCart();
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const getLineIdForProduct = useCartStore((s) => s.getLineIdForProduct);
 
   const hasVariants = product ? productHasStructuredVariants(product) : false;
   const skuUnit = product ? getProductSkuUnit(product) : '';
@@ -93,14 +80,8 @@ export default function ProductDetailScreen() {
   const [localQty, setLocalQty] = useState(1);
   const [specsExpanded, setSpecsExpanded] = useState(true);
 
-  const sites = useDeliveryStore((s) => s.sites);
-  const selectedSiteId = useDeliveryStore((s) => s.selectedSiteId);
-  const setSelectedSite = useDeliveryStore((s) => s.setSelectedSite);
-
   const btnScale = useSharedValue(1);
   const subtotalScale = useSharedValue(1);
-
-  const selectedSite = sites.find((s) => s.id === selectedSiteId) ?? sites[0];
 
   const selectedVariant = useMemo(
     () => (product ? getVariantById(product, selectedVariantId) : undefined),
@@ -109,33 +90,49 @@ export default function ProductDetailScreen() {
 
   const selectionReady = !hasVariants || Boolean(selectedVariantId);
 
-  const cartLineId = useMemo(() => {
-    if (!product || !selectionReady) return undefined;
-    if (hasVariants && selectedVariantId) return `${product.id}_${selectedVariantId}`;
-    return product.id;
-  }, [product, selectionReady, hasVariants, selectedVariantId]);
-
-  const cartQty = useCartStore((s) =>
-    cartLineId ? (s.items.find((i) => i.id === cartLineId)?.quantity ?? 0) : 0,
-  );
+  const cartQty = useCartStore((s) => {
+    if (!product || !selectionReady) return 0;
+    if (hasVariants && selectedVariantId) {
+      const line = s.items.find(
+        (i) =>
+          (i.productId ?? i.id) === product.id && i.variantId === selectedVariantId,
+      );
+      if (line) return line.quantity;
+    }
+    return s.getProductQuantity(product.id);
+  });
 
   useEffect(() => {
     if (!product) return;
-    const lineId =
-      hasVariants && selectedVariantId
-        ? `${product.id}_${selectedVariantId}`
-        : !hasVariants
-          ? product.id
-          : undefined;
-    const lineQty = lineId
-      ? (useCartStore.getState().items.find((i) => i.id === lineId)?.quantity ?? 0)
-      : 0;
-    setLocalQty(
-      lineQty > 0
-        ? lineQty
-        : 1,
-    );
-  }, [product?.id, selectedVariantId, hasVariants, product]);
+    const items = useCartStore.getState().items;
+    const existing = items.find((i) => (i.productId ?? i.id) === product.id);
+    if (existing?.variantId) {
+      setSelectedVariantId(existing.variantId);
+      return;
+    }
+    if (!hasVariants) {
+      setSelectedVariantId(undefined);
+      return;
+    }
+    const variants = product.productVariants ?? [];
+    const fallback =
+      product.defaultVariantId ??
+      variants.find((v) => v.inStock !== false)?.id ??
+      variants[0]?.id;
+    if (fallback) setSelectedVariantId(fallback);
+  }, [product?.id, hasVariants, product]);
+
+  useEffect(() => {
+    setLocalQty(cartQty > 0 ? cartQty : 1);
+    // Re-seed when navigating to another product / variant only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, selectedVariantId]);
+
+  useEffect(() => {
+    if (cartQty > 0) setLocalQty(cartQty);
+  }, [cartQty]);
+
+  const displayQty = cartQty > 0 ? cartQty : localQty;
 
   const pricing = useMemo(
     () => (product ? getProductPricing(product, selectedVariant) : null),
@@ -144,37 +141,14 @@ export default function ProductDetailScreen() {
 
   const quote = useMemo(() => {
     if (!product || !pricing) return null;
-    return computeQuantityPricing(product, localQty, selectedVariant, pricing);
-  }, [product, pricing, localQty, selectedVariant]);
-
-  const {
-    estimate: pdpEta,
-    label: liveDeliveryMessage,
-    isCalculating: etaUpdating,
-  } = useProductDeliveryEstimate({
-    productId: product?.id,
-    variantId: selectedVariant?.id,
-    quantity: localQty,
-    enabled: Boolean(product?.id && localQty > 0),
-  });
-
-  const liveVehicle = pdpEta?.deliveryVehicleType
-    ? getVehicleTier(pdpEta.deliveryVehicleType)
-    : quote?.vehicle;
-  const liveModeTitle = pdpEta?.deliveryModeTitle || liveVehicle?.label || quote?.modeTitle;
+    return computeQuantityPricing(product, displayQty, selectedVariant, pricing);
+  }, [product, pricing, displayQty, selectedVariant]);
 
   const unitPrice = quote?.appliedUnitPrice ?? pricing?.sellingPrice ?? 0;
-  const subtotal = quote?.subtotalBeforeGst ?? localQty * unitPrice;
-  const gst = quote?.gstAmount ?? subtotal * ((product?.gst ?? 18) / 100);
-  const estimatedTotal = quote?.estimatedTotal ?? subtotal + gst;
-
-  const priceUnitLabel = hasVariants
-    ? getVariantDisplayUnit(selectedVariant) || selectedVariant?.label || skuUnit
-    : product?.unit ?? '';
+  const subtotal = quote?.subtotalBeforeGst ?? displayQty * unitPrice;
 
   const stockLeft = product ? getStockLeft(product) : null;
-  const deliveryEta = liveDeliveryMessage || (product ? getDeliveryEta(product) : '');
-  const mode = getAddToCartMode(localQty, cartQty);
+  const mode = getAddToCartMode(displayQty, cartQty);
 
   const carouselImages = useMemo(
     () => (product ? getCarouselImages(product) : []),
@@ -221,6 +195,30 @@ export default function ProductDetailScreen() {
 
   const canAddToCart = selectionReady;
 
+  const handleQtyChange = useCallback(
+    (next: number) => {
+      if (product && cartQty > 0) {
+        const lineId =
+          getLineIdForProduct(product.id, selectedVariantId) ??
+          getLineIdForProduct(product.id) ??
+          (hasVariants && selectedVariantId
+            ? `${product.id}_${selectedVariantId}`
+            : product.id);
+        if (lineId) updateQuantity(lineId, next);
+        return;
+      }
+      setLocalQty(next);
+    },
+    [
+      cartQty,
+      getLineIdForProduct,
+      hasVariants,
+      product,
+      selectedVariantId,
+      updateQuantity,
+    ],
+  );
+
   const handleAddToCart = async () => {
     if (!product || !selectionReady) return;
     if (hasVariants && !selectedVariantId) return;
@@ -230,12 +228,8 @@ export default function ProductDetailScreen() {
       withSpring(1, { damping: 12 }),
     );
 
-    await addToCart(product, localQty, { variantId: selectedVariantId });
+    await addToCart(product, displayQty, { variantId: selectedVariantId });
   };
-
-  useEffect(() => {
-    if (product) setSelectedVariantId(undefined);
-  }, [product?.id]);
 
   useEffect(() => {
     if (product) addRecentlyViewed(productToSearchProduct(product));
@@ -302,6 +296,9 @@ export default function ProductDetailScreen() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
         }>
@@ -384,37 +381,6 @@ export default function ProductDetailScreen() {
             </Text>
           ) : null}
 
-          <View className="mt-4 flex-row gap-3">
-            <View className="flex-1 rounded-card bg-trust p-3">
-              <Ionicons name="receipt-outline" size={18} color="#FEB623" />
-              <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
-                {t('financials')}
-              </Text>
-              <Text className="mt-1 text-sm font-semibold text-text">
-                {product.gst != null ? `GST ${product.gst}%` : t('gstInvoiceReady')}
-              </Text>
-            </View>
-            <View className="flex-1 rounded-card bg-trust p-3">
-              <Ionicons name="bus-outline" size={18} color="#FEB623" />
-              <Text className="mt-2 text-[10px] font-bold tracking-wider text-text-secondary">
-                {t('shipping')}
-              </Text>
-              <Text className="mt-1 text-[11px] font-semibold text-text-secondary">
-                Estimated delivery
-              </Text>
-              <Animated.Text
-                key={deliveryEta || 'shipping-eta'}
-                entering={FadeIn.duration(250)}
-                className="mt-0.5 text-sm font-semibold text-text"
-              >
-                {compactEtaRange(
-                  etaUpdating && pdpEta
-                    ? liveDeliveryMessage
-                    : deliveryEta || 'Select delivery location to calculate ETA',
-                )}
-              </Animated.Text>
-            </View>
-          </View>
         </View>
 
         {specs.length > 0 ? (
@@ -430,11 +396,7 @@ export default function ProductDetailScreen() {
             <>
               <ProductPrice pricing={pricing} size="lg" showUnit />
               <View className="mt-2">
-                <ProductStockInfo
-                  stockLeft={stockLeft}
-                  deliveryEta={deliveryEta}
-                  vehicleIcon={liveVehicle?.icon ?? 'bus-outline'}
-                />
+                <ProductStockInfo stockLeft={stockLeft} />
               </View>
               <ProductBulkPrice pricing={pricing} />
 
@@ -447,14 +409,13 @@ export default function ProductDetailScreen() {
                 </Text>
                 <Text className="mt-1 text-sm leading-5 text-text-secondary">
                   Bulk pricing automatically applies on eligible quantities.
-                  Vehicle is assigned automatically based on order size.
                 </Text>
               </View>
 
               <View className="mt-5 flex-row items-center justify-between">
                 <ProductQuantitySelector
-                  quantity={localQty}
-                  onChange={setLocalQty}
+                  quantity={displayQty}
+                  onChange={handleQtyChange}
                   min={1}
                   max={product.maxOrder}
                   step={product.incrementStep ?? 1}
@@ -466,32 +427,26 @@ export default function ProductDetailScreen() {
                 </Animated.View>
               </View>
 
-              {quote ? (
+              {quote?.bulkApplied ? (
                 <View className="mt-3 flex-row items-center gap-2 rounded-lg bg-trust px-3 py-2">
-                  <Text className="text-base">{liveVehicle?.emoji ?? quote.vehicle.emoji}</Text>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-text">
-                      {liveModeTitle || quote.modeTitle}
-                    </Text>
+                    <Text className="text-sm font-bold text-text">{t('bulkPricingTitle')}</Text>
                     <Text className="text-xs text-text-secondary">
-                      {liveDeliveryMessage}
+                      Bulk price applied on this quantity
                     </Text>
                   </View>
-                  {quote.bulkApplied ? (
-                    <Text className="text-xs font-extrabold" style={{ color: '#2E7D32' }}>
-                      Bulk Applied
-                    </Text>
-                  ) : null}
+                  <Text className="text-xs font-extrabold" style={{ color: '#2E7D32' }}>
+                    Bulk Applied
+                  </Text>
                 </View>
               ) : null}
 
               <ProductSelectionSummary
                 productName={localizedName}
                 variantLabel={selectedVariant?.label}
-                quantity={localQty}
-                unit={hasVariants ? skuUnit : product.unit}
+                quantity={displayQty}
+                unit={hasVariants ? getVariantDisplayUnit(selectedVariant) || skuUnit : product.unit}
                 total={subtotal}
-                deliveryMode={quote?.deliveryMode}
                 unitPrice={unitPrice}
                 savings={quote?.bulkDiscountAmount}
               />
@@ -515,27 +470,6 @@ export default function ProductDetailScreen() {
             />
           </Animated.View>
         </View>
-
-        <SiteSelector
-          sites={sites}
-          selectedSiteId={selectedSiteId ?? ''}
-          onSelect={setSelectedSite}
-        />
-
-        {selectionReady && (
-          <PricingSummary
-            unitLabel={priceUnitLabel}
-            baseRate={unitPrice}
-            subtotal={subtotal}
-            gst={gst}
-            estimatedTotal={estimatedTotal}
-          />
-        )}
-
-        <DeliveryOptions
-          siteName={selectedSite?.name ?? 'your site'}
-          deliveryMessage={deliveryEta || undefined}
-        />
 
         {relatedItems.length > 0 ? <FrequentlyBoughtTogether items={relatedItems} /> : null}
 

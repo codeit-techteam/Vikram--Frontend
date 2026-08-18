@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, Fragment } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useAnimatedStyle,
@@ -15,9 +16,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackHeader } from '@components/BackHeader';
 import { BillSummary } from '@components/gst/BillSummary';
 import { BusinessBenefits } from '@components/gst/BusinessBenefits';
+import { CheckoutDeliveryQuote } from '@components/checkout/CheckoutDeliveryQuote';
+import type { CheckoutDeliveryStatus } from '@components/checkout/CheckoutDeliveryQuote';
 import { DeliveryDestinationCard } from '@components/checkout/DeliveryDestinationCard';
+import { DeliveryPreferenceSection } from '@components/checkout/DeliveryPreferenceSection';
 import { PaymentComingSoonSheet } from '@components/checkout/PaymentComingSoonSheet';
 import { PaymentMethodCard } from '@components/checkout/PaymentMethodCard';
+import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
 import { useSites } from '@hooks/useSites';
 import { GstBottomSheet } from '@components/gst/GstBottomSheet';
 import { GstInvoiceCard } from '@components/gst/GstInvoiceCard';
@@ -34,17 +39,21 @@ import { useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { normalizeApiOrder } from '@utils/orderAdapters';
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
-import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { useServiceability } from '@hooks/useServiceability';
+import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { placeOrder } from '@services/orders.api';
 import { syncLocalCartToServer } from '@services/cart.api';
 import {
   fetchCheckoutPreview,
   type CheckoutPreview,
 } from '@services/checkout.api';
+import { formatEtaLabel, holdDeliverySlot, type DeliveryEtaResult } from '@services/delivery.api';
 import { safeGoBack } from '@utils/navigation';
 import { requireAuth } from '@utils/requireAuth';
 import { formatINR } from '@utils/formatCurrency';
+import {
+  calculateLoyaltyDiscountPreview,
+} from '@utils/loyaltyPricing';
 import {
   computeGstBusinessDiscount,
   formatGstDiscountPercent,
@@ -55,7 +64,12 @@ import {
   PAYMENT_METHODS,
   type PaymentMethodId,
 } from '@constants/paymentMethods';
+import { isValidDeliveryCoordinates } from '@utils/geo';
 import type { GstValidationResult } from '@/types/gst';
+import type {
+  DeliveryPreferenceType,
+  DeliverySlotOption,
+} from '@/types/deliveryPreference';
 
 const QUICK_CHIP_KEYS = ['callOnArrival', 'leaveAtSecurity', 'heavyVehicleAccess'] as const;
 
@@ -64,47 +78,79 @@ type ActiveSheet =
   | { type: 'payment'; title: string; message: string }
   | null;
 
-function CheckoutEtaInline() {
-  const { deliveringBy, deliveryMessage, isLoading } = useDeliveryEta({
-    autoFetch: true,
-  });
-  const text = deliveringBy
-    ? deliveringBy
-    : deliveryMessage || (isLoading ? 'Updating delivery option…' : '—');
-  return <Text className="font-bold text-primary">{text}</Text>;
+function getApiErrorMessage(error: unknown): string {
+  const axiosData = (error as { response?: { data?: { message?: string | string[] } } })
+    ?.response?.data;
+  const apiMessage = Array.isArray(axiosData?.message)
+    ? axiosData.message.join(', ')
+    : axiosData?.message;
+  return (
+    apiMessage ||
+    (error instanceof Error ? error.message : 'Unable to calculate delivery right now.')
+  );
 }
 
-function CheckoutEtaCard() {
-  const { t } = useTranslation();
-  const {
-    deliveryMessage,
-    deliveringBy,
-    isLoading,
-  } = useDeliveryEta({ autoFetch: true });
-  const { serviceable } = useServiceability({ autoCheck: false });
+function isAddressId(value?: string): value is string {
+  return !!value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+}
 
-  const headline = deliveringBy
-    ? `Estimated Delivery · Today, ${deliveringBy}`
-    : deliveryMessage || t('scheduledDelivery');
+function previewFromEta(
+  eta: DeliveryEtaResult,
+  localSubtotal: number,
+  loyalty: {
+    points: number;
+    value: number;
+    minOrder: number;
+    used: number;
+    discount: number;
+  },
+): CheckoutPreview {
+  const deliveryCharge = eta.freeDelivery ? 0 : eta.deliveryCharge ?? 0;
+  return {
+    subtotal: localSubtotal,
+    gstAmount: 0,
+    deliveryCharge,
+    grandTotal: Math.max(0, localSubtotal + deliveryCharge - loyalty.discount),
+    itemCount: 1,
+    membershipDiscount: 0,
+    loyaltyPoints: loyalty.points,
+    redeemablePoints: loyalty.points,
+    maxRedeemablePoints: loyalty.used || loyalty.points,
+    loyaltyUsed: loyalty.used,
+    loyaltyDiscount: loyalty.discount,
+    loyaltyAvailableValue: loyalty.value,
+    pointValueInr: 0.01,
+    minRedeemOrderValue: loyalty.minOrder,
+    redemptionEligible: localSubtotal >= loyalty.minOrder && loyalty.points > 0,
+    estimatedEarnPoints: 0,
+    discount: loyalty.discount,
+    loadingCharges: 0,
+    unloadingCharges: 0,
+    bikeDeliveryFree: Boolean(eta.freeDelivery),
+    companyAbsorbedDelivery: 0,
+    freeBikeDeliveriesRemaining: 0,
+    serviceable: eta.serviceable,
+    deliveryETA: eta.deliveryETA,
+    deliveryEtaMinMinutes: eta.etaMinMinutes,
+    deliveryEtaMaxMinutes: eta.etaMaxMinutes,
+    deliveryMessage: formatEtaLabel(eta),
+    deliveringBy: eta.deliveringBy,
+    deliveryVehicleType: eta.deliveryVehicleType as CheckoutPreview['deliveryVehicleType'],
+    deliveryVehicleDisplayName: eta.deliveryVehicleDisplayName,
+    deliveryVehicleImageUrl: eta.deliveryVehicleImageUrl,
+    deliveryDistanceKm: eta.deliveryDistanceKm,
+    deliveryVehicleCount: eta.deliveryVehicleCount,
+    freeDeliveryApplied: eta.freeDelivery,
+  };
+}
 
-  return (
-    <View className="mb-3 rounded-card border border-border bg-surface p-4">
-      <View className="flex-row items-center gap-2">
-        <Ionicons name="time-outline" size={18} color="#FEB623" />
-        <Text className="flex-1 text-sm font-bold text-text">
-          {isLoading ? 'Updating delivery option…' : headline}
-        </Text>
-      </View>
-      {deliveryMessage ? (
-        <Text className="mt-1 text-xs text-text-secondary">
-          {deliveryMessage}
-        </Text>
-      ) : null}
-      {!serviceable && !isLoading ? (
-        <Text className="mt-1 text-xs text-error">Delivery may be unavailable at this location</Text>
-      ) : null}
-    </View>
-  );
+function isMissingAddressError(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  const message = getApiErrorMessage(error);
+  return status === 404 || /no delivery address/i.test(message);
 }
 
 export default function CheckoutScreen() {
@@ -122,6 +168,8 @@ export default function CheckoutScreen() {
   const triggerSuccessBanner = useGstStore((s) => s.triggerSuccessBanner);
   const dismissSuccessBanner = useGstStore((s) => s.dismissSuccessBanner);
 
+  const { isLoading: sitesLoading } = useSites(true);
+
   const selectedSite = useDeliveryStore((s) => {
     const fromSites = s.sites.find((x) => x.id === s.selectedSiteId) ?? s.sites[0];
     if (fromSites) return fromSites;
@@ -130,37 +178,71 @@ export default function CheckoutScreen() {
       ? { id: primary.id, name: primary.name, address: primary.address }
       : undefined;
   });
-  useSites(true);
 
-  const profileSite = useDeliveryStore((s) => {
-    return s.profileSites.find((x) => x.isPrimary) ?? s.profileSites[0];
+  const destinationSite = useDeliveryStore((s) => {
+    return (
+      s.profileSites.find((x) => x.id === s.selectedSiteId) ??
+      s.profileSites.find((x) => x.isPrimary) ??
+      s.profileSites[0]
+    );
   });
+  const hasDestinationCoords = isValidDeliveryCoordinates(
+    destinationSite?.latitude,
+    destinationSite?.longitude,
+  );
+  const addressPickerRef = useRef<BottomSheetModal>(null);
+  const quoteRequestSeq = useRef(0);
+  const openAddressPicker = useCallback(() => {
+    addressPickerRef.current?.present();
+  }, []);
 
   const {
-    deliveryMessage: etaLabel,
-    deliveringBy,
-    refresh: refreshEta,
-  } = useDeliveryEta({ autoFetch: true });
-  const {
-    serviceable,
     refresh: refreshServiceability,
   } = useServiceability({
-    latitude: profileSite?.latitude,
-    longitude: profileSite?.longitude,
-    autoCheck: true,
+    latitude: destinationSite?.latitude,
+    longitude: destinationSite?.longitude,
+    autoCheck: false,
   });
 
-  // Seed ETA location from primary site coords when available
+  const {
+    eta,
+    label: etaLabel,
+    isLoading: etaLoading,
+    refresh: refreshEta,
+  } = useDeliveryEta({
+    latitude: destinationSite?.latitude,
+    longitude: destinationSite?.longitude,
+    autoFetch: hasDestinationCoords,
+  });
+
+  const availablePoints = useLoyaltyStore((s) => s.totalPoints);
+  const availableValue = useLoyaltyStore((s) => s.availableValue);
+  const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
+  const minRedeemOrderValue =
+    useLoyaltyStore((s) => s.summary?.minRedeemOrderValue) ?? 500;
+  const pointValueInr = useLoyaltyStore((s) => s.summary?.pointValueInr) ?? 0.01;
+  const maxRedeemPercent =
+    useLoyaltyStore((s) => s.summary?.maxOrderRedeemPercent) ?? 0.3;
+
   useEffect(() => {
-    if (profileSite?.latitude != null && profileSite?.longitude != null) {
+    void refreshLoyalty();
+  }, [refreshLoyalty]);
+
+  useEffect(() => {
+    if (hasDestinationCoords) {
       useEtaStore.getState().setLocation(
-        profileSite.latitude,
-        profileSite.longitude,
+        destinationSite!.latitude!,
+        destinationSite!.longitude!,
       );
-      void refreshEta();
-      void refreshServiceability();
+    } else {
+      useEtaStore.getState().clearEta();
     }
-  }, [profileSite?.latitude, profileSite?.longitude, refreshEta, refreshServiceability]);
+  }, [
+    destinationSite?.id,
+    destinationSite?.latitude,
+    destinationSite?.longitude,
+    hasDestinationCoords,
+  ]);
 
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>(DEFAULT_PAYMENT_METHOD);
@@ -169,6 +251,13 @@ export default function CheckoutScreen() {
     () => useCartStore.getState().pointsApplied,
   );
   const [checkoutPreview, setCheckoutPreview] = useState<CheckoutPreview | null>(null);
+  const [previewSourceKey, setPreviewSourceKey] = useState('');
+  const [preferenceType, setPreferenceType] = useState<DeliveryPreferenceType>('ASAP');
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<DeliverySlotOption | null>(null);
+  const [scheduleDate, setScheduleDate] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -183,6 +272,7 @@ export default function CheckoutScreen() {
         .join('|'),
     [items],
   );
+  const quoteSourceKey = `${selectedSite?.id ?? ''}|${cartSignature}|${hasDestinationCoords ? '1' : '0'}`;
 
   const localSubtotal = useMemo(
     () => items.reduce((sum, i) => sum + getLineTotal(i), 0),
@@ -192,66 +282,194 @@ export default function CheckoutScreen() {
   const refreshCheckoutPreview = useCallback(
     async (applyLoyalty: boolean) => {
       if (items.length === 0) return;
+
+      if (!selectedSite?.id) {
+        setDeliveryError(null);
+        setQuoteLoading(false);
+        setLoyaltyLoading(false);
+        setPreviewSourceKey(quoteSourceKey);
+        return;
+      }
+
+      if (!hasDestinationCoords) {
+        setDeliveryError(null);
+        setQuoteLoading(false);
+        setLoyaltyLoading(false);
+        setPreviewSourceKey(quoteSourceKey);
+        return;
+      }
+
+      setQuoteLoading(true);
       setLoyaltyLoading(true);
       setLoyaltyError(null);
+      setDeliveryError(null);
+      const requestId = ++quoteRequestSeq.current;
+      const addressId = isAddressId(selectedSite.id) ? selectedSite.id : undefined;
       try {
         await syncLocalCartToServer(items);
+        if (requestId !== quoteRequestSeq.current) return;
         const base = await fetchCheckoutPreview({
-          addressId: selectedSite?.id,
+          addressId,
           loyaltyPointsToRedeem: 0,
         });
+        if (requestId !== quoteRequestSeq.current) return;
 
-        if (!applyLoyalty) {
+        if (!applyLoyalty || !base.redemptionEligible || base.maxRedeemablePoints <= 0) {
           setCheckoutPreview(base);
           return;
         }
 
-        if (!base.redemptionEligible || base.maxRedeemablePoints <= 0) {
-          setUseLoyalty(false);
-          useCartStore.setState({ pointsApplied: false });
-          setCheckoutPreview(base);
-          setLoyaltyError(
-            base.loyaltyMessage ||
-              `BajriPro Points can be redeemed on orders of ₹${base.minRedeemOrderValue} or more.`,
+        try {
+          const withLoyalty = await fetchCheckoutPreview({
+            addressId,
+            loyaltyPointsToRedeem: base.maxRedeemablePoints,
+          });
+          if (requestId !== quoteRequestSeq.current) return;
+          setCheckoutPreview(withLoyalty);
+          setLoyaltyError(null);
+          savingsOpacity.value = withSequence(
+            withTiming(0.4, { duration: 100 }),
+            withTiming(1, { duration: 200 }),
           );
+        } catch {
+          if (requestId !== quoteRequestSeq.current) return;
+          setCheckoutPreview(base);
+          setLoyaltyError('Unable to apply BajriPro Points. Please try again.');
+        }
+      } catch (e) {
+        if (requestId !== quoteRequestSeq.current) return;
+        if (isMissingAddressError(e)) {
+          setDeliveryError(null);
           return;
         }
-
-        const withLoyalty = await fetchCheckoutPreview({
-          addressId: selectedSite?.id,
-          loyaltyPointsToRedeem: base.maxRedeemablePoints,
-        });
-        setCheckoutPreview(withLoyalty);
-        savingsOpacity.value = withSequence(
-          withTiming(0.4, { duration: 100 }),
-          withTiming(1, { duration: 200 }),
-        );
-      } catch (e) {
-        setLoyaltyError(
-          e instanceof Error
-            ? e.message
-            : 'Unable to apply BajriPro Points. Please try again.',
-        );
+        setDeliveryError(getApiErrorMessage(e));
+        void refreshEta();
       } finally {
+        if (requestId !== quoteRequestSeq.current) return;
+        setPreviewSourceKey(quoteSourceKey);
+        setQuoteLoading(false);
         setLoyaltyLoading(false);
       }
     },
-    [items, selectedSite?.id, savingsOpacity],
+    [items, selectedSite?.id, hasDestinationCoords, quoteSourceKey, savingsOpacity, refreshEta],
   );
 
   useEffect(() => {
     void refreshCheckoutPreview(useLoyalty);
-    // Recalculate when cart contents or site change
+    // Recalculate when cart contents, site, or coordinates change
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: useLoyalty handled by toggle
-  }, [cartSignature, selectedSite?.id]);
+  }, [cartSignature, selectedSite?.id, hasDestinationCoords]);
 
-  const subtotal = checkoutPreview?.subtotal ?? localSubtotal;
-  const deliveryCharge = checkoutPreview?.deliveryCharge ?? 0;
-  const loadingCharges = checkoutPreview?.loadingCharges ?? 0;
-  const unloadingCharges = checkoutPreview?.unloadingCharges ?? 0;
-  const loyaltyPoints = checkoutPreview?.loyaltyUsed ?? 0;
-  const loyaltyRedemption = checkoutPreview?.loyaltyDiscount ?? 0;
-  const bikeDelivery = checkoutPreview?.bikeDeliveryFree ?? false;
+  useEffect(() => {
+    setPreferenceType('ASAP');
+    setSelectedSlotId(null);
+    setSelectedSlot(null);
+    setScheduleDate(null);
+  }, [quoteSourceKey]);
+
+  useEffect(() => {
+    const options = checkoutPreview?.deliveryOptions;
+    if (!options?.serviceable) return;
+    const fallback = options.defaultPreference ?? 'ASAP';
+    setPreferenceType((current) => {
+      if (current === 'ASAP' && options.asap.available) return current;
+      if (current === 'TODAY' && options.today.available) return current;
+      if (current === 'TOMORROW' && options.tomorrow.available) return current;
+      if (current === 'SCHEDULED' && options.scheduled.length > 0) return current;
+      return fallback;
+    });
+    if (!scheduleDate && options.scheduled[0]?.date) {
+      setScheduleDate(options.scheduled[0].date);
+    }
+  }, [checkoutPreview?.deliveryOptions, scheduleDate]);
+
+  const localLoyalty = useMemo(
+    () =>
+      calculateLoyaltyDiscountPreview({
+        pointsApplied: useLoyalty,
+        availablePoints,
+        orderValueInr: localSubtotal,
+        minOrderValue: minRedeemOrderValue,
+        maxRedeemPercent,
+        pointValueInr,
+      }),
+    [
+      useLoyalty,
+      availablePoints,
+      localSubtotal,
+      minRedeemOrderValue,
+      maxRedeemPercent,
+      pointValueInr,
+    ],
+  );
+
+  const etaPreview = useMemo(() => {
+    if (!eta || !etaLabel) return null;
+    return previewFromEta(eta, localSubtotal, {
+      points: availablePoints,
+      value: availableValue,
+      minOrder: minRedeemOrderValue,
+      used: useLoyalty ? localLoyalty.redeemablePoints : 0,
+      discount: useLoyalty ? localLoyalty.discountAmount : 0,
+    });
+  }, [
+    eta,
+    etaLabel,
+    localSubtotal,
+    availablePoints,
+    availableValue,
+    minRedeemOrderValue,
+    useLoyalty,
+    localLoyalty.redeemablePoints,
+    localLoyalty.discountAmount,
+  ]);
+
+  const displayPreview = checkoutPreview ?? etaPreview;
+  const subtotal = displayPreview?.subtotal ?? localSubtotal;
+  const deliveryCharge = displayPreview?.deliveryCharge ?? 0;
+  const loadingCharges = displayPreview?.loadingCharges ?? 0;
+  const unloadingCharges = displayPreview?.unloadingCharges ?? 0;
+  const serverLoyaltyApplied = (checkoutPreview?.loyaltyUsed ?? 0) > 0;
+  const loyaltyPoints = serverLoyaltyApplied
+    ? checkoutPreview!.loyaltyUsed
+    : useLoyalty
+      ? localLoyalty.redeemablePoints
+      : 0;
+  const loyaltyRedemption = serverLoyaltyApplied
+    ? checkoutPreview!.loyaltyDiscount
+    : useLoyalty
+      ? localLoyalty.discountAmount
+      : 0;
+  const bikeDelivery = displayPreview?.bikeDeliveryFree ?? false;
+
+  const quoteIsStale = previewSourceKey !== quoteSourceKey;
+  const deliveryQuoteStatus: CheckoutDeliveryStatus = (() => {
+    if (sitesLoading && !selectedSite) return 'loading';
+    if (!selectedSite) return 'no_address';
+    if (!hasDestinationCoords) return 'invalid_location';
+    if ((quoteLoading || etaLoading) && !displayPreview) return 'loading';
+    if (quoteIsStale && quoteLoading && !displayPreview) return 'loading';
+    if (checkoutPreview?.serviceable) return 'available';
+    if (eta?.serviceable && etaLabel) return 'available';
+    if (checkoutPreview && checkoutPreview.serviceable === false) return 'unavailable';
+    if (eta && eta.serviceable === false) return 'unavailable';
+    if (deliveryError && !etaLabel) return 'error';
+    if (displayPreview?.serviceable) return 'available';
+    return quoteLoading || etaLoading ? 'loading' : 'error';
+  })();
+
+  const canPlaceOrder =
+    items.length > 0 &&
+    Boolean(selectedSite) &&
+    hasDestinationCoords &&
+    deliveryQuoteStatus === 'available' &&
+    checkoutPreview?.serviceable !== false &&
+    !quoteLoading &&
+    !paying &&
+    (preferenceType === 'ASAP' || Boolean(selectedSlotId));
+
+  const loyaltyEligible =
+    availablePoints > 0 && localSubtotal >= minRedeemOrderValue;
 
   const hasGstApplied = useGstStore((s) => s.verified);
 
@@ -259,10 +477,11 @@ export default function CheckoutScreen() {
     () =>
       Math.max(
         0,
-        (checkoutPreview?.grandTotal ?? subtotal + deliveryCharge) +
+        (displayPreview?.grandTotal ?? subtotal + deliveryCharge) +
           (checkoutPreview ? 0 : loadingCharges + unloadingCharges - loyaltyRedemption),
       ),
     [
+      displayPreview,
       checkoutPreview,
       subtotal,
       deliveryCharge,
@@ -279,8 +498,8 @@ export default function CheckoutScreen() {
 
   const gstDiscountPercent = formatGstDiscountPercent(DEFAULT_GST_DISCOUNT_CONFIG.rate);
 
-  const checkoutTotal = checkoutPreview
-    ? Math.max(0, checkoutPreview.grandTotal - (hasGstApplied ? gstBusinessDiscount : 0))
+  const checkoutTotal = displayPreview
+    ? Math.max(0, displayPreview.grandTotal - (hasGstApplied ? gstBusinessDiscount : 0))
     : Math.max(0, preDiscountTotal - gstBusinessDiscount);
 
   const corporateSavings = useMemo(
@@ -303,8 +522,70 @@ export default function CheckoutScreen() {
   };
 
   const appendChip = (chip: string) => {
-    setInstructions((prev) => (prev ? `${prev}. ${chip}` : chip));
+    setInstructions((prev) => {
+      const next = prev ? `${prev}. ${chip}` : chip;
+      return next.slice(0, 250);
+    });
   };
+
+  const handleSelectPreference = (type: DeliveryPreferenceType) => {
+    setPreferenceType(type);
+    if (type === 'ASAP') {
+      setSelectedSlotId(null);
+      setSelectedSlot(null);
+      return;
+    }
+    const options = checkoutPreview?.deliveryOptions;
+    if (type === 'SCHEDULED' && !scheduleDate && options?.scheduled[0]?.date) {
+      setScheduleDate(options.scheduled[0].date);
+    }
+    const firstSlot =
+      type === 'TODAY'
+        ? options?.today.slots[0]
+        : type === 'TOMORROW'
+          ? options?.tomorrow.slots[0]
+          : options?.scheduled.find((d) => d.date === (scheduleDate ?? options.scheduled[0]?.date))
+              ?.slots[0];
+    if (firstSlot) {
+      void handleSelectSlot(firstSlot);
+    } else {
+      setSelectedSlotId(null);
+      setSelectedSlot(null);
+    }
+  };
+
+  const handleSelectSlot = async (slot: DeliverySlotOption) => {
+    setSelectedSlotId(slot.slotId);
+    setSelectedSlot(slot);
+    setScheduleDate(slot.date);
+    try {
+      await holdDeliverySlot(slot.slotId);
+    } catch (error) {
+      const message = getApiErrorMessage(error);
+      Alert.alert(t('slotNoLongerAvailable'), message || t('chooseAnotherSlot'));
+      setSelectedSlotId(null);
+      setSelectedSlot(null);
+      void refreshCheckoutPreview(useLoyalty);
+    }
+  };
+
+  useEffect(() => {
+    if (preferenceType === 'ASAP' || selectedSlotId) return;
+    const options = checkoutPreview?.deliveryOptions;
+    if (!options?.serviceable) return;
+    const firstSlot =
+      preferenceType === 'TODAY'
+        ? options.today.slots.find((slot) => slot.available)
+        : preferenceType === 'TOMORROW'
+          ? options.tomorrow.slots.find((slot) => slot.available)
+          : options.scheduled
+              .find((day) => day.date === (scheduleDate ?? options.scheduled[0]?.date))
+              ?.slots.find((slot) => slot.available);
+    if (firstSlot) {
+      void handleSelectSlot(firstSlot);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hold only when preference/options change
+  }, [preferenceType, selectedSlotId, checkoutPreview?.deliveryOptions, scheduleDate]);
 
   const handlePaymentMethodPress = (method: (typeof PAYMENT_METHODS)[number]) => {
     if (method.comingSoon) {
@@ -338,24 +619,32 @@ export default function CheckoutScreen() {
     if (!requireAuth('Please log in to place an order.')) return;
     if (!paymentMethod || items.length === 0) return;
     if (!selectedSite) {
-      Alert.alert('Delivery site required', 'Please select a delivery site before placing your order.');
+      Alert.alert(t('addDeliveryAddress'), t('addAddressToCalculateDelivery'));
+      openAddressPicker();
       return;
     }
 
-    if (profileSite?.latitude != null && profileSite?.longitude != null) {
-      const latest = await refreshServiceability();
-      if (latest && !latest.serviceable) {
-        Alert.alert(
-          'Not serviceable',
-          'No active hub covers your delivery location. Please choose a different site or notify us when we expand coverage.',
-        );
-        return;
-      }
-    } else if (!serviceable) {
+    if (!hasDestinationCoords) {
+      Alert.alert(t('pleaseSelectValidLocation'), t('invalidLocationHint'));
+      openAddressPicker();
+      return;
+    }
+
+    if (checkoutPreview?.serviceable === false) {
+      Alert.alert(t('deliveryUnavailableAtLocation'), t('changeAddressToContinue'));
+      return;
+    }
+
+    const latest = await refreshServiceability();
+    if (!latest) {
       Alert.alert(
-        'Location required',
-        'We could not verify delivery coverage for your site. Please update your delivery location.',
+        t('deliveryAvailabilityUnconfirmed'),
+        t('unableToCalculateDelivery'),
       );
+      return;
+    }
+    if (!latest.serviceable) {
+      Alert.alert(t('deliveryUnavailableAtLocation'), t('changeAddressToContinue'));
       return;
     }
 
@@ -365,11 +654,15 @@ export default function CheckoutScreen() {
     try {
       await syncLocalCartToServer(items);
 
+      const remark = instructions.trim().slice(0, 250) || undefined;
       const placed = await placeOrder({
         addressId: selectedSite.id,
-        notes: instructions || undefined,
+        notes: remark,
         paymentMethod: 'CASH',
         loyaltyPointsToRedeem: loyaltyPoints > 0 ? loyaltyPoints : undefined,
+        deliveryPreferenceType: preferenceType,
+        scheduledSlotId: selectedSlotId ?? undefined,
+        deliveryCustomerRemark: remark,
       });
 
       setPaySuccess(true);
@@ -377,11 +670,25 @@ export default function CheckoutScreen() {
 
       const apiOrder = normalizeApiOrder(placed as Record<string, unknown>);
       const orderId = apiOrder.id || apiOrder.orderNumber;
+      const preference = (
+        placed as {
+          deliveryPreference?: {
+            label?: string;
+            scheduledSlotLabel?: string;
+            scheduledDateLabel?: string;
+          };
+        }
+      ).deliveryPreference;
       const deliveryEtaLabel =
-        apiOrder.expectedDelivery ||
-        etaLabel ||
-        deliveringBy ||
-        'Updating delivery estimate...';
+        preference?.scheduledDateLabel && preference.scheduledSlotLabel
+          ? `${preference.scheduledDateLabel}, ${preference.scheduledSlotLabel}`
+          : selectedSlot
+            ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
+            : checkoutPreview?.deliveryOptions?.asap.etaLabel ||
+              apiOrder.expectedDelivery ||
+              displayPreview?.deliveryMessage ||
+              displayPreview?.deliveringBy ||
+              t('updatingDeliveryEstimate');
 
       // Seed React Query so Track/Details bind to API order immediately.
       if (orderId) {
@@ -449,54 +756,111 @@ export default function CheckoutScreen() {
         key={language}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 }}>
+        <DeliveryDestinationCard site={selectedSite} onChange={openAddressPicker} />
+
+        <DeliveryPreferenceSection
+          options={checkoutPreview?.deliveryOptions ?? null}
+          loading={quoteLoading || deliveryQuoteStatus === 'loading'}
+          selectedType={preferenceType}
+          selectedSlotId={selectedSlotId}
+          selectedDate={scheduleDate}
+          onSelectType={handleSelectPreference}
+          onSelectSlot={(slot) => void handleSelectSlot(slot)}
+          onSelectScheduleDate={(date) => {
+            setScheduleDate(date);
+            const next = checkoutPreview?.deliveryOptions?.scheduled.find((d) => d.date === date)
+              ?.slots[0];
+            if (next) void handleSelectSlot(next);
+          }}
+        />
+
+        <View className="mb-3 rounded-card border border-border bg-surface p-4">
+          <Text className="mb-2 font-bold text-text">{t('deliveryInstructions')}</Text>
+          <TextInput
+            className="min-h-[72px] rounded-lg border border-border bg-background p-3 text-sm text-text"
+            placeholder={t('deliveryInstructionsPlaceholder')}
+            placeholderTextColor="#999"
+            multiline
+            maxLength={250}
+            value={instructions}
+            onChangeText={(value) => setInstructions(value.slice(0, 250))}
+          />
+          <Text className="mt-1 text-right text-[10px] text-text-secondary">
+            {instructions.length}/250
+          </Text>
+          <View className="mt-2 flex-row flex-wrap gap-2">
+            {QUICK_CHIP_KEYS.map((chipKey) => (
+              <ScaledPressable
+                key={chipKey}
+                onPress={() => appendChip(t(chipKey))}
+                className="rounded-full border border-border px-3 py-1.5">
+                <Text className="text-xs text-text-secondary">{t(chipKey)}</Text>
+              </ScaledPressable>
+            ))}
+          </View>
+        </View>
+
+        <CheckoutDeliveryQuote
+          status={deliveryQuoteStatus}
+          preview={
+            deliveryQuoteStatus === 'loading' && !displayPreview
+              ? null
+              : displayPreview
+          }
+          errorMessage={deliveryError}
+          onRetry={() => {
+            void refreshEta();
+            void refreshCheckoutPreview(useLoyalty);
+          }}
+          onChangeAddress={openAddressPicker}
+          onAddAddress={openAddressPicker}
+          preferenceLabel={
+            selectedSlot
+              ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
+              : preferenceType === 'ASAP'
+                ? checkoutPreview?.deliveryOptions?.asap.etaLabel
+                : null
+          }
+        />
+
         <View className="mb-3 rounded-card border border-border bg-surface p-4">
           <View className="flex-row items-center justify-between">
             <Text className="font-bold text-text">BajriPro Points</Text>
             <Switch
-              value={useLoyalty}
+              value={useLoyalty && loyaltyEligible}
               onValueChange={onToggleLoyalty}
-              disabled={
-                loyaltyLoading ||
-                !checkoutPreview?.redemptionEligible ||
-                (checkoutPreview?.maxRedeemablePoints ?? 0) <= 0
-              }
+              disabled={loyaltyLoading || !loyaltyEligible}
               trackColor={{ false: '#E5E5E5', true: '#FEB623' }}
               thumbColor="#FFFFFF"
             />
           </View>
-          {loyaltyLoading ? (
+          {loyaltyLoading && availablePoints <= 0 ? (
             <Text className="mt-2 text-xs text-text-secondary">Checking available points…</Text>
           ) : (
             <View className="mt-3 flex-row justify-between">
               <Text className="text-sm font-bold text-text">
-                Balance:{' '}
-                {(checkoutPreview?.redeemablePoints ?? 0).toLocaleString('en-IN')}{' '}
-                Points
+                Balance: {availablePoints.toLocaleString('en-IN')} Points
               </Text>
               <Text className="text-sm text-text-secondary">
-                Value:{' '}
-                {formatINR(checkoutPreview?.loyaltyAvailableValue ?? 0)}
+                Value: {formatINR(availableValue)}
               </Text>
             </View>
           )}
           {loyaltyError ? (
             <Text className="mt-2 text-xs text-error">{loyaltyError}</Text>
-          ) : null}
-          {!loyaltyError &&
-          checkoutPreview &&
-          !checkoutPreview.redemptionEligible ? (
+          ) : !loyaltyEligible ? (
             <Text className="mt-2 text-xs text-text-secondary">
-              {localSubtotal < checkoutPreview.minRedeemOrderValue
-                ? `Add ₹${Math.max(0, checkoutPreview.minRedeemOrderValue - localSubtotal).toLocaleString('en-IN')} more to use BajriPro Points`
-                : `Spend ₹${checkoutPreview.minRedeemOrderValue} or more to unlock BajriPro Points.`}
+              {availablePoints <= 0
+                ? 'Earn BajriPro Points on eligible orders'
+                : `Add ₹${Math.max(0, minRedeemOrderValue - localSubtotal).toLocaleString('en-IN')} more to use BajriPro Points`}
             </Text>
           ) : (
             <Text className="mt-2 text-xs text-text-secondary">
               Apply BajriPro Points at checkout (orders ₹
-              {checkoutPreview?.minRedeemOrderValue ?? 500}+). 100 points = ₹1.
+              {minRedeemOrderValue}+). 100 points = ₹1.
             </Text>
           )}
-          {useLoyalty && loyaltyRedemption > 0 ? (
+          {useLoyalty && loyaltyEligible && loyaltyRedemption > 0 ? (
             <>
               <Text className="mt-2 text-xs text-text-secondary">
                 ✓ {loyaltyPoints.toLocaleString('en-IN')} BajriPro Points applied
@@ -511,69 +875,23 @@ export default function CheckoutScreen() {
               </Animated.View>
             </>
           ) : null}
-          {checkoutPreview && checkoutPreview.estimatedEarnPoints > 0 ? (
+          {displayPreview && displayPreview.estimatedEarnPoints > 0 ? (
             <Text className="mt-3 text-xs text-text-secondary">
-              You will earn {checkoutPreview.estimatedEarnPoints} BajriPro Points
+              You will earn {displayPreview.estimatedEarnPoints} BajriPro Points
               after successful delivery
             </Text>
           ) : null}
-          {checkoutPreview && checkoutPreview.freeBikeDeliveriesRemaining > 0 ? (
+          {displayPreview && displayPreview.freeBikeDeliveriesRemaining > 0 ? (
             <Text className="mt-1 text-xs text-success">
-              Free bike deliveries remaining: {checkoutPreview.freeBikeDeliveriesRemaining}
-              {checkoutPreview.bikeDeliveryFree || checkoutPreview.freeDeliveryApplied
+              Free bike deliveries remaining: {displayPreview.freeBikeDeliveriesRemaining}
+              {displayPreview.bikeDeliveryFree || displayPreview.freeDeliveryApplied
                 ? ' · Delivery FREE'
                 : ''}
-              {checkoutPreview.freeBikeDeliveriesAllowed != null &&
-              checkoutPreview.freeBikeDeliveriesUsed != null
-                ? ` · ${checkoutPreview.freeBikeDeliveriesUsed} of ${checkoutPreview.freeBikeDeliveriesAllowed} used`
+              {displayPreview.freeBikeDeliveriesAllowed != null &&
+              displayPreview.freeBikeDeliveriesUsed != null
+                ? ` · ${displayPreview.freeBikeDeliveriesUsed} of ${displayPreview.freeBikeDeliveriesAllowed} used`
                 : ''}
             </Text>
-          ) : null}
-              {checkoutPreview?.deliveryVehicleDisplayName ? (
-            <View className="mt-3 rounded-lg bg-gray-50 p-3">
-              <Text className="text-xs text-text-secondary">Delivery Vehicle</Text>
-              <Text className="mt-0.5 text-sm font-semibold text-text-primary">
-                {checkoutPreview.deliveryVehicleDisplayName}
-                {checkoutPreview.deliveryVehicleCount != null &&
-                checkoutPreview.deliveryVehicleCount > 1
-                  ? ` × ${checkoutPreview.deliveryVehicleCount}`
-                  : ''}
-              </Text>
-              {checkoutPreview.deliveryDistanceKm != null ? (
-                <>
-                  <Text className="mt-2 text-xs text-text-secondary">Distance</Text>
-                  <Text className="mt-0.5 text-sm font-medium text-text-primary">
-                    {checkoutPreview.deliveryDistanceKm.toFixed(1)} km
-                  </Text>
-                </>
-              ) : null}
-              {checkoutPreview.deliveryTotalWeightKg != null &&
-              checkoutPreview.deliveryTotalWeightKg > 0 ? (
-                <>
-                  <Text className="mt-2 text-xs text-text-secondary">Order Load</Text>
-                  <Text className="mt-0.5 text-sm font-medium text-text-primary">
-                    {checkoutPreview.deliveryTotalWeightKg}
-                    {checkoutPreview.deliveryCapacityLimit != null
-                      ? ` / ${checkoutPreview.deliveryCapacityLimit} kg`
-                      : ' kg'}
-                    {checkoutPreview.deliveryCapacityUtilizationPercent != null
-                      ? ` · ${checkoutPreview.deliveryCapacityUtilizationPercent}%`
-                      : ''}
-                  </Text>
-                </>
-              ) : null}
-              <Text className="mt-2 text-xs text-text-secondary">Delivery Charge</Text>
-              <Text
-                className={`mt-0.5 text-sm font-semibold ${
-                  bikeDelivery || checkoutPreview.freeDeliveryApplied
-                    ? 'text-success'
-                    : 'text-text-primary'
-                }`}>
-                {bikeDelivery || checkoutPreview.freeDeliveryApplied
-                  ? t('bikeDeliveryFree')
-                  : formatINR(deliveryCharge)}
-              </Text>
-            </View>
           ) : null}
         </View>
 
@@ -587,6 +905,7 @@ export default function CheckoutScreen() {
           checkoutTotal={checkoutTotal}
           corporateSavings={corporateSavings}
           bikeDelivery={bikeDelivery}
+          gstAmount={checkoutPreview?.gstAmount ?? 0}
           gstUiState={hasGstApplied ? 'VERIFIED' : gstUiState}
           gstBusinessDiscount={gstBusinessDiscount}
           gstDiscountPercent={gstDiscountPercent}
@@ -619,95 +938,6 @@ export default function CheckoutScreen() {
             onPress={() => setActiveSheet({ type: 'gst' })}
           />
         )}
-
-        <DeliveryDestinationCard site={selectedSite} />
-
-        <CheckoutEtaCard />
-
-        <View className="mb-3 rounded-card border border-border bg-surface p-4">
-          <View className="flex-row items-center gap-2">
-            <Ionicons name="bus-outline" size={18} color="#FEB623" />
-            <Text className="text-sm text-text">
-              {t('scheduledDelivery')}:{' '}
-              <CheckoutEtaInline />
-            </Text>
-          </View>
-          <View className="mt-3 flex-row items-center justify-between px-2">
-            {[
-              { labelKey: 'orderedStep' as const, done: true },
-              { labelKey: 'processingStep' as const, active: true },
-              { labelKey: 'shippingStep' as const, done: false },
-              { labelKey: 'deliveryStep' as const, done: false },
-            ].map((step, i, arr) => (
-              <View key={step.labelKey} className="flex-1 items-center">
-                <View className="flex-row items-center">
-                  {i > 0 && (
-                    <View
-                      className={`h-0.5 w-6 ${step.done || step.active ? 'bg-primary' : 'bg-border'}`}
-                    />
-                  )}
-                  <View
-                    className={`h-6 w-6 items-center justify-center rounded-full ${
-                      step.done
-                        ? 'bg-primary'
-                        : step.active
-                          ? 'border-2 border-primary bg-primary/20'
-                          : 'border-2 border-border'
-                    }`}>
-                    {step.done ? (
-                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                    ) : step.active ? (
-                      <View className="h-2 w-2 rounded-full bg-primary" />
-                    ) : null}
-                  </View>
-                  {i < arr.length - 1 && (
-                    <View
-                      className={`h-0.5 w-6 ${arr[i + 1].done || arr[i + 1].active ? 'bg-primary' : 'bg-border'}`}
-                    />
-                  )}
-                </View>
-                <Text className="mt-1 text-[9px] text-text-secondary">{t(step.labelKey)}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View
-          className={`mb-3 flex-row items-center justify-between rounded-card border p-4 ${
-            bikeDelivery ? 'border-primary bg-primary/5' : 'border-border bg-surface'
-          }`}>
-          <View className="flex-row items-center gap-3">
-            <Ionicons name="bicycle-outline" size={22} color="#FEB623" />
-            <Text className="text-sm font-bold text-text">{t('bikeDelivery')}</Text>
-          </View>
-          <View className="rounded-md bg-success/15 px-2.5 py-1">
-            <Text className="text-[11px] font-800 font-bold text-success">
-              {bikeDelivery ? t('bikeDeliveryFree') : formatINR(deliveryCharge)}
-            </Text>
-          </View>
-        </View>
-
-        <View className="mb-3 rounded-card border border-border bg-surface p-4">
-          <Text className="mb-2 font-bold text-text">{t('deliveryInstructions')}</Text>
-          <TextInput
-            className="min-h-[72px] rounded-lg border border-border bg-background p-3 text-sm text-text"
-            placeholder={t('deliveryInstructionsPlaceholder')}
-            placeholderTextColor="#999"
-            multiline
-            value={instructions}
-            onChangeText={setInstructions}
-          />
-          <View className="mt-2 flex-row flex-wrap gap-2">
-            {QUICK_CHIP_KEYS.map((chipKey) => (
-              <ScaledPressable
-                key={chipKey}
-                onPress={() => appendChip(t(chipKey))}
-                className="rounded-full border border-border px-3 py-1.5">
-                <Text className="text-xs text-text-secondary">{t(chipKey)}</Text>
-              </ScaledPressable>
-            ))}
-          </View>
-        </View>
 
         <Text className="mb-2 text-[10px] font-bold tracking-widest text-text-secondary">
           {t('paymentMethod').toUpperCase()}
@@ -742,9 +972,9 @@ export default function CheckoutScreen() {
 
         <ScaledPressable
           onPress={handlePay}
-          disabled={paying || items.length === 0 || !serviceable}
+          disabled={!canPlaceOrder}
           className={`mt-3 flex-row items-center justify-center rounded-pill py-4 ${
-            paySuccess ? 'bg-success' : serviceable ? 'bg-primary' : 'bg-border'
+            paySuccess ? 'bg-success' : canPlaceOrder ? 'bg-primary' : 'bg-border'
           }`}>
           {paying ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -779,6 +1009,12 @@ export default function CheckoutScreen() {
           }
         }}
         onSave={handleGstSave}
+      />
+
+      <SitesPickerSheet
+        ref={addressPickerRef}
+        returnTo="checkout"
+        onClose={() => addressPickerRef.current?.dismiss()}
       />
     </Fragment>
   );

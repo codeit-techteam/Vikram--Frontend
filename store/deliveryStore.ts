@@ -52,6 +52,8 @@ export function mapAddressesToProfileSites(addresses: CustomerAddress[]): Profil
       address: addressLine,
       isPrimary: Boolean(addr.isDefault ?? addr.isPrimary),
       icon: addr.type === 'business' || addr.type === 'PROJECT_SITE' ? 'business' : 'person',
+      latitude: typeof addr.latitude === 'number' ? addr.latitude : undefined,
+      longitude: typeof addr.longitude === 'number' ? addr.longitude : undefined,
     };
   });
 }

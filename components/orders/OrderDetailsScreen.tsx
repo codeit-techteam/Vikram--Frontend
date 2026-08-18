@@ -204,7 +204,10 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             </Text>
           ) : order.expectedDelivery ? (
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.primaryDark, marginTop: 8 }}>
-              Estimated Delivery: {order.expectedDelivery}
+              {order.deliveryPreference?.scheduledDateLabel &&
+              order.deliveryPreference?.scheduledSlotLabel
+                ? `Scheduled for ${order.deliveryPreference.scheduledDateLabel}, ${order.deliveryPreference.scheduledSlotLabel}`
+                : `Estimated Delivery: ${order.expectedDelivery}`}
             </Text>
           ) : (
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary, marginTop: 8 }}>
@@ -248,6 +251,37 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
         />
 
         <DeliveryAddress address={order.shippingAddress} />
+
+        {order.deliveryPreference ? (
+          <View
+            style={{
+              borderRadius: borderRadius.lg,
+              borderWidth: 1,
+              borderColor: theme.border,
+              backgroundColor: theme.white,
+              padding: 16,
+              marginTop: 12,
+            }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 1, color: theme.textMuted }}>
+              DELIVERY PREFERENCE
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 15, fontWeight: '700', color: theme.textPrimary }}>
+              {order.deliveryPreference.label}
+            </Text>
+            {order.deliveryPreference.scheduledDateLabel &&
+            order.deliveryPreference.scheduledSlotLabel ? (
+              <Text style={{ marginTop: 4, fontSize: 13, color: theme.textSecondary }}>
+                {order.deliveryPreference.scheduledDateLabel},{' '}
+                {order.deliveryPreference.scheduledSlotLabel}
+              </Text>
+            ) : null}
+            {order.deliveryPreference.customerRemark ? (
+              <Text style={{ marginTop: 8, fontSize: 13, color: theme.textPrimary }}>
+                {order.deliveryPreference.customerRemark}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {hasGst && gstDetails ? (
           <DownloadInvoiceCard

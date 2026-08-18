@@ -17,6 +17,7 @@ import { BackHeader } from '@components/BackHeader';
 import {
   deliveryValueToLabel,
   formatMaterialLabel,
+  formatQuantityLabel,
 } from '@constants/bulkEnquiry';
 import { useBulkEnquiryStore } from '@store/bulkEnquiryStore';
 import { useAuthStore } from '@store/useAuthStore';
@@ -135,7 +136,7 @@ export default function MyEnquiriesScreen() {
               <View style={styles.detailRow}>
                 <Ionicons name="calculator-outline" size={14} color="#888" />
                 <Text style={styles.detailText}>
-                  {enquiry.expectedQuantity} {enquiry.expectedUnit}
+                  {formatQuantityLabel(enquiry)}
                 </Text>
               </View>
               <View style={styles.detailRow}>

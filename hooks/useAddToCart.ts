@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 
-import { addCartItemApi } from '@services/cart.api';
 import { useCartFeedbackStore } from '@store/cartFeedbackStore';
 import { useCartStore } from '@store/cartStore';
 import { useEtaStore } from '@store/etaStore';
 import type { Product } from '@/types/catalog';
-import { productToCartItem, type CartItemOptions } from '@utils/cartHelpers';
+import { productToCartItem, sanitizeEtaMinutes, type CartItemOptions } from '@utils/cartHelpers';
 import { requireAuthOr } from '@utils/requireAuth';
 
 export type AddToCartButtonState = 'idle' | 'loading' | 'success';
@@ -37,27 +36,23 @@ export function useAddToCart() {
         setButtonState('loading');
         await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
 
-        const cartItem = productToCartItem(product, clampedQty, {
-          ...options,
-          etaMinutes: options?.etaMinutes ?? eta?.deliveryETA,
-        });
-        const outcome = upsertItem(cartItem);
+        try {
+          const cartItem = productToCartItem(product, clampedQty, {
+            ...options,
+            etaMinutes: sanitizeEtaMinutes(options?.etaMinutes ?? eta?.deliveryETA),
+          });
+          const outcome = upsertItem(cartItem);
 
-        void addCartItemApi({
-          productId: product.id,
-          quantity: clampedQty,
-          variantId: options?.variantId ?? cartItem.variantId,
-          etaMinutes: cartItem.etaMinutes,
-        }).catch(() => {
-          /* local cart remains source of truth until checkout sync */
-        });
+          setButtonState('success');
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showFeedback({ outcome });
 
-        setButtonState('success');
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showFeedback({ outcome });
-
-        setTimeout(() => setButtonState('idle'), 600);
-        return outcome;
+          setTimeout(() => setButtonState('idle'), 600);
+          return outcome;
+        } catch {
+          setButtonState('idle');
+          return null;
+        }
       };
 
       if (!requireAuthOr(() => {

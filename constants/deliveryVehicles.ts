@@ -9,6 +9,7 @@ export type DeliveryVehicleType =
   | 'THREE_WHEELER_LOADER'
   | 'PICK_UP_VAN'
   | 'FULL_TRUCK'
+  | 'HEAVY_LOADER'
   | 'RMC_TRANSIT_MIXER';
 
 export interface VehicleTier {
@@ -26,6 +27,7 @@ export const DELIVERY_VEHICLE_DISPLAY_NAMES: Record<DeliveryVehicleType, string>
   THREE_WHEELER_LOADER: '3 Wheeler Loader',
   PICK_UP_VAN: 'Pick Up Van',
   FULL_TRUCK: 'Full Truck',
+  HEAVY_LOADER: '600 sqft Loader',
   RMC_TRANSIT_MIXER: 'RMC Transit Mixer',
 };
 
@@ -57,6 +59,12 @@ const VEHICLE_UI: Record<DeliveryVehicleType, Omit<VehicleTier, 'type'>> = {
   FULL_TRUCK: {
     label: 'Heavy Vehicle Delivery',
     shortLabel: 'Heavy Vehicle',
+    emoji: '🚛',
+    icon: 'trail-sign-outline',
+  },
+  HEAVY_LOADER: {
+    label: '600 sqft Loader Delivery',
+    shortLabel: '600 sqft Loader',
     emoji: '🚛',
     icon: 'trail-sign-outline',
   },

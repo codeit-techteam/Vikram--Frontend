@@ -63,13 +63,6 @@ export default function EditProfileScreen() {
     transform: [{ scale: avatarScale.value }],
   }));
 
-  const tierLabel =
-    user.memberTier === 'platinum'
-      ? `✦ ${t('platinumMember')}`
-      : user.memberTier === 'gold'
-        ? `✦ ${t('goldMember')}`
-        : `✦ ${t('silverMember')}`;
-
   const validate = useCallback(() => {
     const next: Partial<Record<FieldKey, string>> = {};
     const nameErr = validateName(name);
@@ -161,9 +154,6 @@ export default function EditProfileScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="mb-6 items-center rounded-card border border-border bg-surface p-5">
-          <View className="absolute right-4 top-4 rounded-full bg-primary/10 px-2.5 py-1">
-            <Text className="text-[10px] font-bold text-primary">{tierLabel}</Text>
-          </View>
           <ScaledPressable onPress={handleAvatar}>
             <Animated.View style={avatarStyle}>
               <View>

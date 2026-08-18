@@ -30,6 +30,8 @@ export interface CartItem {
   /** Effective unit price after bulk rules at add time */
   appliedPrice?: number;
   bulkApplied?: boolean;
+  /** Server cart line id when known (used for PATCH qty). */
+  serverItemId?: string;
   vehicleType?: string;
   deliveryMode?: string;
   eta?: string;
@@ -48,9 +50,13 @@ export interface CartAddOutcome {
 }
 
 export function getEffectivePrice(item: CartItem): number {
-  return item.quantity >= item.bulkThreshold && item.bulkThreshold > 0
-    ? item.bulkPrice
-    : item.unitPrice;
+  const unitPrice = Number(item.unitPrice);
+  const bulkPrice = Number(item.bulkPrice);
+  const safeUnit = Number.isFinite(unitPrice) ? unitPrice : 0;
+  const safeBulk = Number.isFinite(bulkPrice) ? bulkPrice : 0;
+  return item.quantity >= item.bulkThreshold && item.bulkThreshold > 0 && safeBulk > 0
+    ? safeBulk
+    : safeUnit;
 }
 
 export function getLineTotal(item: CartItem): number {
@@ -86,6 +92,20 @@ function withQuantityDerivedFields(item: CartItem, quantity: number): CartItem {
 
 function resolveProductId(item: CartItem): string {
   return item.productId ?? item.id;
+}
+
+function sameProductLine(a: CartItem, b: CartItem): boolean {
+  const aPid = resolveProductId(a);
+  const bPid = resolveProductId(b);
+  if (aPid !== bPid) return false;
+  return (a.variantId ?? undefined) === (b.variantId ?? undefined);
+}
+
+function findExistingLine(items: CartItem[], item: CartItem): CartItem | undefined {
+  return (
+    items.find((i) => i.id === item.id) ??
+    items.find((i) => sameProductLine(i, item))
+  );
 }
 
 interface CartState {
@@ -128,14 +148,19 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item) => {
         const state = get();
-        const existing = state.items.find((i) => i.id === item.id);
+        const existing = findExistingLine(state.items, item);
 
         if (existing) {
           const totalQuantity = existing.quantity + item.quantity;
-          const merged: CartItem = { ...existing, ...item, quantity: totalQuantity };
+          const merged = withQuantityDerivedFields(
+            { ...existing, ...item, id: existing.id },
+            totalQuantity,
+          );
           set({
             cartBumpVersion: state.cartBumpVersion + 1,
-            items: state.items.map((i) => (i.id === item.id ? merged : i)),
+            items: state.items
+              .filter((i) => i.id === existing.id || !sameProductLine(i, existing))
+              .map((i) => (i.id === existing.id ? merged : i)),
           });
           return {
             result: 'quantity_updated',
@@ -161,12 +186,12 @@ export const useCartStore = create<CartState>()(
 
       upsertItem: (item) => {
         const state = get();
-        const existing = state.items.find((i) => i.id === item.id);
+        const existing = findExistingLine(state.items, item);
         const qty = Math.max(0, item.quantity);
 
         if (qty <= 0) {
           if (existing) {
-            get().removeItem(item.id);
+            get().removeItem(existing.id);
           }
           return {
             result: 'quantity_updated',
@@ -178,10 +203,15 @@ export const useCartStore = create<CartState>()(
         }
 
         if (existing) {
-          const merged: CartItem = { ...existing, ...item, quantity: qty };
+          const merged = withQuantityDerivedFields(
+            { ...existing, ...item, id: existing.id },
+            qty,
+          );
           set({
             cartBumpVersion: state.cartBumpVersion + 1,
-            items: state.items.map((i) => (i.id === item.id ? merged : i)),
+            items: state.items
+              .filter((i) => i.id === existing.id || !sameProductLine(i, existing))
+              .map((i) => (i.id === existing.id ? merged : i)),
           });
           return {
             result: 'quantity_updated',
@@ -192,7 +222,7 @@ export const useCartStore = create<CartState>()(
           };
         }
 
-        const created = { ...item, quantity: qty };
+        const created = withQuantityDerivedFields({ ...item, quantity: qty }, qty);
         set({
           cartBumpVersion: state.cartBumpVersion + 1,
           items: [...state.items, created],

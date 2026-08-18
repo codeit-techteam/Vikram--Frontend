@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { router, useFocusEffect, type Href } from 'expo-router';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { HomeCollapsibleHeader } from '@components/home/HomeCollapsibleHeader';
+import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
 import { SearchOverlay } from '@components/SearchOverlay';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { DrawerMenu } from '@components/DrawerMenu';
@@ -88,6 +90,19 @@ export default function HomeScreen() {
   const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
   useSites(isLoggedIn);
   const homeScrollY = useSharedValue(0);
+  const sitesSheetRef = useRef<BottomSheetModal>(null);
+  const closeDeliverySites = useCallback(() => {
+    sitesSheetRef.current?.dismiss();
+  }, []);
+  const openDeliverySites = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (sitesSheetRef.current) {
+        sitesSheetRef.current.present();
+        return;
+      }
+      router.push('/delivery-location' as Href);
+    });
+  }, []);
   const onHomeScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
       homeScrollY.value = event.contentOffset.y;
@@ -617,6 +632,7 @@ export default function HomeScreen() {
             onSearchFocus={search.activateSearch}
             onSearchSubmit={() => search.submitSearch()}
             onSearchClear={search.clearQuery}
+            onPressLocation={openDeliverySites}
             onVoicePress={() => {
               search.deactivateSearch();
               openVoiceAssistant();
@@ -691,6 +707,13 @@ export default function HomeScreen() {
       {search.isActive ? (
         <SearchOverlay {...search} onClose={search.deactivateSearch} />
       ) : null}
+
+      <SitesPickerSheet
+        ref={sitesSheetRef}
+        returnTo="home"
+        onClose={closeDeliverySites}
+        onSelect={closeDeliverySites}
+      />
     </View>
   );
 }

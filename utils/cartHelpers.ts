@@ -21,6 +21,13 @@ export interface CartItemOptions {
   etaMinutes?: number;
 }
 
+/** Cart API rejects etaMinutes < 1. Omit placeholders like 0 / NaN. */
+export function sanitizeEtaMinutes(value?: number | null): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  const minutes = Math.round(value);
+  return minutes >= 1 ? minutes : undefined;
+}
+
 /** Resolve catalog product id from cart line id (handles ids like `uuid_variantUuid`). */
 export function resolveCartProductId(item: CartItem): string {
   if (item.productId) return item.productId;
@@ -47,10 +54,10 @@ export function productToCartItem(
   const variant = variantId ? getVariantById(product, variantId) : undefined;
   const hasVariant = productHasStructuredVariants(product) && variant;
 
-  const unitPrice = hasVariant ? variant.price : product.retailPriceValue;
-  const bulkPrice = hasVariant
-    ? (variant.bulkPrice ?? variant.price)
-    : product.bulkPriceValue;
+  const unitPrice = Number(hasVariant ? variant.price : product.retailPriceValue);
+  const bulkPrice = Number(
+    hasVariant ? (variant.bulkPrice ?? variant.price) : product.bulkPriceValue,
+  );
   const cartId = hasVariant ? `${product.id}_${variantId}` : product.id;
   const baseName = product.detailName ?? product.name;
   const displayName = hasVariant ? `${baseName} (${variant.label})` : baseName;
@@ -70,15 +77,15 @@ export function productToCartItem(
     description: product.description,
     imageSearch: product.imageSearch,
     image: product.imageUrl ?? product.imageSearch,
-    unitPrice,
-    bulkPrice,
+    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+    bulkPrice: Number.isFinite(bulkPrice) ? bulkPrice : 0,
     bulkThreshold: product.bulkThreshold,
     quantity,
-    unit,
+    unit: unit || 'unit',
     variantId: hasVariant ? variantId : undefined,
     variantLabel: hasVariant ? variant.label : undefined,
     hubId: options?.hubId,
-    etaMinutes: options?.etaMinutes,
+    etaMinutes: sanitizeEtaMinutes(options?.etaMinutes),
     appliedPrice: quote.appliedUnitPrice,
     bulkApplied: quote.bulkApplied,
     vehicleType: quote.vehicleType,

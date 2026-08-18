@@ -135,8 +135,14 @@ export function getDefaultUnit(
   fallbackUnits: string[] = [],
 ): string | null {
   const units = getUnitsForSlugs(slugs, fallbackUnits);
-  if (units.length === 1) return units[0];
-  return null;
+  return units[0] ?? null;
+}
+
+export function getUnitsForSlug(
+  slug: string,
+  fallbackUnits: string[] = [],
+): string[] {
+  return getUnitsForSlugs([slug], fallbackUnits);
 }
 
 export function isBricksSlug(slug?: string | null): boolean {
@@ -213,4 +219,39 @@ export function formatMaterialLabel(enquiry: {
   if (enquiry.materialTypeLabel) return enquiry.materialTypeLabel;
   if (enquiry.materialCategorySlug) return enquiry.materialCategorySlug;
   return 'Bulk material';
+}
+
+export function formatQuantityLabel(enquiry: {
+  expectedQuantity?: number | null;
+  expectedUnit?: string | null;
+  materialCategories?: Array<{
+    name: string;
+    slug?: string;
+    quantity?: number | null;
+    unit?: string | null;
+  }> | null;
+}): string {
+  const lines = (enquiry.materialCategories ?? [])
+    .filter((c) => c.quantity != null && Number(c.quantity) > 0 && c.unit)
+    .map((c) =>
+      `${c.quantity} ${c.unit}${c.name ? ` ${c.name}` : ''}`.trim(),
+    );
+  if (lines.length) return lines.join(', ');
+  if (enquiry.expectedQuantity != null && enquiry.expectedUnit) {
+    return `${enquiry.expectedQuantity} ${enquiry.expectedUnit}`;
+  }
+  return '—';
+}
+
+export function preferredContactLabel(value?: string | null): string {
+  switch (value) {
+    case 'CALL':
+      return 'Call';
+    case 'WHATSAPP':
+      return 'WhatsApp';
+    case 'BOTH':
+      return 'Call or WhatsApp';
+    default:
+      return value?.trim() || '—';
+  }
 }

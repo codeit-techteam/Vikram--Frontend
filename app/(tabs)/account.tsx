@@ -89,12 +89,6 @@ export default function AccountScreen() {
         }))
       : profileSites;
 
-  const tierLabels = {
-    platinum: `⭐ ${t('platinumMember')}`,
-    gold: `⭐ ${t('goldMember')}`,
-    silver: `⭐ ${t('silverMember')}`,
-  } as const;
-
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sitesOpen, setSitesOpen] = useState(true);
   const [editSite, setEditSite] = useState<ProfileSite | null>(null);
@@ -235,11 +229,6 @@ export default function AccountScreen() {
                   {user.company ? (
                     <Text className="mt-0.5 text-sm text-text-secondary">{user.company}</Text>
                   ) : null}
-                  <View className="mt-2 self-start rounded-full bg-primary px-2.5 py-1">
-                    <Text className="text-[10px] font-bold text-onPrimary">
-                      {tierLabels[user.memberTier]}
-                    </Text>
-                  </View>
                 </View>
               </View>
 

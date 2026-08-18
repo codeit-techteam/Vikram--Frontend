@@ -17,26 +17,25 @@ import { useCartFeedbackStore } from '@store/cartFeedbackStore';
 import { getCartItemImageSource } from '@utils/cartHelpers';
 import { formatINR } from '@utils/formatCurrency';
 
-const AUTO_DISMISS_MS = 2500;
+const AUTO_DISMISS_MS = 4200;
 const GOLD = '#FEB623';
 const DARK = '#1A1A1A';
 const GREEN = '#1F8A3B';
 
 /**
- * Compact Blinkit-style floating confirmation (≈100px).
- * Replaces the old large dialog card.
+ * Blinkit-style added-to-cart confirmation: product row + two equal CTAs.
  */
 export function AddToCartSuccessToast() {
   const insets = useSafeAreaInsets();
   const feedback = useCartFeedbackStore((s) => s.feedback);
   const clearFeedback = useCartFeedbackStore((s) => s.clearFeedback);
-  const enterY = useSharedValue(12);
+  const enterY = useSharedValue(16);
 
   useEffect(() => {
     if (!feedback) return;
     enterY.value = withSpring(0, {
-      damping: 20,
-      stiffness: 280,
+      damping: 18,
+      stiffness: 260,
       overshootClamping: true,
     });
     const timer = setTimeout(clearFeedback, AUTO_DISMISS_MS);
@@ -50,35 +49,39 @@ export function AddToCartSuccessToast() {
   if (!feedback?.outcome) return null;
 
   const { outcome } = feedback;
-  const { item, result, totalQuantity, lineTotal, quantityAdded } = outcome;
+  const { item, result, totalQuantity, lineTotal } = outcome;
 
   const imageSource = getCartItemImageSource(item);
   const isUpdate = result === 'quantity_updated';
-  const title = isUpdate ? 'Quantity Updated' : 'Added to Cart';
-  const qtyLabel = isUpdate
-    ? `Qty ${totalQuantity}`
-    : `Qty ${quantityAdded}`;
+  const title = isUpdate ? 'Quantity updated' : 'Added to cart';
+  const qtyLabel = `Qty ${totalQuantity}`;
 
-  // Sit above tab bar (~64) + safe area with a small gap
   const bottomOffset = Math.max(insets.bottom, 8) + 64;
+
+  const goToCart = () => {
+    clearFeedback();
+    router.push('/cart');
+  };
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(220).easing(Easing.out(Easing.cubic))}
+      entering={FadeInDown.duration(240).easing(Easing.out(Easing.cubic))}
       exiting={FadeOutUp.duration(180)}
       style={[styles.container, { bottom: bottomOffset }]}
       pointerEvents="box-none">
       <Animated.View style={[styles.card, cardAnim]}>
+        <View style={styles.accent} />
+
         <View style={styles.row}>
           <View style={styles.checkWrap}>
-            <Ionicons name="checkmark-circle" size={20} color={GREEN} />
+            <Ionicons name="checkmark-circle" size={22} color={GREEN} />
           </View>
 
           <ProductImage
             source={imageSource}
-            size={48}
+            size={52}
             padding={6}
-            borderRadius={10}
+            borderRadius={12}
             backgroundColor="#F7F7F7"
             recyclingKey={item.productId ?? item.id}
             showSkeleton={false}
@@ -95,19 +98,6 @@ export function AddToCartSuccessToast() {
               <Text style={styles.price}>{formatINR(lineTotal, false)}</Text>
             </Text>
           </View>
-
-          <Pressable
-            onPress={() => {
-              clearFeedback();
-              router.push('/cart');
-            }}
-            hitSlop={8}
-            style={styles.viewCartBtn}
-            accessibilityRole="button"
-            accessibilityLabel="View Cart">
-            <Text style={styles.viewCartText}>View Cart</Text>
-            <Ionicons name="chevron-forward" size={14} color={DARK} />
-          </Pressable>
         </View>
 
         <View style={styles.actions}>
@@ -117,6 +107,14 @@ export function AddToCartSuccessToast() {
             accessibilityRole="button"
             accessibilityLabel="Continue Shopping">
             <Text style={styles.continueText}>Continue Shopping</Text>
+          </Pressable>
+          <Pressable
+            onPress={goToCart}
+            style={styles.viewCartBtn}
+            accessibilityRole="button"
+            accessibilityLabel="View Cart">
+            <Text style={styles.viewCartText}>View Cart</Text>
+            <Ionicons name="chevron-forward" size={15} color={DARK} />
           </Pressable>
         </View>
       </Animated.View>
@@ -134,18 +132,26 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 10,
-    minHeight: 100,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    overflow: 'visible',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    elevation: 14,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#EEEEEE',
+    borderColor: '#EDEDED',
+  },
+  accent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: GREEN,
   },
   row: {
     flexDirection: 'row',
@@ -159,16 +165,16 @@ const styles = StyleSheet.create({
   meta: {
     flex: 1,
     minWidth: 0,
-    gap: 1,
+    gap: 2,
   },
   title: {
     fontSize: 13,
     fontWeight: '800',
     color: GREEN,
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   name: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: DARK,
   },
@@ -185,33 +191,40 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: DARK,
   },
-  viewCartBtn: {
+  actions: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: GOLD,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: 8,
   },
-  viewCartText: {
-    fontSize: 12,
+  continueBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E6E6E6',
+    backgroundColor: '#FAFAFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueText: {
+    fontSize: 13,
     fontWeight: '800',
     color: DARK,
   },
-  actions: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F0F0F0',
+  viewCartBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: GOLD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
   },
-  continueBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: 2,
-  },
-  continueText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#888',
+  viewCartText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: DARK,
   },
 });

@@ -13,6 +13,7 @@ interface ServiceabilityState {
   deliveryETA: number | null;
   deliveryMessage: string | null;
   reason: string | null;
+  hubName: string | null;
   latitude: number | null;
   longitude: number | null;
   isLoading: boolean;
@@ -32,6 +33,7 @@ export const useServiceabilityStore = create<ServiceabilityState>()(
       deliveryETA: null,
       deliveryMessage: null,
       reason: null,
+      hubName: null,
       latitude: null,
       longitude: null,
       isLoading: false,
@@ -57,6 +59,7 @@ export const useServiceabilityStore = create<ServiceabilityState>()(
             deliveryETA: result.deliveryETA,
             deliveryMessage: result.deliveryMessage,
             reason: result.reason ?? null,
+            hubName: result.hubName ?? null,
             isLoading: false,
             checkedAt: Date.now(),
             error: null,
@@ -90,6 +93,7 @@ export const useServiceabilityStore = create<ServiceabilityState>()(
           deliveryETA: null,
           deliveryMessage: null,
           reason: null,
+          hubName: null,
           checkedAt: null,
           error: null,
         }),

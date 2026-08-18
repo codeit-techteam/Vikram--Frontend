@@ -20,6 +20,7 @@ export interface CalculatedDeliveryCharge {
   message?: string;
   vehicleType: DeliveryVehicleType;
   vehicleDisplayName: string;
+  vehicleImageUrl?: string | null;
   distanceKm: number;
   listPrice: number;
   deliveryCharge: number;
@@ -57,7 +58,20 @@ export interface CalculatedDeliveryCharge {
   };
 }
 
-/** List active rules (informational — never use for final order amount). */
+export interface DeliveryVehicleCatalogItem {
+  vehicleType: DeliveryVehicleType;
+  displayName: string;
+  imageUrl: string | null;
+  active: boolean;
+}
+
+export async function fetchDeliveryVehicles(): Promise<DeliveryVehicleCatalogItem[]> {
+  const { data } = await api.get<ApiResponse<DeliveryVehicleCatalogItem[]>>(
+    '/delivery-pricing/vehicles',
+  );
+  return data.data;
+}
+
 export async function fetchDeliveryPricingRules(): Promise<DeliveryPricingRule[]> {
   const { data } = await api.get<ApiResponse<DeliveryPricingRule[]>>(
     '/delivery-pricing',

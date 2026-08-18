@@ -4,14 +4,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
-  FadeIn,
-  FadeOut,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -109,60 +107,52 @@ export function QuantityControls({
     onDecrement();
   };
 
-  if (quantity > 0) {
-    return (
-      <Animated.View
-        layout={LinearTransition.duration(200).easing(Easing.out(Easing.cubic))}
-        entering={FadeIn.duration(160)}
-        style={[styles.stepper, isSm && styles.stepperSm, animStyle]}>
-        <Pressable
-          onPress={handleDec}
-          onPressIn={pressIn}
-          onPressOut={pressOut}
-          disabled={busy}
-          style={[styles.stepBtn, isSm && styles.stepBtnSm]}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel="Decrease quantity">
-          <Ionicons name="remove" size={isSm ? 14 : 16} color={DARK} />
-        </Pressable>
-        <Animated.Text style={[styles.qtyText, isSm && styles.qtyTextSm, qtyAnimStyle]}>
-          {quantity}
-        </Animated.Text>
-        <Pressable
-          onPress={handleInc}
-          onPressIn={pressIn}
-          onPressOut={pressOut}
-          disabled={busy}
-          style={[styles.stepBtn, isSm && styles.stepBtnSm]}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel="Increase quantity">
-          <Ionicons name="add" size={isSm ? 14 : 16} color={DARK} />
-        </Pressable>
-      </Animated.View>
-    );
-  }
-
   return (
-    <Animated.View
-      layout={LinearTransition.duration(200).easing(Easing.out(Easing.cubic))}
-      exiting={FadeOut.duration(120)}
-      style={animStyle}>
-      <Pressable
-        onPress={() => void handleAdd()}
-        onPressIn={pressIn}
-        onPressOut={pressOut}
-        disabled={busy}
-        style={[styles.addBtn, isSm && styles.addBtnSm, busy && styles.addBtnDisabled]}
-        accessibilityRole="button"
-        accessibilityLabel={addLabel}>
-        {pendingAdd || loading ? (
-          <ActivityIndicator size="small" color={DARK} />
-        ) : (
-          <Text style={[styles.addBtnText, isSm && styles.addBtnTextSm]}>{addLabel}</Text>
-        )}
-      </Pressable>
+    <Animated.View style={animStyle}>
+      {quantity > 0 ? (
+        <View style={[styles.stepper, isSm && styles.stepperSm]}>
+          <Pressable
+            onPress={handleDec}
+            onPressIn={pressIn}
+            onPressOut={pressOut}
+            disabled={busy}
+            style={[styles.stepBtn, isSm && styles.stepBtnSm]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Decrease quantity">
+            <Ionicons name="remove" size={isSm ? 14 : 16} color={DARK} />
+          </Pressable>
+          <Animated.Text style={[styles.qtyText, isSm && styles.qtyTextSm, qtyAnimStyle]}>
+            {quantity}
+          </Animated.Text>
+          <Pressable
+            onPress={handleInc}
+            onPressIn={pressIn}
+            onPressOut={pressOut}
+            disabled={busy}
+            style={[styles.stepBtn, isSm && styles.stepBtnSm]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Increase quantity">
+            <Ionicons name="add" size={isSm ? 14 : 16} color={DARK} />
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => void handleAdd()}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          disabled={busy}
+          style={[styles.addBtn, isSm && styles.addBtnSm, busy && styles.addBtnDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel={addLabel}>
+          {pendingAdd || loading ? (
+            <ActivityIndicator size="small" color={DARK} />
+          ) : (
+            <Text style={[styles.addBtnText, isSm && styles.addBtnTextSm]}>{addLabel}</Text>
+          )}
+        </Pressable>
+      )}
     </Animated.View>
   );
 }

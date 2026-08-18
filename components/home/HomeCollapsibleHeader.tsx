@@ -1,8 +1,7 @@
-import { memo, useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { memo, useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { router } from 'expo-router';
-import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Pressable as GHPressable } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -14,7 +13,6 @@ import Animated, {
 import { AppHeader } from '@components/AppHeader';
 import { SearchHeader } from '@components/SearchHeader';
 import { AppIcon } from '@components/ui/AppIcon';
-import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
 import { ICON_SIZE } from '@constants/icons';
 import { theme } from '@constants/theme';
 import { useCurrentSite, useSites } from '@hooks/useSites';
@@ -39,6 +37,8 @@ interface HomeCollapsibleHeaderProps {
   onSearchChange?: (text: string) => void;
   onSearchSubmit?: () => void;
   onSearchClear?: () => void;
+  /** Opens the saved-address sheet owned by HomeScreen. */
+  onPressLocation?: () => void;
 }
 
 /**
@@ -51,6 +51,7 @@ function HomeCollapsibleHeaderComponent({
   menuIconStyle,
   onSearchFocus,
   onVoicePress,
+  onPressLocation,
 }: HomeCollapsibleHeaderProps) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isGuest = useAuthStore((s) => s.isGuest);
@@ -73,24 +74,24 @@ function HomeCollapsibleHeaderComponent({
     return [formatSiteType(site.siteType), site.city].filter(Boolean).join(' · ');
   }, [site]);
 
-  const sheetRef = useRef<BottomSheetModal>(null);
   const showGuest = !isLoggedIn || isGuest;
 
-  const openSites = useCallback(() => {
+  const openLocationPicker = useCallback(() => {
+    void Haptics.selectionAsync();
     if (showGuest) {
       router.push('/login');
       return;
     }
-    sheetRef.current?.present();
-  }, [showGuest]);
-
-  const openDeliverySetup = useCallback(() => {
-    if (showGuest) {
-      router.push('/login');
+    if (!siteLoading && sites.length === 0) {
+      router.push('/delivery-location');
+      return;
+    }
+    if (onPressLocation) {
+      onPressLocation();
       return;
     }
     router.push('/delivery-location');
-  }, [showGuest]);
+  }, [showGuest, siteLoading, sites.length, onPressLocation]);
 
   const addressStyle = useAnimatedStyle(() => ({
     height: interpolate(
@@ -116,56 +117,53 @@ function HomeCollapsibleHeaderComponent({
 
   const handleVoice = onVoicePress ?? openVoiceAssistant;
 
+  const locationLabel = showGuest
+    ? 'Select delivery location'
+    : siteLoading
+      ? 'Loading…'
+      : (site?.siteName ?? 'Add delivery site');
+
   return (
-    <>
-      <AppHeader
-        onMenuPress={onMenuPress}
-        isDrawerOpen={isDrawerOpen}
-        menuIconStyle={menuIconStyle}
-        footer={
-          <>
-            <Animated.View style={addressStyle} pointerEvents="box-none">
-              <GHPressable
-                onPress={showGuest ? openDeliverySetup : openSites}
-                style={styles.addressRow}
-                hitSlop={6}>
-                <AppIcon name="location" size={ICON_SIZE.small} color={theme.primary} />
-                <View style={styles.addressCol}>
-                  <Text style={styles.eyebrow}>Delivering to</Text>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.siteTitle} numberOfLines={1}>
-                      {showGuest
-                        ? 'Select delivery location'
-                        : siteLoading
-                          ? 'Loading…'
-                          : (site?.siteName ?? 'Add delivery site')}
-                    </Text>
-                    <AppIcon
-                      name="chevronDown"
-                      size={ICON_SIZE.small}
-                      color={theme.textSecondary}
-                    />
-                  </View>
-                  {!showGuest && siteMeta ? (
-                    <Text style={styles.metaLine} numberOfLines={1}>
-                      {siteMeta}
-                    </Text>
-                  ) : null}
+    <AppHeader
+      onMenuPress={onMenuPress}
+      isDrawerOpen={isDrawerOpen}
+      menuIconStyle={menuIconStyle}
+      footer={
+        <>
+            <Animated.View style={addressStyle}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Delivering to ${locationLabel}. Change delivery address.`}
+              onPress={openLocationPicker}
+              hitSlop={8}
+              collapsable={false}
+              style={styles.addressRow}>
+              <AppIcon name="location" size={ICON_SIZE.small} color={theme.primary} />
+              <View style={styles.addressCol} pointerEvents="none">
+                <Text style={styles.eyebrow}>Delivering to</Text>
+                <View style={styles.titleRow}>
+                  <Text style={styles.siteTitle} numberOfLines={1}>
+                    {locationLabel}
+                  </Text>
+                  <AppIcon
+                    name="chevronDown"
+                    size={ICON_SIZE.small}
+                    color={theme.textSecondary}
+                  />
                 </View>
-              </GHPressable>
-            </Animated.View>
+                {!showGuest && siteMeta ? (
+                  <Text style={styles.metaLine} numberOfLines={1}>
+                    {siteMeta}
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
+          </Animated.View>
 
-            <SearchHeader onPress={onSearchFocus} onVoicePress={handleVoice} />
-          </>
-        }
-      />
-
-      <SitesPickerSheet
-        ref={sheetRef}
-        onClose={() => sheetRef.current?.dismiss()}
-        onSelect={() => sheetRef.current?.dismiss()}
-      />
-    </>
+          <SearchHeader onPress={onSearchFocus} onVoicePress={handleVoice} />
+        </>
+      }
+    />
   );
 }
 
@@ -177,6 +175,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 6,
     paddingHorizontal: 4,
+    minHeight: 44,
+    zIndex: 20,
   },
   addressCol: {
     flex: 1,

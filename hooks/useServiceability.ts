@@ -19,6 +19,7 @@ export function useServiceability(options?: {
   const deliveryETA = useServiceabilityStore((s) => s.deliveryETA);
   const deliveryMessage = useServiceabilityStore((s) => s.deliveryMessage);
   const reason = useServiceabilityStore((s) => s.reason);
+  const hubName = useServiceabilityStore((s) => s.hubName);
   const isLoading = useServiceabilityStore((s) => s.isLoading);
   const error = useServiceabilityStore((s) => s.error);
   const checkedAt = useServiceabilityStore((s) => s.checkedAt);
@@ -65,6 +66,7 @@ export function useServiceability(options?: {
     deliveryETA: etaMinutes,
     deliveryMessage: etaLabel,
     reason,
+    hubName,
     isLoading,
     error,
     deliveryCharge,

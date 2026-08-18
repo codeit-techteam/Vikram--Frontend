@@ -52,7 +52,6 @@ export function useDeliveryEta(options?: {
       setLocation(options.latitude, options.longitude, options.pincode);
       return;
     }
-    if (storedLat != null && storedLng != null) return;
     const site =
       profileSites.find((s) => s.id === selectedSiteId) ??
       profileSites.find((s) => s.isPrimary) ??
@@ -65,8 +64,6 @@ export function useDeliveryEta(options?: {
     options?.longitude,
     options?.pincode,
     setLocation,
-    storedLat,
-    storedLng,
     selectedSiteId,
     profileSites,
   ]);

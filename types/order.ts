@@ -84,6 +84,7 @@ export interface Order {
   /** Monotonic version (usually Date.parse(updatedAt)) for cache freshness */
   version?: number;
   expectedDelivery?: string;
+  deliveryPreference?: import('@/types/deliveryPreference').DeliveryPreferenceView;
   deliveredAt?: string;
   products: OrderProduct[];
   subtotal: number;

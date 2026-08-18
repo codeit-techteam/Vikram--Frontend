@@ -1,9 +1,8 @@
-import type { ActivityItem, LoyaltyTier } from '@store/loyaltyStore';
+import type { ActivityItem } from '@store/loyaltyStore';
 
 interface StatementData {
   totalPoints: number;
   cashbackEarned: number;
-  tier: LoyaltyTier;
   activityHistory: ActivityItem[];
 }
 
@@ -47,7 +46,7 @@ export function buildLoyaltyStatementHtml(data: StatementData): string {
 </head>
 <body>
   <h1>Bajriwala — Loyalty Statement</h1>
-  <p class="meta">Tier: ${data.tier.charAt(0).toUpperCase() + data.tier.slice(1)} · Generated ${new Date().toLocaleDateString('en-IN')}</p>
+  <p class="meta">Generated ${new Date().toLocaleDateString('en-IN')}</p>
   <div class="summary">
     <div class="card">
       <label>Total Points</label>

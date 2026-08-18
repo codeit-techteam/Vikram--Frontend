@@ -1,8 +1,10 @@
-import { memo, useCallback, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,8 +32,6 @@ import {
   sheetShowsVariantPicker,
 } from '@constants/catalogVariantHelpers';
 import { useAddToCart } from '@hooks/useAddToCart';
-import { useProductDeliveryEstimate } from '@hooks/useProductDeliveryEstimate';
-import { getVehicleTier, formatLoadLabel } from '@constants/deliveryVehicles';
 import { useVariantStore } from '@store/variantStore';
 import { isVisibleProductBrand } from '@utils/categoryDisplay';
 import { formatINR } from '@utils/formatCurrency';
@@ -44,7 +44,6 @@ import { resolveProductImageSource } from '@utils/catalogPlaceholders';
 
 const GOLD = '#FEB623';
 const GOLD_SOFT = '#FFF8E8';
-const GOLD_BORDER = '#F5D078';
 const DARK = '#1A1A1A';
 const MUTED = '#6B6B6B';
 const HAIRLINE = '#EFEFEF';
@@ -76,6 +75,7 @@ function VariantBottomSheetComponent() {
   const selectVariant = useVariantStore((s) => s.selectVariant);
   const setQuantity = useVariantStore((s) => s.setQuantity);
   const { addToCart, buttonState } = useAddToCart();
+  const [qtyEditing, setQtyEditing] = useState(false);
 
   const variants = product?.productVariants ?? [];
   const showVariants = product ? sheetShowsVariantPicker(product) : false;
@@ -90,37 +90,14 @@ function VariantBottomSheetComponent() {
     return computeQuantityPricing(product, quantity, selected, pricing);
   }, [product, pricing, quantity, selected]);
 
-  const {
-    estimate: liveEtaResult,
-    label: liveEtaLabel,
-    isCalculating: etaUpdating,
-  } = useProductDeliveryEstimate({
-    productId: product?.id,
-    variantId: selected?.id,
-    quantity,
-    enabled: Boolean(visible && product?.id && quantity > 0),
-  });
-
-  const liveVehicle = liveEtaResult?.deliveryVehicleType
-    ? getVehicleTier(liveEtaResult.deliveryVehicleType)
-    : quote?.vehicle;
-  const liveModeTitle =
-    liveEtaResult?.deliveryModeTitle ||
-    liveVehicle?.label ||
-    quote?.modeTitle;
-  const liveWeightKg =
-    liveEtaResult?.deliveryTotalWeightKg != null &&
-    liveEtaResult.deliveryTotalWeightKg > 0
-      ? liveEtaResult.deliveryTotalWeightKg
-      : quote?.estimatedWeightKg ?? 0;
-  const liveLoadLabel = formatLoadLabel(liveWeightKg);
-
   const sheetY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
   const subtotalScale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
   const ctaScale = useSharedValue(1);
   const mounted = useSharedValue(0);
+  const keyboardInset = useSharedValue(0);
+  const accessoryInset = useSharedValue(0);
 
   const finishClose = useCallback(() => {
     close();
@@ -130,6 +107,7 @@ function VariantBottomSheetComponent() {
     if (visible) {
       mounted.value = 1;
       sheetY.value = SHEET_HEIGHT;
+      keyboardInset.value = 0;
       backdropOpacity.value = 0;
       backdropOpacity.value = withTiming(1, {
         duration: OPEN_MS,
@@ -142,8 +120,42 @@ function VariantBottomSheetComponent() {
         mass: 0.85,
         overshootClamping: true,
       });
+    } else {
+      setQtyEditing(false);
     }
-  }, [visible, backdropOpacity, sheetY, mounted]);
+  }, [visible, backdropOpacity, sheetY, mounted, keyboardInset]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const duration =
+        typeof e.duration === 'number' && e.duration > 0 ? e.duration : 240;
+      keyboardInset.value = withTiming(e.endCoordinates.height, {
+        duration,
+        easing: Easing.out(Easing.cubic),
+      });
+    });
+    const hide = Keyboard.addListener(hideEvent, (e) => {
+      const duration =
+        typeof e.duration === 'number' && e.duration > 0 ? e.duration : 200;
+      keyboardInset.value = withTiming(0, {
+        duration,
+        easing: Easing.in(Easing.cubic),
+      });
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [keyboardInset]);
+
+  useEffect(() => {
+    accessoryInset.value = withTiming(
+      qtyEditing && Platform.OS === 'ios' ? 48 : 0,
+      { duration: 160, easing: Easing.out(Easing.cubic) },
+    );
+  }, [qtyEditing, accessoryInset]);
 
   useEffect(() => {
     if (!quote) return;
@@ -166,23 +178,32 @@ function VariantBottomSheetComponent() {
     opacity: backdropOpacity.value,
   }));
 
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetY.value }],
-  }));
+  const sheetStyle = useAnimatedStyle(() => {
+    const inset = keyboardInset.value + accessoryInset.value;
+    const available = SCREEN_HEIGHT - inset;
+    return {
+      height: Math.min(SHEET_HEIGHT, available),
+      marginBottom: inset,
+      transform: [{ translateY: sheetY.value }],
+    };
+  });
 
   const subtotalAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: subtotalScale.value }],
   }));
 
-  const progressAnimStyle = useAnimatedStyle(() => ({
-    width: `${Math.round(progressWidth.value * 100)}%`,
-  }));
+  const progressAnimStyle = useAnimatedStyle(() => {
+    const ratio = Math.max(0, Math.min(1, progressWidth.value || 0));
+    return { transform: [{ scaleX: ratio }] };
+  });
 
   const ctaAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: ctaScale.value }],
   }));
 
   const animateClose = useCallback(() => {
+    Keyboard.dismiss();
+    keyboardInset.value = withTiming(0, { duration: CLOSE_MS });
     backdropOpacity.value = withTiming(0, {
       duration: CLOSE_MS,
       easing: Easing.in(Easing.cubic),
@@ -194,7 +215,7 @@ function VariantBottomSheetComponent() {
         if (finished) runOnJS(finishClose)();
       },
     );
-  }, [backdropOpacity, sheetY, finishClose]);
+  }, [backdropOpacity, sheetY, finishClose, keyboardInset]);
 
   const handleQuantityChange = useCallback(
     (next: number) => {
@@ -209,6 +230,7 @@ function VariantBottomSheetComponent() {
 
   const handleSelectVariant = useCallback(
     (id: string) => {
+      Keyboard.dismiss();
       void Haptics.selectionAsync();
       selectVariant(id);
       subtotalScale.value = withSequence(
@@ -222,6 +244,7 @@ function VariantBottomSheetComponent() {
   const handleAdd = useCallback(async () => {
     if (!product) return;
     if (showVariants && (!selected || selected.inStock === false)) return;
+    Keyboard.dismiss();
 
     ctaScale.value = withSequence(
       withTiming(0.97, { duration: 80 }),
@@ -255,26 +278,16 @@ function VariantBottomSheetComponent() {
     quote.originalUnitPrice,
     pricing.discountPercent,
   );
-  const etaLabel = liveEtaLabel || null;
-
   const ctaPrimary = outOfStock
     ? 'Out of Stock'
     : showVariants
       ? `Add ${quantity} × ${variantLabel}`
       : `Add ${formatUnitCount(quantity, quote.unit)}`;
 
-  const displayVehicle = liveVehicle ?? quote.vehicle;
-  const summaryLine = [
-    `${quantity} Qty`,
-    variantLabel,
-    `${displayVehicle.shortLabel} Delivery`,
-    liveLoadLabel ? `Load ${liveLoadLabel}` : null,
-  ]
-    .filter(Boolean)
-    .join('  ·  ');
+  const summaryLine = [`${quantity} Qty`, variantLabel].filter(Boolean).join('  ·  ');
 
   const safeBottom = Math.max(insets.bottom, 8);
-  const footerSubtotal = formatINR(quote.estimatedTotal, false);
+  const footerSubtotal = formatINR(quote.subtotalBeforeGst, false);
 
   return (
     <Modal
@@ -293,7 +306,7 @@ function VariantBottomSheetComponent() {
           />
         </Animated.View>
 
-        <Animated.View style={[styles.sheet, { height: SHEET_HEIGHT }, sheetStyle]}>
+        <Animated.View style={[styles.sheet, sheetStyle]}>
           <View style={styles.handle} />
 
           {/* Fixed header */}
@@ -353,12 +366,6 @@ function VariantBottomSheetComponent() {
                     </Animated.View>
                   ) : null}
                 </View>
-                {etaLabel ? (
-                  <View style={styles.etaBadge}>
-                    <Ionicons name="flash" size={11} color={GREEN} />
-                    <Text style={styles.etaBadgeText}>{etaLabel}</Text>
-                  </View>
-                ) : null}
               </View>
             </View>
           </View>
@@ -370,7 +377,8 @@ function VariantBottomSheetComponent() {
             showsVerticalScrollIndicator={false}
             bounces={false}
             overScrollMode="never"
-            keyboardShouldPersistTaps="handled">
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive">
             {showVariants ? (
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>Choose size</Text>
@@ -401,8 +409,26 @@ function VariantBottomSheetComponent() {
             <View style={styles.section}>
               <View style={styles.qtyRow}>
                 <View style={styles.qtyCopy}>
-                  <Text style={styles.sectionLabelInline}>Quantity</Text>
-                  <Text style={styles.qtyHint}>{pricing.unit}</Text>
+                  <View style={styles.qtyTitleRow}>
+                    <Text style={styles.sectionLabelInline}>Quantity</Text>
+                    {qtyEditing && Platform.OS === 'android' ? (
+                      <Pressable
+                        onPress={() => Keyboard.dismiss()}
+                        hitSlop={8}
+                        style={styles.qtyDoneBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel="Done">
+                        <Text style={styles.qtyDoneText}>Done</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  <Text style={styles.qtyHint}>
+                    {qtyEditing
+                      ? product.maxOrder
+                        ? `Max ${product.maxOrder} ${pricing.unit}`
+                        : 'Type a quantity'
+                      : `${pricing.unit} · tap number to type`}
+                  </Text>
                 </View>
                 <ProductQuantitySelector
                   quantity={quantity}
@@ -412,31 +438,8 @@ function VariantBottomSheetComponent() {
                   step={product.incrementStep ?? 1}
                   size="lg"
                   variant="capsule"
+                  onEditingChange={setQtyEditing}
                 />
-              </View>
-            </View>
-
-            <View style={[styles.section, styles.deliveryCard]}>
-              <View style={styles.deliveryIconWrap}>
-                <Ionicons name={displayVehicle.icon} size={22} color={DARK} />
-              </View>
-              <View style={styles.deliveryTextWrap}>
-                <Text style={styles.deliveryMode} numberOfLines={1}>
-                  {liveModeTitle || displayVehicle.label}
-                </Text>
-                <Text style={styles.deliveryEta} numberOfLines={2}>
-                  {liveEtaLabel}
-                  {etaUpdating && liveEtaResult ? '  ·  updating' : ''}
-                  {liveLoadLabel ? `  ·  Load ${liveLoadLabel}` : ''}
-                  {liveEtaResult?.deliveryVehicleCount &&
-                  liveEtaResult.deliveryVehicleCount > 1
-                    ? `  ·  ${liveEtaResult.deliveryVehicleCount} trips`
-                    : ''}
-                </Text>
-              </View>
-              <View style={styles.vehiclePill}>
-                <Ionicons name={displayVehicle.icon} size={12} color={DARK} />
-                <Text style={styles.vehiclePillText}>{displayVehicle.shortLabel}</Text>
               </View>
             </View>
 
@@ -450,7 +453,7 @@ function VariantBottomSheetComponent() {
                     </Text>
                     <Text style={styles.bulkCardHint}>
                       You save {formatINR(quote.savePerUnit, false)} per{' '}
-                      {pricing.unit.toLowerCase()}
+                      {(pricing.unit || 'unit').toLowerCase()}
                     </Text>
                   </View>
                 ) : (
@@ -504,19 +507,10 @@ function VariantBottomSheetComponent() {
                   valueStyle={styles.savingsValue}
                 />
               ) : null}
-              <BreakdownRow
-                label={`GST (${quote.gstRate}%)`}
-                value={formatINR(quote.gstAmount, false)}
-              />
-              <BreakdownRow
-                label="Delivery"
-                value="Included"
-                valueStyle={styles.deliveryIncluded}
-              />
               <View style={styles.breakdownDivider} />
               <BreakdownRow
-                label="Grand Total"
-                value={formatINR(quote.estimatedTotal, false)}
+                label="Subtotal"
+                value={formatINR(quote.subtotalBeforeGst, false)}
                 bold
               />
             </View>
@@ -811,6 +805,22 @@ const styles = StyleSheet.create({
   qtyCopy: {
     flexShrink: 1,
   },
+  qtyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  qtyDoneBtn: {
+    backgroundColor: GOLD,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  qtyDoneText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: DARK,
+  },
   qtyHint: {
     marginTop: 2,
     fontSize: 12,
@@ -880,56 +890,6 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '600',
   },
-  deliveryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: GOLD_BORDER,
-    backgroundColor: GOLD_SOFT,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  deliveryIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deliveryTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  deliveryMode: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: DARK,
-  },
-  deliveryEta: {
-    marginTop: 3,
-    fontSize: 12,
-    fontWeight: '600',
-    color: MUTED,
-  },
-  vehiclePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFF',
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: GOLD,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  vehiclePillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: DARK,
-  },
   bulkCard: {
     backgroundColor: GREEN_SOFT,
     borderRadius: 14,
@@ -995,8 +955,10 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
+    width: '100%',
     borderRadius: 4,
     backgroundColor: GOLD,
+    transformOrigin: 'left center',
   },
   breakdownCard: {
     borderRadius: 14,

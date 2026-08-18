@@ -131,8 +131,9 @@ export function computeQuantityPricing(
   };
 }
 
-export function formatUnitCount(quantity: number, unit: string): string {
-  const u = unit.trim();
+export function formatUnitCount(quantity: number, unit?: string | null): string {
+  const u = typeof unit === 'string' ? unit.trim() : '';
+  if (!u) return String(quantity);
   if (/^(cum|cubic\s+metres?|cubic\s+meters?)$/i.test(u)) {
     return quantity === 1 ? '1 Cubic Meter' : `${quantity} Cubic Meters`;
   }

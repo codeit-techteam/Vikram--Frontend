@@ -9,7 +9,8 @@ export type BulkDeliveryRequirement =
   | 'WITHIN_1_WEEK'
   | 'FLEXIBLE';
 
-export type BulkPreferredContact = 'CALL' | 'WHATSAPP' | 'BOTH';
+export type BulkPreferredContact = 'CALL' | 'WHATSAPP';
+export type BulkPreferredContactValue = BulkPreferredContact | 'BOTH';
 
 export type BulkEnquiryStatus =
   | 'NEW'
@@ -76,6 +77,8 @@ export interface BulkMaterialCategoryRef {
   id: string;
   slug: string;
   name: string;
+  quantity?: number | null;
+  unit?: string | null;
 }
 
 export interface BulkEnquiry {
@@ -106,7 +109,7 @@ export interface BulkEnquiry {
   latitude?: number | null;
   longitude?: number | null;
   additionalNotes?: string | null;
-  preferredContact: BulkPreferredContact;
+  preferredContact: BulkPreferredContactValue;
   status: BulkEnquiryStatus | string;
   customerFacingStatus: string;
   assignedExecutive?: BulkAssignedExecutive | null;
@@ -153,6 +156,11 @@ export interface CreateBulkEnquiryPayload {
   siteType?: string;
   expectedStartDate?: string;
   companyName?: string;
+  materialQuantities?: Array<{
+    slug: string;
+    quantity: number;
+    unit: string;
+  }>;
 }
 
 export const bulkApi = {

@@ -1,9 +1,11 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
+import { router } from 'expo-router';
 
 import { useServiceability } from '@hooks/useServiceability';
 import { useDeliveryStore } from '@store/deliveryStore';
+import { isValidDeliveryCoordinates } from '@utils/geo';
 import { buildDeliverySubtitle, deliveryIcon } from '@utils/deliveryMessages';
 
 /** Compact home strip: customer-friendly delivery promise. */
@@ -20,33 +22,37 @@ export function HomeEtaStrip() {
     isLoading,
     freeDelivery,
     reason,
+    hubName,
   } = useServiceability({
     latitude: profileSite?.latitude,
     longitude: profileSite?.longitude,
     autoCheck: true,
   });
 
-  const hasLocation =
-    profileSite?.latitude != null && profileSite?.longitude != null;
+  const hasLocation = isValidDeliveryCoordinates(
+    profileSite?.latitude,
+    profileSite?.longitude,
+  );
 
   const headline = (() => {
-    if (!hasLocation) return 'Set location for delivery';
+    if (!hasLocation) return 'Select a delivery location';
     if (isLoading) return 'Checking delivery…';
-    if (serviceable && deliveryMessage) {
-      return deliveryMessage.startsWith('Delivery')
-        ? `⚡ ${deliveryMessage}`
-        : `🟢 ${deliveryMessage}`;
+    if (serviceable) {
+      return deliveryMessage
+        ? `✓ ${deliveryMessage}`
+        : '✓ Delivery available';
     }
     return 'Delivery unavailable';
   })();
 
   const subline = (() => {
-    if (!hasLocation) return 'Add a delivery site to see delivery options';
+    if (!hasLocation) return 'We need your delivery location to check availability.';
     if (isLoading) return 'Finding the fastest delivery option…';
     if (serviceable) {
-      return buildDeliverySubtitle(true, { freeDelivery });
+      const hubLine = hubName ? `Delivering from ${hubName}` : null;
+      return hubLine || buildDeliverySubtitle(true, { freeDelivery });
     }
-    return reason || 'Delivery is not available at this location yet';
+    return reason || "We don't currently have a Hub serving this location.";
   })();
 
   const iconName = deliveryIcon(serviceable, deliveryETA) as ComponentProps<
@@ -74,9 +80,20 @@ export function HomeEtaStrip() {
           </>
         )}
       </View>
+      {!hasLocation && !isLoading ? (
+        <Pressable
+          style={styles.notifyBtn}
+          accessibilityRole="button"
+          onPress={() => router.push('/delivery-location')}>
+          <Text style={styles.notifyText}>Select Location</Text>
+        </Pressable>
+      ) : null}
       {!serviceable && hasLocation && !isLoading ? (
-        <Pressable style={styles.notifyBtn} accessibilityRole="button">
-          <Text style={styles.notifyText}>Notify Me</Text>
+        <Pressable
+          style={styles.notifyBtn}
+          accessibilityRole="button"
+          onPress={() => router.push('/delivery-location')}>
+          <Text style={styles.notifyText}>Change Location</Text>
         </Pressable>
       ) : null}
     </View>

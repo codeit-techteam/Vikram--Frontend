@@ -2,8 +2,6 @@ import { create } from 'zustand';
 
 import type { CustomerProfile } from '@services/customer.api';
 
-export type MemberTier = 'platinum' | 'gold' | 'silver';
-
 export interface User {
   name: string;
   company: string;
@@ -11,7 +9,6 @@ export interface User {
   email: string;
   gstNumber: string;
   avatar: string | null;
-  memberTier: MemberTier;
   businessType: string;
   procurement: string;
   city: string;
@@ -32,7 +29,6 @@ const EMPTY_USER: User = {
   email: '',
   gstNumber: '',
   avatar: null,
-  memberTier: 'silver',
   businessType: '',
   procurement: '',
   city: '',
@@ -45,25 +41,8 @@ const EMPTY_USER: User = {
   complianceScore: 0,
 };
 
-/**
- * Maps a backend membership/plan label to the app's 3-tier badge system.
- * PLATINUM/platinum → platinum, GOLD/gold → gold, "Enterprise" → platinum, else silver.
- */
-export function mapMembershipToTier(input?: string | null): MemberTier {
-  const normalized = (input ?? '').trim().toLowerCase();
-  if (normalized === 'platinum' || normalized === 'enterprise') return 'platinum';
-  if (normalized === 'gold') return 'gold';
-  return 'silver';
-}
-
 /** Maps an enriched `/customer/profile` response onto the local `User` shape. */
 export function mapProfileToUser(profile: CustomerProfile): User {
-  const membershipLabel =
-    (typeof profile.membership === 'string' ? profile.membership : undefined) ??
-    profile.membershipDetails?.plan ??
-    profile.membershipDetails?.tier ??
-    profile.membershipDetails?.name;
-
   const gstObj =
     profile.gst && typeof profile.gst === 'object'
       ? (profile.gst as {
@@ -87,9 +66,6 @@ export function mapProfileToUser(profile: CustomerProfile): User {
       gstObj?.gstin ??
       '',
     avatar: profile.profileImage ?? null,
-    memberTier: mapMembershipToTier(
-      typeof membershipLabel === 'string' ? membershipLabel : undefined,
-    ),
     businessType: (profile.businessType as string | undefined) ?? '',
     procurement: '',
     city: '',

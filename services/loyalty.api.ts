@@ -10,11 +10,7 @@ export interface LoyaltySummary {
   lifetimeRedeemed: number;
   availablePoints: number;
   availableValue: number;
-  tier: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
   redeemablePoints: number;
-  nextTier?: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | null;
-  pointsToNextTier: number;
-  tierProgress: number;
   nextExpiry?: string | null;
   minRedeemOrderValue: number;
   pointValueInr: number;

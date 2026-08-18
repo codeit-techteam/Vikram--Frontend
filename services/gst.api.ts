@@ -85,18 +85,6 @@ export function mapProfileToGstDetails(profile: CustomerProfile): GstDetails | n
 
 export async function fetchGST(): Promise<GstDetails | null> {
   try {
-    const { data } = await api.get<ApiResponse<GstDetails | null>>(GST_BASE);
-    if (data.data) {
-      return {
-        ...data.data,
-        updatedAt: data.data.updatedAt ?? new Date().toISOString(),
-      };
-    }
-  } catch {
-    // Fall through to profile
-  }
-
-  try {
     const profile = await getProfile();
     return mapProfileToGstDetails(profile);
   } catch {

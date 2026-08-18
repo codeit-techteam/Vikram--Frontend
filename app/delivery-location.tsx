@@ -31,7 +31,7 @@ import {
 } from '@services/sites.api';
 
 export default function DeliveryLocationScreen() {
-  const params = useLocalSearchParams<{ returnTo?: string; mode?: string }>();
+  const params = useLocalSearchParams<{ returnTo?: string; mode?: string; siteId?: string }>();
   const { data: sites = [], isLoading, isRefetching, refetch, isError } = useSites();
   const { remove, setPrimary } = useSiteMutations();
 
@@ -46,6 +46,7 @@ export default function DeliveryLocationScreen() {
 
   const sheetRef = useRef<BottomSheetModal>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openedEditId = useRef<string | null>(null);
 
   const filteredSites = useMemo(() => {
     const q = listFilter.trim().toLowerCase();
@@ -134,6 +135,8 @@ export default function DeliveryLocationScreen() {
     const returnTo = params.returnTo;
     if (returnTo === 'checkout') {
       router.replace('/checkout' as Href);
+    } else if (returnTo === 'account') {
+      router.replace('/(tabs)/account' as Href);
     } else {
       router.replace('/(tabs)' as Href);
     }
@@ -154,8 +157,14 @@ export default function DeliveryLocationScreen() {
   };
 
   useEffect(() => {
-    // First-time users must add at least one site before leaving.
-  }, []);
+    const siteId = Array.isArray(params.siteId) ? params.siteId[0] : params.siteId;
+    if (!siteId || sites.length === 0) return;
+    if (openedEditId.current === siteId) return;
+    const match = sites.find((s) => s.id === siteId);
+    if (!match) return;
+    openedEditId.current = siteId;
+    openEdit(match);
+  }, [params.siteId, sites]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>

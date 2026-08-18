@@ -17,10 +17,7 @@ import { CartItemCard } from '@components/cart/CartItemCard';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useCartStore } from '@store/cartStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
-import type { DeliverySite } from '@store/deliveryStore';
-import { useDeliveryStore } from '@store/deliveryStore';
 import { requireAuthOr } from '@utils/requireAuth';
-import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { useEffect, useMemo } from 'react';
 import {
   calculateLoyaltyDiscountPreview,
@@ -140,12 +137,10 @@ function BajriProPointsBanner({
 
 function OrderSummaryCard({
   itemsTotal,
-  deliveryCharge,
   pointsApplied,
   loyaltyDiscount,
 }: {
   itemsTotal: number;
-  deliveryCharge: number;
   pointsApplied: boolean;
   loyaltyDiscount: number;
 }) {
@@ -157,7 +152,7 @@ function OrderSummaryCard({
       <SummaryRow label={t('itemsTotal')} value={`₹${itemsTotal.toLocaleString('en-IN')}`} />
       <SummaryRow
         label={t('deliveryCharges')}
-        value={`₹${deliveryCharge.toLocaleString('en-IN')}`}
+        value={t('atCheckout')}
         showInfo
       />
       <SummaryRow
@@ -170,39 +165,6 @@ function OrderSummaryCard({
         valueColor="#FEB623"
       />
       <View style={styles.summaryDivider} />
-    </View>
-  );
-}
-
-function SiteLogisticsCard({ site }: { site: DeliverySite | undefined }) {
-  const { t } = useTranslation();
-  const { label, deliveringBy, isLoading } = useDeliveryEta({ autoFetch: true });
-  const etaText = deliveringBy
-    ? `${t('etaLabel')}: ${deliveringBy}`
-    : isLoading
-      ? `${t('etaLabel')}: Updating delivery estimate...`
-      : label
-        ? `${t('etaLabel')}: ${label}`
-        : `${t('etaLabel')}: —`;
-
-  return (
-    <View style={styles.siteCard}>
-      <View style={styles.siteIconWrap}>
-        <Ionicons name="location-outline" size={18} color="#FEB623" />
-      </View>
-      <View style={styles.siteInfo}>
-        <Text style={styles.siteName}>
-          {site?.name ?? 'Select a delivery site'}
-        </Text>
-        <Text style={styles.siteAddress}>{site?.address ?? 'Add delivery address'}</Text>
-        <View style={styles.siteEtaRow}>
-          <Ionicons name="time-outline" size={12} color="#888" />
-          <Text style={styles.siteEta}>{etaText}</Text>
-        </View>
-      </View>
-      <Pressable onPress={() => router.push('/delivery-location')} hitSlop={8}>
-        <Text style={styles.siteChange}>{t('change')}</Text>
-      </Pressable>
     </View>
   );
 }
@@ -275,7 +237,6 @@ export default function CartScreen() {
   const removeItem = useCartStore((s) => s.removeItem);
   const togglePoints = useCartStore((s) => s.togglePoints);
   const itemsTotal = useCartStore((s) => s.itemsTotal());
-  const deliveryCharge = useCartStore((s) => s.deliveryCharge());
   const availablePoints = useLoyaltyStore((s) => s.totalPoints);
   const availableValue = useLoyaltyStore((s) => s.availableValue);
   const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
@@ -291,7 +252,7 @@ export default function CartScreen() {
         pointsApplied:
           pointsApplied && itemsTotal >= minRedeemOrderValue && availablePoints > 0,
         availablePoints,
-        orderValueInr: itemsTotal + deliveryCharge,
+        orderValueInr: itemsTotal,
         minOrderValue: minRedeemOrderValue,
         maxRedeemPercent,
         pointValueInr,
@@ -299,7 +260,6 @@ export default function CartScreen() {
     [
       pointsApplied,
       itemsTotal,
-      deliveryCharge,
       availablePoints,
       minRedeemOrderValue,
       maxRedeemPercent,
@@ -318,11 +278,6 @@ export default function CartScreen() {
     }
   }, [itemsTotal, minRedeemOrderValue, pointsApplied, togglePoints]);
 
-  const selectedSite = useDeliveryStore((s) => {
-    const site = s.sites.find((x) => x.id === s.selectedSiteId);
-    return site ?? s.sites[0];
-  });
-
   const goCheckout = () => {
     if (items.length === 0) return;
     if (!requireAuthOr(() => router.push('/checkout'))) return;
@@ -331,10 +286,7 @@ export default function CartScreen() {
 
   const appliedDiscount = loyaltyPreview.discountAmount;
   const appliedPoints = loyaltyPreview.redeemablePoints;
-  const displayGrandTotal = Math.max(
-    0,
-    itemsTotal + deliveryCharge - appliedDiscount,
-  );
+  const displayGrandTotal = Math.max(0, itemsTotal - appliedDiscount);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -374,12 +326,21 @@ export default function CartScreen() {
 
               <OrderSummaryCard
                 itemsTotal={itemsTotal}
-                deliveryCharge={deliveryCharge}
                 pointsApplied={appliedDiscount > 0}
                 loyaltyDiscount={appliedDiscount}
               />
 
-              <SiteLogisticsCard site={selectedSite} />
+              <View style={styles.siteCard}>
+                <View style={styles.siteIconWrap}>
+                  <Ionicons name="bicycle-outline" size={18} color="#FEB623" />
+                </View>
+                <View style={styles.siteInfo}>
+                  <Text style={styles.siteName}>{t('deliveryCalculatedAtCheckout')}</Text>
+                  <Text style={styles.siteAddress}>
+                    Address, vehicle, and delivery time are confirmed after you proceed to checkout.
+                  </Text>
+                </View>
+              </View>
             </>
           ) : (
             <View style={styles.emptyState}>

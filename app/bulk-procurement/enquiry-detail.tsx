@@ -18,6 +18,8 @@ import {
   BULK_STATUS_TIMELINE,
   deliveryValueToLabel,
   formatMaterialLabel,
+  formatQuantityLabel,
+  preferredContactLabel,
   timelineIndexForStatus,
 } from '@constants/bulkEnquiry';
 import { useBulkEnquiryStore, type BulkEnquiry } from '@store/bulkEnquiryStore';
@@ -207,7 +209,7 @@ export default function BulkEnquiryDetailScreen() {
             ) : null}
             <DetailRow
               label="Quantity"
-              value={`${enquiry.expectedQuantity} ${enquiry.expectedUnit}`}
+              value={formatQuantityLabel(enquiry)}
             />
             {enquiry.additionalNotes ? (
               <DetailRow label="Notes" value={enquiry.additionalNotes} />
@@ -227,7 +229,7 @@ export default function BulkEnquiryDetailScreen() {
                 value={deliveryValueToLabel(enquiry.deliveryRequirement)}
               />
             ) : null}
-            <DetailRow label="Contact" value={enquiry.preferredContact} />
+            <DetailRow label="Contact" value={preferredContactLabel(enquiry.preferredContact)} />
           </View>
 
           {(enquiry.quotations?.length ?? 0) > 0 ? (

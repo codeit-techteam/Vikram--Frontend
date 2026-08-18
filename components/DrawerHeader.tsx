@@ -17,12 +17,6 @@ import { images } from '@constants/images';
 import { useAuthStore } from '@store/useAuthStore';
 import { useUserStore } from '@store/userStore';
 
-const TIER_LABELS = {
-  platinum: 'PLATINUM CONTRACTOR',
-  gold: 'GOLD CONTRACTOR',
-  silver: 'SILVER CONTRACTOR',
-} as const;
-
 interface DrawerHeaderProps {
   onEditPress: () => void;
   isDrawerOpen: boolean;
@@ -95,14 +89,6 @@ export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
               {!showGuestState && user.company ? (
                 <Text className="text-xs text-text-inverse/90">{user.company}</Text>
               ) : null}
-              {!showGuestState && (
-                <View className="mt-2 self-start flex-row items-center gap-1 rounded-full bg-primary px-2.5 py-1">
-                  <Ionicons name="star" size={10} color="#1A1A1A" />
-                  <Text className="text-[9px] font-bold tracking-wide text-onPrimary">
-                    {TIER_LABELS[user.memberTier]}
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
         </LinearGradient>

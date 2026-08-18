@@ -38,6 +38,7 @@ export interface DeliveryEtaResult {
   message?: string;
   deliveryVehicleType?: string;
   deliveryVehicleDisplayName?: string;
+  deliveryVehicleImageUrl?: string | null;
   deliveryVehicleCount?: number;
   deliveryDistanceKm?: number;
   deliveryTotalWeightKg?: number | null;
@@ -103,7 +104,7 @@ export function formatEtaLabel(eta: DeliveryEtaResult | null | undefined): strin
     });
   }
   if (!eta.serviceable) {
-    return message || eta.message || 'Not serviceable';
+    return message || eta.message || 'Delivery unavailable at this location';
   }
   if (message && !looksUnavailable) return message;
   if (eta.etaMinMinutes && eta.etaMaxMinutes) {
@@ -120,4 +121,21 @@ export function formatEtaLabel(eta: DeliveryEtaResult | null | undefined): strin
     preorder: eta.deliveryDay === 'Tomorrow',
     serviceable: eta.serviceable,
   });
+}
+
+export async function fetchDeliveryOptions(addressId?: string) {
+  const query = new URLSearchParams();
+  if (addressId) query.set('addressId', addressId);
+  const qs = query.toString();
+  const { data } = await api.get<ApiResponse<import('@/types/deliveryPreference').DeliveryOptions>>(
+    `/delivery/options${qs ? `?${qs}` : ''}`,
+  );
+  return data.data;
+}
+
+export async function holdDeliverySlot(slotId: string) {
+  const { data } = await api.post<
+    ApiResponse<{ reservationId: string; slotId: string; status: string; expiresAt: string | null }>
+  >(`/delivery/slots/${slotId}/hold`, {});
+  return data.data;
 }

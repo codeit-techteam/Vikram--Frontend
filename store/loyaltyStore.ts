@@ -10,8 +10,6 @@ import {
 } from '@services/loyalty.api';
 import { buildLoyaltyStatementHtml } from '@utils/loyaltyStatementHtml';
 
-export type LoyaltyTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
-
 export type ActivityStatus = 'PENDING' | 'COMPLETED';
 export type ActivityValueType = 'cp' | 'inr';
 
@@ -34,11 +32,6 @@ interface LoyaltyState {
   availableValue: number;
   lifetimeEarned: number;
   lifetimeRedeemed: number;
-  tier: LoyaltyTier;
-  progressPercent: number;
-  pointsToNextTier: number;
-  nextTier: string;
-  progressTierLabel: string;
   freeBikeDeliveriesRemaining: number;
   freeBikeDeliveriesUsed: number;
   freeBikeDeliveriesAllowed: number;
@@ -150,11 +143,6 @@ function applySummary(summary: LoyaltySummary) {
     availableValue: summary.availableValue,
     lifetimeEarned: summary.lifetimeEarned,
     lifetimeRedeemed: summary.lifetimeRedeemed,
-    tier: summary.tier,
-    progressPercent: summary.tierProgress,
-    pointsToNextTier: summary.pointsToNextTier,
-    nextTier: summary.nextTier ?? '',
-    progressTierLabel: summary.tier,
     freeBikeDeliveriesRemaining: summary.freeBikeDeliveriesRemaining ?? 0,
     freeBikeDeliveriesUsed: summary.freeBikeDeliveriesUsed ?? 0,
     freeBikeDeliveriesAllowed: summary.freeBikeDeliveriesAllowed ?? 3,
@@ -167,11 +155,6 @@ const INITIAL_STATE = {
   availableValue: 0,
   lifetimeEarned: 0,
   lifetimeRedeemed: 0,
-  tier: 'BRONZE' as LoyaltyTier,
-  progressPercent: 0,
-  pointsToNextTier: 0,
-  nextTier: '',
-  progressTierLabel: 'BRONZE',
   freeBikeDeliveriesRemaining: 0,
   freeBikeDeliveriesUsed: 0,
   freeBikeDeliveriesAllowed: 3,
@@ -233,11 +216,10 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
   },
 
   downloadStatement: async () => {
-    const { totalPoints, availableValue, tier, activityHistory } = get();
+    const { totalPoints, availableValue, activityHistory } = get();
     const html = buildLoyaltyStatementHtml({
       totalPoints,
       cashbackEarned: availableValue,
-      tier,
       activityHistory,
     });
     const { uri } = await Print.printToFileAsync({ html });

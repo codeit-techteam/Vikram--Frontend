@@ -1,6 +1,7 @@
 import { api } from '@services/api';
 import type { ApiResponse } from '@/types';
 import type { DeliveryVehicleType } from '@constants/deliveryVehicles';
+import type { DeliveryOptions } from '@/types/deliveryPreference';
 
 export interface CheckoutPreview {
   subtotal: number;
@@ -28,6 +29,7 @@ export interface CheckoutPreview {
   freeBikeDeliveriesRemaining: number;
   deliveryVehicleType?: DeliveryVehicleType;
   deliveryVehicleDisplayName?: string;
+  deliveryVehicleImageUrl?: string | null;
   deliveryDistanceKm?: number;
   deliveryListPrice?: number;
   deliveryPricingRuleId?: string | null;
@@ -46,8 +48,15 @@ export interface CheckoutPreview {
   deliveryMultiVehicle?: boolean;
   serviceable: boolean;
   deliveryETA: number;
+  deliveryEtaMinMinutes?: number;
+  deliveryEtaMaxMinutes?: number;
   deliveryMessage: string;
   deliveringBy?: string | null;
+  fulfillmentHubName?: string | null;
+  readinessMessage?: string | null;
+  deliveryLogisticsType?: string | null;
+  deliverySelectionReason?: string | null;
+  deliveryOptions?: DeliveryOptions | null;
   address?: {
     id: string;
     label?: string | null;

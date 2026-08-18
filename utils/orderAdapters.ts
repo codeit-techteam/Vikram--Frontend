@@ -416,6 +416,7 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     updatedAt,
     version,
     expectedDelivery,
+    deliveryPreference: (raw.deliveryPreference as Order['deliveryPreference']) ?? undefined,
     deliveredAt,
     products,
     subtotal: Number(raw.subtotal ?? 0),
@@ -440,7 +441,10 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
       phone: String(addressRaw.phone ?? customer.phone ?? ''),
       address: [line1, line2, city].filter(Boolean).join(', '),
       pin: pincode,
-      instructions: addressRaw.instructions ? String(addressRaw.instructions) : undefined,
+      instructions:
+        (raw.deliveryCustomerRemark ? String(raw.deliveryCustomerRemark) : undefined) ||
+        (addressRaw.instructions ? String(addressRaw.instructions) : undefined) ||
+        (raw.notes ? String(raw.notes) : undefined),
     },
     tracking: ACTIVE_ORDER_STATUSES.includes(status)
       ? {
