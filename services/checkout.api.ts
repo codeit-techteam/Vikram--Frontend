@@ -21,6 +21,7 @@ export interface CheckoutPreview {
   redemptionEligible: boolean;
   loyaltyMessage?: string | null;
   estimatedEarnPoints: number;
+  estimatedEarnValue?: number;
   discount: number;
   loadingCharges: number;
   unloadingCharges: number;

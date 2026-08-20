@@ -29,7 +29,7 @@ const HOW_POINTS_WORK = [
   {
     step: '1',
     title: 'Shop & Earn',
-    body: 'Earn 1 BajriPro Point for every ₹100 spent on eligible order value.',
+    body: 'Get 1% cashback as BajriPro Points on eligible order value. ₹100 spent = 100 points = ₹1 back.',
   },
   {
     step: '2',
@@ -226,7 +226,7 @@ export default function LoyaltyScreen() {
   const minOrder = summary?.minRedeemOrderValue ?? 500;
   const pointValue = summary?.pointValueInr ?? 0.01;
   const firstBonus = summary?.firstOrderBonus ?? 50;
-  const earnRate = summary?.earnPointsPer100Inr ?? 1;
+  const cashbackPercent = summary?.earnCashbackPercent ?? 1;
 
   const deliveryMessage =
     freeBikeDeliveriesRemaining > 0
@@ -420,7 +420,7 @@ export default function LoyaltyScreen() {
                   </Text>
                   <Text style={{ fontSize: 13, color: '#666', marginTop: 2, lineHeight: 18 }}>
                     {item.body
-                      .replace('1 BajriPro Point', `${earnRate} BajriPro Point`)
+                      .replace('1% cashback', `${cashbackPercent}% cashback`)
                       .replace('50 bonus', `${firstBonus} bonus`)
                       .replace('₹500', `₹${minOrder}`)
                       .replace('100 points = ₹1', `${Math.round(1 / pointValue)} points = ₹1`)}

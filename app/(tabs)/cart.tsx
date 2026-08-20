@@ -86,7 +86,7 @@ function BajriProPointsBanner({
 
   let hint: string;
   if (zeroBalance) {
-    hint = 'Earn BajriPro Points on eligible orders';
+    hint = 'Earn 1% cashback as BajriPro Points on eligible orders';
   } else if (!eligible) {
     hint = `Add ₹${shortfall.toLocaleString('en-IN')} more to use BajriPro Points`;
   } else if (pointsApplied && discountAmount > 0) {

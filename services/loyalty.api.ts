@@ -17,6 +17,7 @@ export interface LoyaltySummary {
   maxOrderRedeemPercent: number;
   welcomeBonus: number;
   firstOrderBonus: number;
+  earnCashbackPercent: number;
   earnPointsPer100Inr: number;
   freeBikeDeliveriesAllowed: number;
   freeBikeDeliveriesUsed: number;

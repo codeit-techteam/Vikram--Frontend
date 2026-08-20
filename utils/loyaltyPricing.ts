@@ -6,7 +6,10 @@
 export const BAJRIPRO_POINT_VALUE_INR = 0.01;
 export const BAJRIPRO_MIN_REDEEM_ORDER_VALUE = 500;
 export const BAJRIPRO_MAX_ORDER_REDEEM_PERCENT = 0.3;
-export const BAJRIPRO_EARN_POINTS_PER_100_INR = 1;
+/** 1% cashback on eligible spend */
+export const BAJRIPRO_EARN_CASHBACK_PERCENT = 1;
+/** ₹100 spent → 100 points → ₹1 back */
+export const BAJRIPRO_EARN_POINTS_PER_100_INR = 100;
 
 export function toMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -84,6 +87,17 @@ export function calculateLoyaltyDiscountPreview(params: {
       params.pointValueInr ?? BAJRIPRO_POINT_VALUE_INR,
     ),
   };
+}
+
+/** 1% cashback as points (1 pt = ₹0.01). Mirrors backend calculateEarnPoints. */
+export function calculateEarnPoints(eligibleAmountInr: number): number {
+  if (eligibleAmountInr <= 0) return 0;
+  const eligiblePaise = Math.round(eligibleAmountInr * 100);
+  return Math.floor((eligiblePaise * BAJRIPRO_EARN_CASHBACK_PERCENT) / 100);
+}
+
+export function calculateEarnCashbackInr(eligibleAmountInr: number): number {
+  return pointsToDiscountAmount(calculateEarnPoints(eligibleAmountInr));
 }
 
 export function formatPointsInr(amount: number): string {

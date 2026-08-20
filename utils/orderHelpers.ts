@@ -7,6 +7,7 @@ import {
   type OrderMaterial,
 } from '@store/orderStore';
 import { getCartItemImageSource } from '@utils/cartHelpers';
+import { calculateEarnPoints } from '@utils/loyaltyPricing';
 
 /** Primary order hero image — same resolver as cart/catalog. */
 export function getOrderPrimaryImageSource(order: Order) {
@@ -103,7 +104,7 @@ export function buildOrderFromCheckout(params: {
     deliverySite: params.site,
     driverName: 'Assigning…',
     vehicleNumber: '—',
-    loyaltyPointsEarned: Math.round(params.total / 100),
+    loyaltyPointsEarned: calculateEarnPoints(subtotal),
     invoiceId,
     invoiceFileName: `Invoice_${params.id.replace('-', '_')}.pdf`,
     invoiceFileSize: '1.0 MB',

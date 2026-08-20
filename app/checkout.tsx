@@ -126,6 +126,7 @@ function previewFromEta(
     minRedeemOrderValue: loyalty.minOrder,
     redemptionEligible: localSubtotal >= loyalty.minOrder && loyalty.points > 0,
     estimatedEarnPoints: 0,
+    estimatedEarnValue: 0,
     discount: loyalty.discount,
     loadingCharges: 0,
     unloadingCharges: 0,
@@ -851,7 +852,7 @@ export default function CheckoutScreen() {
           ) : !loyaltyEligible ? (
             <Text className="mt-2 text-xs text-text-secondary">
               {availablePoints <= 0
-                ? 'Earn BajriPro Points on eligible orders'
+                ? 'Earn 1% cashback as BajriPro Points on eligible orders'
                 : `Add ₹${Math.max(0, minRedeemOrderValue - localSubtotal).toLocaleString('en-IN')} more to use BajriPro Points`}
             </Text>
           ) : (
@@ -877,8 +878,14 @@ export default function CheckoutScreen() {
           ) : null}
           {displayPreview && displayPreview.estimatedEarnPoints > 0 ? (
             <Text className="mt-3 text-xs text-text-secondary">
-              You will earn {displayPreview.estimatedEarnPoints} BajriPro Points
-              after successful delivery
+              You will earn {displayPreview.estimatedEarnPoints.toLocaleString('en-IN')}{' '}
+              BajriPro Points (
+              {formatINR(
+                displayPreview.estimatedEarnValue ??
+                  displayPreview.estimatedEarnPoints *
+                    (displayPreview.pointValueInr ?? 0.01),
+              )}
+              ) — 1% cashback after successful delivery
             </Text>
           ) : null}
           {displayPreview && displayPreview.freeBikeDeliveriesRemaining > 0 ? (
