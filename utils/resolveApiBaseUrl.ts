@@ -8,11 +8,20 @@ function stripPort(host: string): string {
   return host.split(':')[0]?.trim() ?? host;
 }
 
+function isRemoteApiUrl(url?: string): boolean {
+  return Boolean(url && /^https?:\/\//i.test(url) && !/localhost|127\.0\.0\.1|10\.0\.2\.2/i.test(url));
+}
+
 /**
  * Dev API base URL for Expo Go / simulators.
  * Uses Metro's debugger host (same LAN IP as the Mac) so Wi‑Fi IP changes don't break physical devices.
+ * Skipped when EXPO_PUBLIC_API_URL points at a remote (e.g. DigitalOcean) backend.
  */
 function resolveDevApiBaseUrl(configured?: string): string {
+  if (isRemoteApiUrl(configured)) {
+    return configured!;
+  }
+
   const debuggerHost =
     Constants.expoGoConfig?.debuggerHost ??
     Constants.expoConfig?.hostUri ??
@@ -43,7 +52,10 @@ export function resolveApiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
 
   if (!__DEV__) {
-    return configured || `http://localhost:${BACKEND_PORT}${API_PATH}`;
+    return (
+      configured ||
+      'https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1'
+    );
   }
 
   return resolveDevApiBaseUrl(configured);

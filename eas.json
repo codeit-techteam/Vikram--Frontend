@@ -17,14 +17,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.dhoodhwala.com/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
         "EXPO_PUBLIC_APP_ENV": "preview"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.dhoodhwala.com/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
         "EXPO_PUBLIC_APP_ENV": "production"
       }
     }
