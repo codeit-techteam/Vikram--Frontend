@@ -26,7 +26,7 @@ function ordersKey(status: OrderFilterStatus, search: string) {
   return [ORDERS_QUERY_KEY, status, search] as const;
 }
 
-/** Merge HTTP list page with SSOT so a socket Delivered is never overwritten by stale Redis. */
+/** Merge HTTP list page with SSOT so a socket Delivered is never overwritten by stale cache. */
 function mergePageWithStore(page: OrdersPage): OrdersPage {
   const store = useOrdersSyncStore.getState();
   const items = page.items.map((item) => {
