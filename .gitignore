@@ -45,3 +45,6 @@ yarn-error.*
 
 # testing
 coverage/
+
+# Oversized unused videos (GitHub 100MB limit)
+assets/videos/cement2.mp4
