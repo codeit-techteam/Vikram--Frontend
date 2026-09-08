@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,8 +8,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
@@ -25,6 +26,11 @@ import { requireAuth } from '@utils/requireAuth';
 
 interface MaterialExpertCTAProps {
   onPress: () => void;
+}
+
+export interface MaterialExpertSheetRef {
+  open: () => void;
+  close: () => void;
 }
 
 interface MaterialExpertSheetProps {
@@ -104,10 +110,11 @@ function SuccessPopup({
   );
 }
 
-export const MaterialExpertSheet = forwardRef<BottomSheet, MaterialExpertSheetProps>(
+export const MaterialExpertSheet = forwardRef<MaterialExpertSheetRef, MaterialExpertSheetProps>(
   function MaterialExpertSheet({ categorySlug, categoryName }, ref) {
     const { t } = useTranslation();
     const customerName = useAuthStore((s) => s.customer?.name ?? '');
+    const sheetRef = useRef<BottomSheetModal>(null);
     const snapPoints = useMemo(() => ['58%'], []);
     const nameRef = useRef(customerName);
     const needRef = useRef('');
@@ -116,6 +123,11 @@ export const MaterialExpertSheet = forwardRef<BottomSheet, MaterialExpertSheetPr
     const [needValue, setNeedValue] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
 
+    useImperativeHandle(ref, () => ({
+      open: () => sheetRef.current?.present(),
+      close: () => sheetRef.current?.dismiss(),
+    }));
+
     const renderBackdrop = useCallback(
       (props: BottomSheetBackdropProps) => (
         <BottomSheetBackdrop
@@ -123,15 +135,14 @@ export const MaterialExpertSheet = forwardRef<BottomSheet, MaterialExpertSheetPr
           disappearsOnIndex={-1}
           appearsOnIndex={0}
           opacity={0.45}
+          pressBehavior="close"
         />
       ),
       [],
     );
 
     const closeSheet = () => {
-      if (typeof ref !== 'function' && ref?.current) {
-        ref.current.close();
-      }
+      sheetRef.current?.dismiss();
     };
 
     const handleSubmit = async () => {
@@ -178,11 +189,11 @@ export const MaterialExpertSheet = forwardRef<BottomSheet, MaterialExpertSheetPr
 
     return (
       <>
-        <BottomSheet
-          ref={ref}
-          index={-1}
+        <BottomSheetModal
+          ref={sheetRef}
           snapPoints={snapPoints}
           enablePanDownToClose
+          enableDynamicSizing={false}
           enableBlurKeyboardOnGesture
           backdropComponent={renderBackdrop}
           keyboardBehavior="interactive"
@@ -237,7 +248,7 @@ export const MaterialExpertSheet = forwardRef<BottomSheet, MaterialExpertSheetPr
               )}
             </Pressable>
           </BottomSheetScrollView>
-        </BottomSheet>
+        </BottomSheetModal>
 
         <SuccessPopup
           visible={showSuccess}

@@ -1,6 +1,6 @@
-import { api } from '@services/api';
-import { getProfile, updateProfile } from '@services/customer.api';
-import type { CustomerProfile } from '@services/customer.api';
+import { AUTH_TOKEN_KEY, api } from '@services/api';
+import { getProfile, updateProfile, type CustomerProfile } from '@services/customer.api';
+import { storage } from '@lib/storage';
 import type { ApiResponse } from '@/types';
 import type { GstDetails, GstValidationResult, SaveGstPayload } from '@/types/gst';
 
@@ -84,6 +84,9 @@ export function mapProfileToGstDetails(profile: CustomerProfile): GstDetails | n
 }
 
 export async function fetchGST(): Promise<GstDetails | null> {
+  const token = await storage.getItem(AUTH_TOKEN_KEY);
+  if (!token) return null;
+
   try {
     const profile = await getProfile();
     return mapProfileToGstDetails(profile);

@@ -11,7 +11,9 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import {
   allowsDirectAddToCart,
   getMinOrderQuantity,
+  getVariantAvailabilityText,
   getVariantCount,
+  getVariantLabels,
   productHasStructuredVariants,
   shouldOpenAddToCartSheet,
   shouldOpenVariantSheet,
@@ -72,10 +74,13 @@ function ProductGridCardComponent({
       ? product.nameHi
       : (product.detailName ?? product.name);
 
+  const availabilityText = getVariantAvailabilityText(product);
   const variantLabel =
+    availabilityText ||
+    (hasVariants ? getVariantLabels(product).join(' · ') : null) ||
     product.spec ||
     product.unit ||
-    (hasVariants && variantCount > 1 ? `${variantCount} variants` : null);
+    null;
 
   const imageSource = resolveProductImageSource({
     imageUrl: product.imageUrl,
@@ -235,8 +240,8 @@ function ProductGridCardComponent({
           </Text>
         ) : null}
         <View style={styles.priceRow}>
-          {pricing.hasBulk ? (
-            <Text style={styles.startsFrom}>Starts from </Text>
+          {pricing.hasBulk || multiVariant ? (
+            <Text style={styles.startsFrom}>From </Text>
           ) : null}
           <Text style={styles.price}>{formatINR(pricing.sellingPrice, false)}</Text>
           <Text style={styles.unit}>/{pricing.unit}</Text>

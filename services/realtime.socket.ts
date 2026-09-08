@@ -8,6 +8,7 @@ import { resolveSocketOrigin } from '@utils/resolveSocketUrl';
 export const ORDER_UPDATED_EVENT = 'order.updated';
 /** Legacy alias — still listened for safety. */
 export const ORDER_STATUS_UPDATED_EVENT_LEGACY = 'OrderStatusUpdated';
+export const NOTIFICATION_CREATED_EVENT = 'notification.created';
 
 export type OrderStatusUpdatedPayload = {
   orderId: string;
@@ -47,6 +48,7 @@ export type OrderStatusUpdatedPayload = {
 
 type StatusListener = (payload: OrderStatusUpdatedPayload) => void;
 type ReconnectListener = () => void;
+type NotificationCreatedListener = (payload: { campaignId: string }) => void;
 
 class RealtimeSocketManager {
   private socket: Socket | null = null;
@@ -54,6 +56,7 @@ class RealtimeSocketManager {
   private statusListeners = new Set<StatusListener>();
   private connectedListeners = new Set<(connected: boolean) => void>();
   private reconnectListeners = new Set<ReconnectListener>();
+  private notificationListeners = new Set<NotificationCreatedListener>();
   private hadConnected = false;
 
   connect(accessToken: string): void {
@@ -146,6 +149,13 @@ class RealtimeSocketManager {
     };
   }
 
+  onNotificationCreated(listener: NotificationCreatedListener): () => void {
+    this.notificationListeners.add(listener);
+    return () => {
+      this.notificationListeners.delete(listener);
+    };
+  }
+
   subscribeOrder(orderId: string): void {
     this.socket?.emit('subscribeOrder', { orderId });
   }
@@ -220,6 +230,17 @@ class RealtimeSocketManager {
 
     socket.on(ORDER_UPDATED_EVENT, onPayload);
     socket.on(ORDER_STATUS_UPDATED_EVENT_LEGACY, onPayload);
+    socket.on(NOTIFICATION_CREATED_EVENT, (payload: { campaignId: string }) => {
+      this.notificationListeners.forEach((listener) => {
+        try {
+          listener(payload);
+        } catch (error) {
+          if (__DEV__) {
+            console.warn('[realtime] notification listener error', error);
+          }
+        }
+      });
+    });
   }
 
   private emitConnected(connected: boolean): void {

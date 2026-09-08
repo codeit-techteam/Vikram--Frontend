@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect } from 'react';
-import { LayoutAnimation, Platform, Text, UIManager, View } from 'react-native';
+import { LayoutAnimation, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   Easing,
@@ -10,10 +10,6 @@ import Animated, {
 
 import { ScaledPressable } from '@components/ScaledPressable';
 import { colors } from '@constants/colors';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const ACCORDION_DURATION = 250;
 

@@ -15,6 +15,7 @@ import { NotificationBell } from '@components/HeaderIcons';
 import { BrandLogo } from '@components/BrandLogo';
 import { CartItemCard } from '@components/cart/CartItemCard';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { useAuthStore } from '@store/useAuthStore';
 import { useCartStore } from '@store/cartStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
 import { requireAuthOr } from '@utils/requireAuth';
@@ -237,6 +238,7 @@ export default function CartScreen() {
   const removeItem = useCartStore((s) => s.removeItem);
   const togglePoints = useCartStore((s) => s.togglePoints);
   const itemsTotal = useCartStore((s) => s.itemsTotal());
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const availablePoints = useLoyaltyStore((s) => s.totalPoints);
   const availableValue = useLoyaltyStore((s) => s.availableValue);
   const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
@@ -268,8 +270,9 @@ export default function CartScreen() {
   );
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     void refreshLoyalty();
-  }, [refreshLoyalty]);
+  }, [isLoggedIn, refreshLoyalty]);
 
   // Auto-disable cart toggle if order falls below minimum.
   useEffect(() => {

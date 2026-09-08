@@ -1,6 +1,7 @@
 import { useCartStore } from '@store/cartStore';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useGstStore } from '@store/gstStore';
+import { useLoyaltyStore } from '@store/loyaltyStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { useOrderStore } from '@store/orderStore';
 import { useOrdersSyncStore } from '@store/ordersSyncStore';
@@ -30,6 +31,7 @@ export async function resetAppStores() {
   useNotificationStore.getState().reset();
   useSiteStore.setState({ sites: [] });
   useGstStore.getState().reset();
+  useLoyaltyStore.getState().reset();
 
   // useAuthStore.logout() already resets these, but guard against store shape drift.
   useDeliveryStore.getState().reset();

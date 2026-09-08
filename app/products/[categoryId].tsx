@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import BottomSheet from '@gorhom/bottom-sheet';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,7 +25,11 @@ import {
 } from '@components/FilterBottomSheet';
 import { FilterBar } from '@components/FilterBar';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
-import { MaterialExpertCTA, MaterialExpertSheet } from '@components/MaterialExpertSheet';
+import {
+  MaterialExpertCTA,
+  MaterialExpertSheet,
+  type MaterialExpertSheetRef,
+} from '@components/MaterialExpertSheet';
 import { ProductGridCard } from '@components/product/ProductGridCard';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { ProductsEmptyState } from '@components/catalog/ProductsEmptyState';
@@ -52,7 +55,7 @@ export default function ProductListingScreen() {
   }>();
 
   const filterSheetRef = useRef<FilterBottomSheetRef>(null);
-  const expertSheetRef = useRef<BottomSheet>(null);
+  const expertSheetRef = useRef<MaterialExpertSheetRef>(null);
 
   const slug =
     (Array.isArray(categorySlug) ? categorySlug[0] : categorySlug) ||
@@ -246,7 +249,7 @@ export default function ProductListingScreen() {
         </View>
       );
     }
-    return <MaterialExpertCTA onPress={() => expertSheetRef.current?.expand()} />;
+    return <MaterialExpertCTA onPress={() => expertSheetRef.current?.open()} />;
   }, [isFetchingNextPage]);
 
   const showEmptyState =

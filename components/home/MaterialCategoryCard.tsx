@@ -1,11 +1,6 @@
-import { memo, useEffect } from 'react';
+import { memo } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 
 import { ScaledPressable } from '@components/ScaledPressable';
 import { colors } from '@constants/colors';
@@ -14,8 +9,6 @@ interface MaterialCategoryCardProps {
   label: string;
   image: number | { uri: string };
   onPress: () => void;
-  /** Staggered fade-in delay in ms after the grid mounts. */
-  fadeDelay?: number;
 }
 
 /** Premium marketplace category tile (Home + Catalog). */
@@ -23,26 +16,9 @@ function MaterialCategoryCardComponent({
   label,
   image,
   onPress,
-  fadeDelay = 0,
 }: MaterialCategoryCardProps) {
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.96);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      opacity.value = withTiming(1, { duration: 150 });
-      scale.value = withTiming(1, { duration: 150 });
-    }, fadeDelay);
-    return () => clearTimeout(timeout);
-  }, [fadeDelay, opacity, scale]);
-
-  const fadeStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
-    <Animated.View style={[styles.wrap, fadeStyle]}>
+    <View style={styles.wrap}>
       <ScaledPressable
         onPress={onPress}
         scaleTo={0.97}
@@ -72,7 +48,7 @@ function MaterialCategoryCardComponent({
           {label}
         </Text>
       </ScaledPressable>
-    </Animated.View>
+    </View>
   );
 }
 

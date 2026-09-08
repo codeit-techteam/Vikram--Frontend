@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 
 import {
   NOTIFICATION_TYPE_META,
@@ -16,15 +18,17 @@ export function NotificationCard({ item }: NotificationCardProps) {
   const config = NOTIFICATION_TYPE_META[item.type];
   const markAsRead = useNotificationStore((s) => s.markAsRead);
   const isRead = useNotificationStore((s) => s.isRead(item.id));
+  const [imageFailed, setImageFailed] = useState(false);
 
   const showUnread = item.unread && !isRead;
+  const showImage = Boolean(item.imageUrl) && !imageFailed;
 
   const handlePress = () => {
-    markAsRead(item.id);
+    void markAsRead(item.id);
   };
 
   const handleAction = () => {
-    markAsRead(item.id);
+    void markAsRead(item.id);
     if (item.action?.route) {
       router.push(item.action.route as Href);
     }
@@ -48,6 +52,15 @@ export function NotificationCard({ item }: NotificationCardProps) {
             {showUnread ? <View style={styles.unreadDot} /> : null}
           </View>
         </View>
+
+        {showImage ? (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.image}
+            contentFit="cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : null}
 
         <Text style={[styles.title, showUnread ? styles.titleUnread : styles.titleRead]}>
           {item.title}
@@ -97,6 +110,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     gap: 8,
+  },
+  image: {
+    width: '100%',
+    height: 140,
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: '#F3F3F3',
   },
   iconWrap: {
     width: 36,

@@ -8,8 +8,9 @@ import {
   useState,
 } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
@@ -116,7 +117,7 @@ export const FilterBottomSheet = forwardRef<
     },
     ref,
   ) => {
-    const sheetRef = useRef<BottomSheet>(null);
+    const sheetRef = useRef<BottomSheetModal>(null);
     const insets = useSafeAreaInsets();
     const snapPoints = useMemo(() => [FILTER_LAYOUT.snapPercent], []);
     const sections = useMemo(
@@ -148,10 +149,10 @@ export const FilterBottomSheet = forwardRef<
         setActiveSection(target);
         setContentKey((k) => k + 1);
         requestAnimationFrame(() => {
-          sheetRef.current?.snapToIndex(0);
+          sheetRef.current?.present();
         });
       },
-      close: () => sheetRef.current?.close(),
+      close: () => sheetRef.current?.dismiss(),
     }));
 
     const renderBackdrop = useCallback(
@@ -189,17 +190,17 @@ export const FilterBottomSheet = forwardRef<
 
     const handleApply = () => {
       onApply();
-      sheetRef.current?.close();
+      sheetRef.current?.dismiss();
     };
 
     const handleClearAll = () => {
       void Haptics.selectionAsync();
       onClearAll();
-      sheetRef.current?.close();
+      sheetRef.current?.dismiss();
     };
 
     const handleClose = () => {
-      sheetRef.current?.close();
+      sheetRef.current?.dismiss();
     };
 
     const selectSection = (key: FilterKey) => {
@@ -245,13 +246,11 @@ export const FilterBottomSheet = forwardRef<
     const isPrice = activeSection === 'priceRange';
 
     return (
-      <BottomSheet
+      <BottomSheetModal
         ref={sheetRef}
-        index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
         enableDynamicSizing={false}
-        animateOnMount
         animationConfigs={FILTER_SPRING.sheet}
         backdropComponent={renderBackdrop}
         handleIndicatorStyle={{
@@ -484,7 +483,7 @@ export const FilterBottomSheet = forwardRef<
             />
           </View>
         </View>
-      </BottomSheet>
+      </BottomSheetModal>
     );
   },
 );

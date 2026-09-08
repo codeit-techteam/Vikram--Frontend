@@ -21,7 +21,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackHeader } from '@components/BackHeader';
 import { Toast } from '@components/Toast';
 import { useLoyaltyStore, type ActivityItem } from '@store/loyaltyStore';
+import { useAuthStore } from '@store/useAuthStore';
 import { safeGoBack } from '@utils/navigation';
+import { requireAuth } from '@utils/requireAuth';
 
 type ActivityFilter = 'all' | 'earned' | 'redeemed';
 
@@ -166,15 +168,20 @@ export default function LoyaltyScreen() {
     loadHistory,
     downloadStatement,
   } = useLoyaltyStore();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
 
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      requireAuth('Please log in to view your BajriPro Points.');
+      return;
+    }
     void refresh();
     void loadHistory(1);
-  }, [refresh, loadHistory]);
+  }, [isLoggedIn, refresh, loadHistory]);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -219,6 +226,10 @@ export default function LoyaltyScreen() {
   };
 
   const onRetry = () => {
+    if (!isLoggedIn) {
+      requireAuth('Please log in to view your BajriPro Points.');
+      return;
+    }
     void refresh();
     void loadHistory(1);
   };

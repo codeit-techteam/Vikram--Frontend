@@ -1,12 +1,8 @@
-import { LayoutAnimation, Platform, Text, UIManager, View } from 'react-native';
+import { LayoutAnimation, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { ScaledPressable } from '@components/ScaledPressable';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 interface CollapsibleSectionProps {
   icon: ComponentProps<typeof Ionicons>['name'];

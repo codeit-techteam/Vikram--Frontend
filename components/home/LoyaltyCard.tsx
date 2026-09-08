@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useLoyaltyStore } from '@store/loyaltyStore';
+import { useAuthStore } from '@store/useAuthStore';
 import { useTranslation } from '@store/languageStore';
 
 interface LoyaltyCardProps {
@@ -11,12 +12,14 @@ interface LoyaltyCardProps {
 
 export function LoyaltyCard({ onPress, points }: LoyaltyCardProps) {
   const { t } = useTranslation();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const totalPoints = useLoyaltyStore((s) => s.totalPoints);
   const refresh = useLoyaltyStore((s) => s.refresh);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     void refresh();
-  }, [refresh]);
+  }, [isLoggedIn, refresh]);
 
   const displayPoints = points ?? totalPoints;
 

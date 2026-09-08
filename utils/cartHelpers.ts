@@ -12,6 +12,7 @@ import {
 import type { Product } from '@/types/catalog';
 import type { FrequentlyBoughtItem } from '@/types/catalog';
 import type { CartItem } from '@store/cartStore';
+import { htmlToPlainText } from '@utils/catalogCommerceMeta';
 import { computeQuantityPricing } from '@utils/quantityPricing';
 
 export interface CartItemOptions {
@@ -63,7 +64,7 @@ export function productToCartItem(
   const displayName = hasVariant ? `${baseName} (${variant.label})` : baseName;
   const unit = hasVariant
     ? getVariantDisplayUnit(variant) || getProductSkuUnit(product)
-    : product.unit;
+    : getProductSkuUnit(product);
 
   const quote = computeQuantityPricing(product, quantity, hasVariant ? variant : null);
 
@@ -74,9 +75,9 @@ export function productToCartItem(
     productName: baseName,
     brand: product.brand,
     category: product.category,
-    description: product.description,
+    description: htmlToPlainText(product.description),
     imageSearch: product.imageSearch,
-    image: product.imageUrl ?? product.imageSearch,
+    image: (hasVariant && variant.imageUrl) || product.imageUrl || product.imageSearch,
     unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
     bulkPrice: Number.isFinite(bulkPrice) ? bulkPrice : 0,
     bulkThreshold: product.bulkThreshold,

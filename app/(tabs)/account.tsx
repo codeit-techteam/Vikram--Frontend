@@ -2,10 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   LayoutAnimation,
-  Platform,
   ScrollView,
   Text,
-  UIManager,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -41,10 +39,6 @@ import { formatInvoiceDate, maskPan } from '@utils/invoiceAdapters';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const QUICK_LINKS = [
   { key: 'history', icon: 'time-outline' as const, route: '/orders/history' },

@@ -12,6 +12,8 @@ interface ProductUnitProps {
 const PLURAL_MAP: Record<string, string> = {
   Bag: 'Bags',
   Bags: 'Bags',
+  Pack: 'Packs',
+  Packs: 'Packs',
   Bucket: 'Buckets',
   Ton: 'Tons',
   Tons: 'Tons',

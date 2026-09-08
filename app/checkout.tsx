@@ -35,6 +35,7 @@ import { useEtaStore } from '@store/etaStore';
 import { useGstStore } from '@store/gstStore';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
+import { useAuthStore } from '@store/useAuthStore';
 import { useOrderStore } from '@store/orderStore';
 import { buildOrderFromCheckout } from '@utils/orderHelpers';
 import { normalizeApiOrder } from '@utils/orderAdapters';
@@ -216,6 +217,7 @@ export default function CheckoutScreen() {
     autoFetch: hasDestinationCoords,
   });
 
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const availablePoints = useLoyaltyStore((s) => s.totalPoints);
   const availableValue = useLoyaltyStore((s) => s.availableValue);
   const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
@@ -226,8 +228,9 @@ export default function CheckoutScreen() {
     useLoyaltyStore((s) => s.summary?.maxOrderRedeemPercent) ?? 0.3;
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     void refreshLoyalty();
-  }, [refreshLoyalty]);
+  }, [isLoggedIn, refreshLoyalty]);
 
   useEffect(() => {
     if (hasDestinationCoords) {

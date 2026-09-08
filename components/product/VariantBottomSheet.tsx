@@ -28,6 +28,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProductImage } from '@components/product/ProductImage';
 import { ProductQuantitySelector } from '@components/product/ProductQuantitySelector';
 import {
+  formatVariantChoiceLabel,
+  getVariantChooserLabel,
   getVariantCount,
   sheetShowsVariantPicker,
 } from '@constants/catalogVariantHelpers';
@@ -168,11 +170,11 @@ function VariantBottomSheetComponent() {
   const imageSource = useMemo(() => {
     if (!product) return null;
     return resolveProductImageSource({
-      imageUrl: product.imageUrl,
+      imageUrl: selected?.imageUrl || product.imageUrl,
       productSlug: product.slug,
       categorySlug: product.categorySlug,
     });
-  }, [product]);
+  }, [product, selected?.imageUrl]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
@@ -219,13 +221,18 @@ function VariantBottomSheetComponent() {
 
   const handleQuantityChange = useCallback(
     (next: number) => {
-      setQuantity(Math.max(1, next));
+      const cap =
+        selected?.stockLeft != null && selected.stockLeft > 0
+          ? selected.stockLeft
+          : undefined;
+      const limited = cap != null ? Math.min(next, cap) : next;
+      setQuantity(Math.max(1, limited));
       subtotalScale.value = withSequence(
         withTiming(1.03, { duration: 90 }),
         withTiming(1, { duration: 120 }),
       );
     },
-    [setQuantity, subtotalScale],
+    [selected?.stockLeft, setQuantity, subtotalScale],
   );
 
   const handleSelectVariant = useCallback(
@@ -243,7 +250,7 @@ function VariantBottomSheetComponent() {
 
   const handleAdd = useCallback(async () => {
     if (!product) return;
-    if (showVariants && (!selected || selected.inStock === false)) return;
+    if (showVariants && (!selected || selected.isActive === false || selected.inStock === false)) return;
     Keyboard.dismiss();
 
     ctaScale.value = withSequence(
@@ -269,10 +276,25 @@ function VariantBottomSheetComponent() {
 
   if (!visible || !product || !pricing || !quote) return null;
 
-  const outOfStock = Boolean(showVariants && selected?.inStock === false);
+  const outOfStock = Boolean(
+    showVariants &&
+      (selected?.isActive === false ||
+        selected?.inStock === false ||
+        (selected?.stockLeft != null && selected.stockLeft <= 0)),
+  );
+  const stockCap =
+    selected?.stockLeft != null && selected.stockLeft > 0
+      ? selected.stockLeft
+      : undefined;
+  const maxQty = [product.maxOrder, stockCap].filter(
+    (value): value is number => typeof value === 'number',
+  ).reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY);
+  const quantityMax = Number.isFinite(maxQty) ? maxQty : product.maxOrder;
   const canSubmit = !outOfStock && buttonState !== 'loading';
   const displayUnitPrice = quote.appliedUnitPrice;
-  const variantLabel = selected?.label ?? pricing.unit;
+  const variantLabel = selected
+    ? formatVariantChoiceLabel(selected)
+    : pricing.unit;
   const showListPrice = shouldShowListPrice(
     displayUnitPrice,
     quote.originalUnitPrice,
@@ -381,7 +403,7 @@ function VariantBottomSheetComponent() {
             keyboardDismissMode="interactive">
             {showVariants ? (
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Choose size</Text>
+                <Text style={styles.sectionLabel}>{getVariantChooserLabel(product)}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -390,11 +412,14 @@ function VariantBottomSheetComponent() {
                   bounces={false}>
                   {variants.map((v) => {
                     const selectedChip = v.id === selected?.id;
-                    const oos = v.inStock === false;
+                    const oos =
+                      v.isActive === false ||
+                      v.inStock === false ||
+                      (v.stockLeft != null && v.stockLeft <= 0);
                     return (
                       <VariantPill
                         key={v.id}
-                        label={v.label}
+                        label={formatVariantChoiceLabel(v)}
                         price={formatINR(v.price, false)}
                         selected={selectedChip}
                         outOfStock={oos}
@@ -434,7 +459,7 @@ function VariantBottomSheetComponent() {
                   quantity={quantity}
                   onChange={handleQuantityChange}
                   min={1}
-                  max={product.maxOrder}
+                  max={outOfStock ? 1 : quantityMax}
                   step={product.incrementStep ?? 1}
                   size="lg"
                   variant="capsule"

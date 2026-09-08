@@ -8,14 +8,26 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "credentialsSource": "remote"
+      },
+      "android": {
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
       "environment": "preview",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "credentialsSource": "remote"
+      },
+      "ios": {
+        "credentialsSource": "remote"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
@@ -24,6 +36,12 @@
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "credentialsSource": "remote"
+      },
+      "ios": {
+        "credentialsSource": "remote"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
         "EXPO_PUBLIC_APP_ENV": "production"

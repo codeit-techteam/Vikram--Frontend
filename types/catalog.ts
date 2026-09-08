@@ -42,17 +42,25 @@ export type ProductCategoryType =
 export interface ProductVariant {
   id: string;
   label: string;
+  attribute?: string;
+  value?: string;
+  attributes?: Record<string, string>;
+  unit?: string;
   displayUnit?: string;
   size?: number;
   sizeUnit?: string;
+  sku?: string;
   count?: number;
   quantity?: number;
   price: number;
   mrp?: number | null;
+  discountAmount?: number;
   discountPercent?: number;
   bulkPrice?: number | null;
   inStock?: boolean;
   stockLeft?: number | null;
+  isActive?: boolean;
+  imageUrl?: string | null;
 }
 
 export interface BulkPricingTier {
@@ -97,6 +105,7 @@ export interface Product {
   productVariants?: ProductVariant[];
   defaultVariantId?: string;
   variantCount?: number;
+  variantAttribute?: string | null;
   /** When true, pack-size variant replaces quantity stepper (e.g. bricks) */
   variantIsQuantity?: boolean;
   perPiecePrice?: number;

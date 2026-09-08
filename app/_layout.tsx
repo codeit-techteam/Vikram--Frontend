@@ -17,9 +17,9 @@ import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
 import { QueryProvider } from '@providers/QueryProvider';
 import { RealtimeProvider } from '@providers/RealtimeProvider';
+import { PushNotificationProvider } from '@providers/PushNotificationProvider';
 import { startCartServerSync } from '@services/cart.api';
 import { useAuthStore } from '@store/useAuthStore';
-import { useGstStore } from '@store/gstStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -61,7 +61,6 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
     startCartServerSync();
     void hydrateSession();
-    void useGstStore.getState().fetchGST();
   }, [hydrateSession]);
 
   return (
@@ -69,6 +68,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryProvider>
           <RealtimeProvider>
+          <PushNotificationProvider>
           <BottomSheetModalProvider>
             <StatusBar style="auto" />
             <Stack
@@ -131,6 +131,7 @@ export default function RootLayout() {
             <ReorderUnavailableSheet />
             <LoginRequiredSheet />
           </BottomSheetModalProvider>
+          </PushNotificationProvider>
           </RealtimeProvider>
         </QueryProvider>
       </SafeAreaProvider>

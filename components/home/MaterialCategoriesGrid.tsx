@@ -45,18 +45,14 @@ function MaterialCategoriesGridComponent({
     <View style={[styles.grid, { paddingHorizontal }]}>
       {rows.map((row, rowIndex) => (
         <View key={`row-${rowIndex}`} style={styles.row}>
-          {row.map((cat, colIndex) => {
-            const index = rowIndex * numColumns + colIndex;
-            return (
-              <MaterialCategoryCard
-                key={cat.id}
-                label={getCategoryDisplayName(cat, language)}
-                image={cat.image as number | { uri: string }}
-                fadeDelay={Math.min(index * 30, 240)}
-                onPress={() => onCategoryPress(cat)}
-              />
-            );
-          })}
+          {row.map((cat) => (
+            <MaterialCategoryCard
+              key={cat.id}
+              label={getCategoryDisplayName(cat, language)}
+              image={cat.image as number | { uri: string }}
+              onPress={() => onCategoryPress(cat)}
+            />
+          ))}
           {/* Fill incomplete last row so card widths stay equal */}
           {row.length < numColumns
             ? Array.from({ length: numColumns - row.length }).map((_, i) => (

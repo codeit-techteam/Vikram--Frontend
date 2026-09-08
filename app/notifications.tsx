@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   ImageBackground,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,17 +14,24 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { BackHeader } from '@components/BackHeader';
 import { SwipeableNotificationCard } from '@components/notifications/SwipeableNotificationCard';
 import type { StringKey } from '@constants/strings';
 import {
   filterNotifications,
-  NOTIFICATIONS,
   type NotificationFilter,
 } from '@constants/notificationData';
 import { useTranslation } from '@store/languageStore';
 import { useNotificationStore } from '@store/notificationStore';
+import { useAuthStore } from '@store/useAuthStore';
+import {
+  listNotifications,
+  NOTIFICATIONS_QUERY_KEY,
+} from '@services/notifications.api';
+import { mapCustomerNotification } from '@utils/mapCustomerNotification';
+import { requireAuth } from '@utils/requireAuth';
 
 const FILTER_KEYS: { key: NotificationFilter; labelKey: StringKey }[] = [
   { key: 'all', labelKey: 'allNotifications' },
@@ -54,6 +63,7 @@ function ProTipBanner({ t }: { t: (key: StringKey) => string }) {
 
 export default function NotificationsScreen() {
   const { t } = useTranslation();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const markAllRead = useNotificationStore((s) => s.markAllRead);
   const deleteNotification = useNotificationStore((s) => s.deleteNotification);
   const markAsRead = useNotificationStore((s) => s.markAsRead);
@@ -62,10 +72,52 @@ export default function NotificationsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
 
-  const filteredNotifications = useMemo(() => {
-    const visible = NOTIFICATIONS.filter((n) => !deletedIds.includes(n.id));
-    return filterNotifications(visible, searchQuery, activeFilter);
-  }, [searchQuery, activeFilter, deletedIds]);
+  const query = useInfiniteQuery({
+    queryKey: [...NOTIFICATIONS_QUERY_KEY, searchQuery],
+    enabled: isLoggedIn,
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      listNotifications({
+        page: pageParam,
+        limit: 20,
+        search: searchQuery.trim() || undefined,
+      }),
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
+  });
+
+  const mapped = useMemo(() => {
+    const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+    return items
+      .filter((item) => !deletedIds.includes(item.id))
+      .map(mapCustomerNotification);
+  }, [deletedIds, query.data]);
+
+  const filteredNotifications = useMemo(
+    () => filterNotifications(mapped, searchQuery, activeFilter),
+    [activeFilter, mapped, searchQuery],
+  );
+
+  const onRefresh = useCallback(() => {
+    void query.refetch();
+  }, [query]);
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <BackHeader title={t('notifications')} titleColor="#FEB623" />
+        <View style={styles.emptyState}>
+          <Ionicons name="lock-closed-outline" size={52} color="#DDD" />
+          <Text style={styles.emptyTitle}>Log in to view notifications</Text>
+          <Pressable
+            style={styles.loginBtn}
+            onPress={() => requireAuth('Log in to view your notifications.')}>
+            <Text style={styles.loginBtnText}>Log in</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -74,7 +126,9 @@ export default function NotificationsScreen() {
         titleColor="#FEB623"
         rightElement={
           <Pressable
-            onPress={markAllRead}
+            onPress={() => {
+              void markAllRead().then(() => query.refetch());
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="options-outline" size={20} color="#FEB623" />
           </Pressable>
@@ -131,19 +185,38 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListFooterComponent={<ProTipBanner t={t} />}
+        refreshControl={
+          <RefreshControl refreshing={query.isRefetching} onRefresh={onRefresh} />
+        }
+        onEndReached={() => {
+          if (query.hasNextPage && !query.isFetchingNextPage) {
+            void query.fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          query.isFetchingNextPage ? (
+            <ActivityIndicator color="#FEB623" style={{ marginVertical: 16 }} />
+          ) : (
+            <ProTipBanner t={t} />
+          )
+        }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="checkmark-circle-outline" size={52} color="#DDD" />
-            <Text style={styles.emptyTitle}>{t('allCaughtUp')}</Text>
-            <Text style={styles.emptySubtitle}>{t('noNotifications')}</Text>
-          </View>
+          query.isLoading ? (
+            <ActivityIndicator color="#FEB623" style={{ marginTop: 48 }} />
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="checkmark-circle-outline" size={52} color="#DDD" />
+              <Text style={styles.emptyTitle}>{t('allCaughtUp')}</Text>
+              <Text style={styles.emptySubtitle}>{t('noNotifications')}</Text>
+            </View>
+          )
         }
         renderItem={({ item }) => (
           <SwipeableNotificationCard
             item={item}
-            onDelete={deleteNotification}
-            onMarkRead={markAsRead}
+            onDelete={(id) => void deleteNotification(id)}
+            onMarkRead={(id) => void markAsRead(id)}
           />
         )}
       />
@@ -248,6 +321,17 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     marginTop: 4,
   },
+  loginBtn: {
+    marginTop: 16,
+    backgroundColor: '#FEB623',
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  loginBtnText: {
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
   proTipWrap: {
     marginTop: 10,
     borderRadius: 16,
@@ -259,7 +343,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   proTipOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: 16,
   },

@@ -20,7 +20,6 @@ import { requireAuth } from '@utils/requireAuth';
 import { resetAppStores } from '@utils/resetAppStores';
 
 export { DRAWER_WIDTH, useDrawerAnimation, drawerPanelStyle } from '@hooks/useDrawerAnimation';
-export { DrawerShell } from '@components/DrawerShell';
 
 interface DrawerMenuProps {
   isOpen: boolean;

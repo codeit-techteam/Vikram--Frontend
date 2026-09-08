@@ -3,9 +3,11 @@ import { ScrollView, Text, View } from 'react-native';
 import { VariantChip } from '@components/product/VariantChip';
 import {
   CONTACT_FOR_SIZE,
+  formatVariantChoiceLabel,
   getVariantLabels,
   productHasStructuredVariants,
 } from '@constants/catalogVariantHelpers';
+import { formatINR } from '@utils/formatCurrency';
 import type { Product } from '@/types/catalog';
 
 interface ProductVariantsRowProps {
@@ -73,8 +75,13 @@ export function ProductVariantsRow({
           {variants.map((variant) => (
             <View
               key={variant.id}
-              className="rounded-full border border-border bg-background px-3 py-1.5">
-              <Text className="text-xs font-medium text-text">{variant.label}</Text>
+              className="rounded-2xl border border-border bg-background px-3 py-2">
+              <Text className="text-xs font-medium text-text">
+                {formatVariantChoiceLabel(variant)}
+              </Text>
+              <Text className="mt-0.5 text-xs font-bold text-text">
+                {formatINR(variant.price, false)}
+              </Text>
             </View>
           ))}
         </View>
@@ -92,8 +99,14 @@ export function ProductVariantsRow({
         {variants.map((variant) => (
           <VariantChip
             key={variant.id}
-            label={variant.label}
+            label={formatVariantChoiceLabel(variant)}
+            price={formatINR(variant.price, false)}
             selected={selectedVariantId === variant.id}
+            unavailable={
+              variant.isActive === false ||
+              variant.inStock === false ||
+              (variant.stockLeft != null && variant.stockLeft <= 0)
+            }
             onPress={() => onSelectVariant?.(variant.id)}
           />
         ))}

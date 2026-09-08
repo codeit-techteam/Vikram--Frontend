@@ -33,8 +33,10 @@ import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { ProductDetailSkeleton } from '@components/catalog/CatalogSkeletons';
 import { getCarouselImages } from '@constants/catalogData';
 import {
+  formatVariantChoiceLabel,
   getProductSkuUnit,
   getVariantById,
+  getVariantChooserLabel,
   getVariantDisplayUnit,
   productHasStructuredVariants,
 } from '@constants/catalogVariantHelpers';
@@ -89,6 +91,12 @@ export default function ProductDetailScreen() {
   );
 
   const selectionReady = !hasVariants || Boolean(selectedVariantId);
+  const variantOutOfStock = Boolean(
+    selectedVariant &&
+      (selectedVariant.isActive === false ||
+        selectedVariant.inStock === false ||
+        (selectedVariant.stockLeft != null && selectedVariant.stockLeft <= 0)),
+  );
 
   const cartQty = useCartStore((s) => {
     if (!product || !selectionReady) return 0;
@@ -147,7 +155,7 @@ export default function ProductDetailScreen() {
   const unitPrice = quote?.appliedUnitPrice ?? pricing?.sellingPrice ?? 0;
   const subtotal = quote?.subtotalBeforeGst ?? displayQty * unitPrice;
 
-  const stockLeft = product ? getStockLeft(product) : null;
+  const stockLeft = product ? getStockLeft(product, selectedVariant) : null;
   const mode = getAddToCartMode(displayQty, cartQty);
 
   const carouselImages = useMemo(
@@ -193,7 +201,7 @@ export default function ProductDetailScreen() {
     transform: [{ scale: subtotalScale.value }],
   }));
 
-  const canAddToCart = selectionReady;
+  const canAddToCart = selectionReady && !variantOutOfStock;
 
   const handleQtyChange = useCallback(
     (next: number) => {
@@ -220,7 +228,7 @@ export default function ProductDetailScreen() {
   );
 
   const handleAddToCart = async () => {
-    if (!product || !selectionReady) return;
+    if (!product || !selectionReady || variantOutOfStock) return;
     if (hasVariants && !selectedVariantId) return;
 
     btnScale.value = withSequence(
@@ -278,6 +286,11 @@ export default function ProductDetailScreen() {
   );
   const displayName = productName ?? localizedName;
   const showBrand = isVisibleProductBrand(product.brand);
+  const quantityCap = [
+    product.maxOrder,
+    stockLeft != null && stockLeft > 0 ? stockLeft : undefined,
+  ].filter((value): value is number => typeof value === 'number');
+  const quantityMax = quantityCap.length > 0 ? Math.min(...quantityCap) : product.maxOrder;
 
   const navigateBreadcrumb = (segment: 'catalog' | 'category' | 'product') => {
     if (segment === 'catalog') {
@@ -344,10 +357,12 @@ export default function ProductDetailScreen() {
           {(hasVariants || product.variantsPlaceholder) && (
             <View className="mt-5 rounded-card border border-border bg-surface p-4">
               <Text className="mb-1 text-xs font-bold uppercase tracking-wider text-text-secondary">
-                {product.variantsPlaceholder ? 'Pack Size' : 'Available Variants'}
+                {product.variantsPlaceholder
+                  ? 'Pack Size'
+                  : getVariantChooserLabel(product)}
               </Text>
               <Text className="mb-2 text-xs text-text-secondary">
-                Tap a pack size to select before adding to cart
+                Tap a pack to update price before adding to cart
               </Text>
               <ProductVariantsRow
                 product={product}
@@ -358,14 +373,14 @@ export default function ProductDetailScreen() {
                 <View className="mt-3 flex-row items-start gap-2 rounded-lg bg-trust p-3">
                   <Ionicons name="information-circle-outline" size={18} color="#888" />
                   <Text className="flex-1 text-sm leading-5 text-text-secondary">
-                    Please select a pack size before adding this product.
+                    Please select a pack before adding this product.
                   </Text>
                 </View>
               ) : null}
               {selectedVariant ? (
                 <SelectedVariantCard
-                  variantLabel={selectedVariant.label}
-                  unit={skuUnit}
+                  variantLabel={formatVariantChoiceLabel(selectedVariant)}
+                  unit={getVariantDisplayUnit(selectedVariant) || skuUnit}
                   price={selectedVariant.price}
                 />
               ) : null}
@@ -405,7 +420,7 @@ export default function ProductDetailScreen() {
                   Order Quantity
                 </Text>
                 <Text className="mt-2 text-sm leading-5 text-text">
-                  Choose any quantity from 1 {product.unit.toLowerCase()} onwards.
+                  Choose any quantity from 1 {(pricing?.unit || product.unit).toLowerCase()} onwards.
                 </Text>
                 <Text className="mt-1 text-sm leading-5 text-text-secondary">
                   Bulk pricing automatically applies on eligible quantities.
@@ -417,7 +432,7 @@ export default function ProductDetailScreen() {
                   quantity={displayQty}
                   onChange={handleQtyChange}
                   min={1}
-                  max={product.maxOrder}
+                  max={quantityMax}
                   step={product.incrementStep ?? 1}
                   size="lg"
                 />
@@ -443,9 +458,19 @@ export default function ProductDetailScreen() {
 
               <ProductSelectionSummary
                 productName={localizedName}
-                variantLabel={selectedVariant?.label}
+                variantLabel={
+                  selectedVariant
+                    ? formatVariantChoiceLabel(selectedVariant)
+                    : undefined
+                }
                 quantity={displayQty}
-                unit={hasVariants ? getVariantDisplayUnit(selectedVariant) || skuUnit : product.unit}
+                unit={
+                  hasVariants
+                    ? getVariantDisplayUnit(selectedVariant) ||
+                      pricing?.unit ||
+                      skuUnit
+                    : pricing?.unit || product.unit
+                }
                 total={subtotal}
                 unitPrice={unitPrice}
                 savings={quote?.bulkDiscountAmount}
@@ -466,7 +491,13 @@ export default function ProductDetailScreen() {
               loading={buttonState === 'loading'}
               disabled={!canAddToCart}
               fullWidth
-              labelOverride={!canAddToCart ? 'Select Variant First' : undefined}
+              labelOverride={
+                !selectionReady
+                  ? 'Select Variant First'
+                  : variantOutOfStock
+                    ? 'Out of Stock'
+                    : undefined
+              }
             />
           </Animated.View>
         </View>

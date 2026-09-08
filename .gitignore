@@ -28,9 +28,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env
-.env*.local
+# Firebase Admin SDK — never commit service-account credentials
+*firebase-adminsdk*.json
 
 # typescript
 *.tsbuildinfo

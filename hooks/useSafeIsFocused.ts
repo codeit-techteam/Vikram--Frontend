@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import {
   NavigationContainerRefContext,
   NavigationContext,
-} from '@react-navigation/native';
+} from 'expo-router/react-navigation';
 
 type FocusableNav = {
   isFocused: () => boolean;

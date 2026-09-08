@@ -222,7 +222,7 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
           contentFit="contain"
           nativeControls={false}
           surfaceType="textureView"
-          allowsFullscreen={false}
+          fullscreenOptions={{ enable: false }}
         />
 
         {isLoading && !hasError ? (

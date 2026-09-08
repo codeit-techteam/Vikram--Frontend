@@ -30,15 +30,27 @@ export interface ApiProductImage {
 export interface ApiProductVariant {
   id: string;
   label: string;
+  attribute?: string | null;
+  value?: string | null;
+  attributes?: Record<string, string>;
+  unit?: string | null;
   displayUnit?: string | null;
   size?: number | null;
   sizeUnit?: string | null;
+  sku?: string | null;
   price: number;
+  sellingPrice?: number;
   mrp?: number | null;
+  discount?: number;
+  discountAmount?: number;
   discountPercent?: number;
   bulkPrice?: number | null;
   inStock: boolean;
   stockLeft?: number | null;
+  stock?: number | null;
+  isActive?: boolean;
+  imageUrl?: string | null;
+  displayOrder?: number;
 }
 
 export interface ApiBulkPricingTier {
@@ -109,6 +121,7 @@ export interface ApiProduct {
   hasVariants: boolean;
   defaultVariantId?: string | null;
   variantCount?: number;
+  variantAttribute?: string | null;
   perPiecePrice?: number | null;
   isFeatured: boolean;
   isBestSelling: boolean;

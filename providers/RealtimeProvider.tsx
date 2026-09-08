@@ -3,8 +3,13 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
+import {
+  NOTIFICATIONS_QUERY_KEY,
+  UNREAD_COUNT_QUERY_KEY,
+} from '@services/notifications.api';
 import { realtimeSocket } from '@services/realtime.socket';
 import { useAuthStore } from '@store/useAuthStore';
+import { useNotificationStore } from '@store/notificationStore';
 import { applyOrderStatusUpdated } from '@utils/applyOrderStatusUpdated';
 
 interface RealtimeProviderProps {
@@ -49,6 +54,18 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       }
       void queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
       void queryClient.invalidateQueries({ queryKey: ['order'] });
+      void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
+      void useNotificationStore.getState().refreshUnreadCount();
+    });
+    return unsubscribe;
+  }, [queryClient]);
+
+  useEffect(() => {
+    const unsubscribe = realtimeSocket.onNotificationCreated(() => {
+      void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
+      void useNotificationStore.getState().refreshUnreadCount();
     });
     return unsubscribe;
   }, [queryClient]);

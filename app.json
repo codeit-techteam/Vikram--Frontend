@@ -2,23 +2,24 @@
   "expo": {
     "name": "Bajriwala",
     "slug": "bajriwala",
+    "owner": "vikramsahrawat09s-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "bajriwala",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FEB623"
-    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dhoodhwala.frontend"
+      "bundleIdentifier": "com.bajriwala.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow Bajriwala to use speech recognition for voice search.",
+        "NSMicrophoneUsageDescription": "Allow Bajriwala to use your microphone for voice search.",
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
-      "package": "com.dhoodhwala.frontend",
+      "package": "com.bajriwala.app",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FEB623",
@@ -30,7 +31,8 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -41,6 +43,14 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FEB623",
+          "defaultChannel": "bajriwala-default"
+        }
+      ],
       [
         "expo-location",
         {
@@ -57,7 +67,18 @@
           "microphonePermission": "Allow Bajriwala to use your microphone for voice search.",
           "speechRecognitionPermission": "Allow Bajriwala to use speech recognition for voice search."
         }
-      ]
+      ],
+      "expo-image",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FEB623"
+        }
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
@@ -65,7 +86,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "d5fbb9da-1048-4133-86b3-258efb665369"
+        "projectId": "0350eea9-fe5d-4623-b7bd-3d3ddf1ad568"
       }
     }
   }

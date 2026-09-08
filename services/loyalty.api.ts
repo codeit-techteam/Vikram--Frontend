@@ -1,4 +1,5 @@
-import { api } from '@services/api';
+import { AUTH_TOKEN_KEY, api } from '@services/api';
+import { storage } from '@lib/storage';
 import type { ApiResponse } from '@/types';
 
 export interface LoyaltySummary {
@@ -50,7 +51,14 @@ export interface LoyaltyHistory {
 
 const LOYALTY_BASE = '/customer/loyalty';
 
-export async function fetchLoyaltySummary(): Promise<LoyaltySummary> {
+async function hasSessionToken(): Promise<boolean> {
+  const token = await storage.getItem(AUTH_TOKEN_KEY);
+  return Boolean(token?.trim());
+}
+
+export async function fetchLoyaltySummary(): Promise<LoyaltySummary | null> {
+  if (!(await hasSessionToken())) return null;
+
   const { data } = await api.get<ApiResponse<LoyaltySummary>>(LOYALTY_BASE);
   return data.data;
 }
@@ -58,7 +66,9 @@ export async function fetchLoyaltySummary(): Promise<LoyaltySummary> {
 export async function fetchLoyaltyHistory(params?: {
   page?: number;
   limit?: number;
-}): Promise<LoyaltyHistory> {
+}): Promise<LoyaltyHistory | null> {
+  if (!(await hasSessionToken())) return null;
+
   const query = new URLSearchParams();
   if (params?.page) query.set('page', String(params.page));
   if (params?.limit) query.set('limit', String(params.limit));

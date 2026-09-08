@@ -12,9 +12,18 @@ interface VariantChipProps {
   selected: boolean;
   onPress: () => void;
   compact?: boolean;
+  price?: string;
+  unavailable?: boolean;
 }
 
-export function VariantChip({ label, selected, onPress, compact = false }: VariantChipProps) {
+export function VariantChip({
+  label,
+  selected,
+  onPress,
+  compact = false,
+  price,
+  unavailable = false,
+}: VariantChipProps) {
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -34,15 +43,29 @@ export function VariantChip({ label, selected, onPress, compact = false }: Varia
     <Animated.View style={animStyle}>
       <Pressable
         onPress={handlePress}
-        className={`rounded-full border-[1.5px] ${
+        className={`items-center rounded-2xl border-[1.5px] ${
           compact ? 'px-3 py-1.5' : 'px-4 py-2.5'
-        } ${selected ? 'border-primary bg-primary' : 'border-border bg-background'}`}>
+        } ${
+          selected
+            ? 'border-primary bg-primary'
+            : unavailable
+              ? 'border-border bg-background opacity-50'
+              : 'border-border bg-background'
+        }`}>
         <Text
           className={`font-semibold ${
             compact ? 'text-xs' : 'text-sm'
           } ${selected ? 'text-onPrimary' : 'text-text-secondary'}`}>
-          {label}
+          {unavailable ? `${label} · Out of stock` : label}
         </Text>
+        {price ? (
+          <Text
+            className={`mt-0.5 font-bold ${
+              compact ? 'text-[10px]' : 'text-xs'
+            } ${selected ? 'text-onPrimary' : 'text-text'}`}>
+            {price}
+          </Text>
+        ) : null}
       </Pressable>
     </Animated.View>
   );

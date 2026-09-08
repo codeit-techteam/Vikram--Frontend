@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "965500460621",
+    "project_id": "bajriwala-3c4ea",
+    "storage_bucket": "bajriwala-3c4ea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965500460621:android:6a17fa79a0159e09c00604",
+        "android_client_info": {
+          "package_name": "com.bajriwala.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3w2kuoG8WzI-33QtbTYv23l6bpw6VMCA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

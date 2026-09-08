@@ -1,5 +1,5 @@
 import type { Product, ProductVariant } from '@/types/catalog';
-import { getStartingPrice, productHasStructuredVariants } from '@constants/catalogVariantHelpers';
+import { getProductSkuUnit, getStartingPrice, productHasStructuredVariants } from '@constants/catalogVariantHelpers';
 
 export interface ProductPricing {
   /** Primary selling price shown to the user (never bulk). */
@@ -26,18 +26,21 @@ export function getProductPricing(
   variant?: ProductVariant | null,
 ): ProductPricing {
   const hasVariants = productHasStructuredVariants(product);
+  const cheapest =
+    !variant && hasVariants && product.productVariants?.length
+      ? product.productVariants.reduce((min, item) =>
+          item.price < min.price ? item : min,
+        )
+      : null;
   const sellingPrice = variant
     ? variant.price
     : hasVariants
       ? getStartingPrice(product)
       : product.retailPriceValue;
 
-  const mrp = variant?.mrp ?? product.mrp ?? null;
+  const mrp = variant?.mrp ?? cheapest?.mrp ?? product.mrp ?? null;
   const originalPrice = mrp && mrp > sellingPrice ? mrp : sellingPrice;
-  const discountPercent =
-    variant?.discountPercent ??
-    product.discountPercent ??
-    getDiscountPercent(originalPrice, sellingPrice);
+  const discountPercent = getDiscountPercent(originalPrice, sellingPrice);
 
   const bulkTiers =
     product.bulkPricing?.length
@@ -64,7 +67,14 @@ export function getProductPricing(
     sellingPrice,
     originalPrice,
     discountPercent,
-    unit: variant?.displayUnit || product.unit,
+    unit:
+      variant?.unit ||
+      variant?.displayUnit ||
+      variant?.sizeUnit ||
+      cheapest?.unit ||
+      cheapest?.displayUnit ||
+      cheapest?.sizeUnit ||
+      getProductSkuUnit(product),
     hasBulk,
     bulkThreshold,
     bulkPrice: hasBulk ? primaryBulk : 0,
@@ -76,7 +86,14 @@ export function getProductPricing(
   };
 }
 
-export function getStockLeft(product: Product): number | null {
+export function getStockLeft(
+  product: Product,
+  variant?: ProductVariant | null,
+): number | null {
+  if (variant) {
+    if (variant.stockLeft != null) return variant.stockLeft;
+    if (variant.inStock === false) return 0;
+  }
   if (product.availableStock != null) return product.availableStock;
   if (product.stockLeft != null) return product.stockLeft;
   if (product.status === 'OUT OF STOCK') return 0;

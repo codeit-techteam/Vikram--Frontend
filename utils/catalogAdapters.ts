@@ -5,6 +5,12 @@ import {
 } from '@utils/catalogPlaceholders';
 import { normalizeMediaUrl } from '@utils/media';
 import { normalizeBulkLabel, normalizeUnitLabel } from '@utils/units';
+import {
+  commerceVariantKey,
+  htmlToPlainText,
+  parseCatalogCommerceMeta,
+  type CatalogCommerceMeta,
+} from '@utils/catalogCommerceMeta';
 import type {
   ApiCategory,
   ApiProduct,
@@ -65,19 +71,96 @@ function normalizeStatus(status?: string | null): ProductStatus {
   return upper as ProductStatus;
 }
 
+function variantsFromCommerceMeta(
+  productId: string,
+  meta: CatalogCommerceMeta | null,
+  fallbackAttribute?: string | null,
+): ProductVariant[] {
+  if (!meta?.variants?.length) return [];
+  const attribute =
+    meta.variantAttribute ||
+    meta.customAttributeName ||
+    fallbackAttribute ||
+    'Size';
+  return meta.variants
+    .filter((row) => row.isActive !== false)
+    .map((row, index) => {
+      const label = [row.value, row.unit].filter(Boolean).join(' ').trim();
+      return {
+        id: `${productId}:meta:${index}`,
+        label: label || row.unit || row.value,
+        attribute,
+        value: row.value,
+        attributes: { [attribute]: row.value },
+        unit: row.unit,
+        displayUnit: row.unit,
+        sizeUnit: row.unit,
+        sku: row.sku,
+        price: row.price,
+        mrp: row.mrp,
+        inStock: row.isActive !== false && row.stock > 0,
+        stockLeft: row.stock,
+        isActive: row.isActive !== false,
+      };
+    });
+}
+
+function variantLookupKeys(variant: ProductVariant): string[] {
+  const unit = variant.unit || variant.displayUnit || variant.sizeUnit || '';
+  const keys = [commerceVariantKey(variant.value, unit)];
+  const label = (variant.label || '').trim().toLowerCase();
+  if (label) keys.push(`label:${label}`);
+  return keys.filter((key) => key && key !== '|');
+}
+
+function mergeApiAndMetaVariants(
+  apiVariants: ProductVariant[],
+  metaVariants: ProductVariant[],
+): ProductVariant[] {
+  if (metaVariants.length === 0) return apiVariants;
+  if (apiVariants.length === 0) return metaVariants;
+
+  const used = new Set<string>();
+  for (const variant of apiVariants) {
+    for (const key of variantLookupKeys(variant)) used.add(key);
+  }
+
+  const extras = metaVariants.filter((variant) =>
+    variantLookupKeys(variant).every((key) => !used.has(key)),
+  );
+  if (extras.length === 0) return apiVariants;
+  return [...apiVariants, ...extras];
+}
+
 function adaptVariant(variant: ApiProductVariant): ProductVariant {
+  const price = variant.sellingPrice ?? variant.price;
+  const stockLeft = variant.stockLeft ?? variant.stock ?? null;
+  const attributes = variant.attributes && Object.keys(variant.attributes).length
+    ? variant.attributes
+    : variant.attribute && (variant.value || variant.label)
+      ? { [variant.attribute]: variant.value ?? variant.label }
+      : undefined;
+  const primaryName = attributes ? Object.keys(attributes)[0] : undefined;
   return {
     id: variant.id,
     label: variant.label,
+    attribute: variant.attribute ?? primaryName,
+    value: variant.value ?? (primaryName && attributes ? attributes[primaryName] : undefined),
+    attributes,
+    unit: variant.unit ?? variant.sizeUnit ?? variant.displayUnit ?? undefined,
     displayUnit: variant.displayUnit ?? undefined,
     size: variant.size ?? undefined,
     sizeUnit: variant.sizeUnit ?? undefined,
-    price: variant.price,
+    sku: variant.sku ?? undefined,
+    price,
     mrp: variant.mrp ?? null,
+    discountAmount: variant.discount ?? variant.discountAmount,
     discountPercent: variant.discountPercent,
     bulkPrice: variant.bulkPrice ?? null,
     inStock: variant.inStock,
-    stockLeft: variant.stockLeft ?? null,
+    stockLeft,
+    isActive: variant.isActive,
+    imageUrl: variant.imageUrl ? normalizeMediaUrl(variant.imageUrl) : null,
   };
 }
 
@@ -136,13 +219,35 @@ export function adaptApiCategory(dto: ApiCategory): CatalogCategory {
 }
 
 export function adaptApiProduct(dto: ApiProduct): Product {
+  const commerceMeta = parseCatalogCommerceMeta(dto.description);
   const retail = dto.retailPrice ?? dto.price ?? 0;
   const bulk = dto.bulkPrice ?? 0;
   const imageUrl = normalizeMediaUrl(resolvePrimaryImageUrl(dto));
   const categorySlug = dto.categorySlug || dto.category?.slug || '';
   const categoryType = mapCategorySlugToType(categorySlug);
   const variantsSource = dto.variants ?? dto.variantList ?? [];
-  const productVariants = variantsSource.map(adaptVariant);
+  const apiVariants = variantsSource
+    .map(adaptVariant)
+    .filter((variant) => variant.isActive !== false);
+  const metaVariants = variantsFromCommerceMeta(
+    dto.id,
+    commerceMeta,
+    dto.variantAttribute,
+  );
+  const productVariants = mergeApiAndMetaVariants(apiVariants, metaVariants);
+  const cheapestVariant = productVariants.length
+    ? [...productVariants].sort((a, b) => a.price - b.price)[0]
+    : undefined;
+  const unit =
+    normalizeUnitLabel(
+      cheapestVariant?.unit ||
+        cheapestVariant?.displayUnit ||
+        cheapestVariant?.sizeUnit ||
+        commerceMeta?.unit ||
+        dto.unit,
+    ) || dto.unit;
+  const selling = cheapestVariant?.price ?? retail;
+  const listPrice = cheapestVariant?.mrp ?? dto.mrp ?? null;
   const bulkPricing = adaptBulkPricing(dto);
   const gallery =
     (dto.gallery ?? [])
@@ -186,14 +291,21 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     productTypeLabel: dto.productTypeLabel ?? null,
     status: normalizeStatus(dto.status),
     spec: dto.spec ?? '',
-    hasVariants: dto.hasVariants || productVariants.length > 1,
+    hasVariants: productVariants.length > 0,
     productVariants,
-    defaultVariantId: dto.defaultVariantId ?? undefined,
+    defaultVariantId: dto.defaultVariantId ?? cheapestVariant?.id ?? undefined,
     variantCount: dto.variantCount ?? productVariants.length,
+    variantAttribute:
+      dto.variantAttribute ??
+      commerceMeta?.variantAttribute ??
+      productVariants[0]?.attribute ??
+      (productVariants[0]?.attributes
+        ? Object.keys(productVariants[0].attributes).join(' / ')
+        : null),
     perPiecePrice: dto.perPiecePrice ?? undefined,
-    retailPrice: `${formatINR(retail, false)} / ${normalizeUnitLabel(dto.unit) || dto.unit}`,
-    retailPriceValue: retail,
-    mrp: dto.mrp ?? null,
+    retailPrice: `${formatINR(selling, false)} / ${unit}`,
+    retailPriceValue: selling,
+    mrp: listPrice,
     discountPercent: dto.discountPercent,
     salePrice: null,
     bulkLabel:
@@ -203,11 +315,11 @@ export function adaptApiProduct(dto: ApiProduct): Product {
           (dto.bulkThreshold > 0 ? `Bulk Price (${dto.bulkThreshold}+)` : ''),
       ),
     bulkPrice: bulk > 0
-      ? `${formatINR(bulk, false)} / ${normalizeUnitLabel(dto.unit) || dto.unit}`
+      ? `${formatINR(bulk, false)} / ${unit}`
       : '',
     bulkPriceValue: bulk || firstBulk?.price || 0,
     bulkPricing,
-    unit: normalizeUnitLabel(dto.unit) || dto.unit,
+    unit,
     // Default selected qty always starts at 1 — bulk unlocks as qty grows.
     minOrder: dto.minOrder ?? 1,
     defaultQuantity: 1,
@@ -215,7 +327,7 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     incrementStep: dto.incrementStep ?? 1,
     bulkThreshold: firstBulk?.minQty ?? dto.bulkThreshold ?? 0,
     weightPerUnit: dto.weightPerUnit ?? null,
-    description: dto.description ?? '',
+    description: htmlToPlainText(dto.description) || '',
     categoryType,
     detailName: dto.detailName ?? dto.name,
     stockLeft,

@@ -5,7 +5,8 @@ export type NotificationType =
   | 'logistics'
   | 'payment_due'
   | 'stock_critical'
-  | 'site_communication';
+  | 'site_communication'
+  | 'promotional';
 
 export type NotificationFilter = 'all' | 'logistics' | 'payments' | 'inventory' | 'site';
 
@@ -15,6 +16,7 @@ export interface AppNotification {
   label: string;
   title: string;
   body: string;
+  imageUrl?: string;
   time: string;
   unread: boolean;
   action?: {
@@ -63,6 +65,13 @@ export const NOTIFICATION_TYPE_META: Record<
     iconBg: '#E3F2FD',
     iconColor: '#1A73E8',
     borderColor: '#1A73E8',
+  },
+  promotional: {
+    labelColor: '#C47A00',
+    iconName: 'megaphone-outline',
+    iconBg: '#FFF4D1',
+    iconColor: '#C47A00',
+    borderColor: '#FEB623',
   },
 };
 
@@ -129,7 +138,8 @@ export function filterNotifications(
       (filter === 'logistics' && item.type === 'logistics') ||
       (filter === 'payments' && item.type === 'payment_due') ||
       (filter === 'inventory' && item.type === 'stock_critical') ||
-      (filter === 'site' && item.type === 'site_communication');
+      (filter === 'site' &&
+        (item.type === 'site_communication' || item.type === 'promotional'));
 
     if (!matchesFilter) return false;
     if (!normalized) return true;

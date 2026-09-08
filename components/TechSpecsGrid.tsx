@@ -1,13 +1,9 @@
-import { LayoutAnimation, Platform, Text, UIManager, View } from 'react-native';
+import { LayoutAnimation, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useTranslation } from '@store/languageStore';
 import type { TechSpecItem } from '@/types/catalog';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 interface TechSpecsGridProps {
   specs: TechSpecItem[];

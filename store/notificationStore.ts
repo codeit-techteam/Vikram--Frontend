@@ -1,57 +1,82 @@
 import { create } from 'zustand';
 
-import { NOTIFICATIONS } from '@constants/notificationData';
-
-function countUnread(readIds: string[], deletedIds: string[]): number {
-  return NOTIFICATIONS.filter(
-    (n) => n.unread && !readIds.includes(n.id) && !deletedIds.includes(n.id),
-  ).length;
-}
+import {
+  deleteNotification as deleteNotificationApi,
+  getUnreadCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '@services/notifications.api';
 
 interface NotificationState {
   unreadCount: number;
   orderNotifications: number;
   readIds: string[];
   deletedIds: string[];
-  markAsRead: (id: string) => void;
-  markAllRead: () => void;
-  deleteNotification: (id: string) => void;
+  setUnreadCount: (count: number) => void;
+  refreshUnreadCount: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
   isRead: (id: string) => boolean;
   reset: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  unreadCount: countUnread([], []),
-  orderNotifications: 3,
+  unreadCount: 0,
+  orderNotifications: 0,
   readIds: [],
   deletedIds: [],
-  markAsRead: (id) => {
-    const { readIds } = get();
-    if (readIds.includes(id)) return;
-    const next = [...readIds, id];
-    set({ readIds: next, unreadCount: countUnread(next, get().deletedIds) });
+  setUnreadCount: (count) => set({ unreadCount: Math.max(0, count) }),
+  refreshUnreadCount: async () => {
+    try {
+      const count = await getUnreadCount();
+      set({ unreadCount: count });
+    } catch {
+      // Keep last known count if offline.
+    }
   },
-  markAllRead: () =>
+  markAsRead: async (id) => {
+    const { readIds, unreadCount } = get();
+    if (readIds.includes(id)) return;
     set({
-      readIds: NOTIFICATIONS.map((n) => n.id),
-      unreadCount: 0,
-      orderNotifications: 0,
-    }),
-  deleteNotification: (id) => {
-    const { deletedIds, readIds } = get();
-    if (deletedIds.includes(id)) return;
-    const nextDeleted = [...deletedIds, id];
-    set({
-      deletedIds: nextDeleted,
-      unreadCount: countUnread(readIds, nextDeleted),
+      readIds: [...readIds, id],
+      unreadCount: Math.max(0, unreadCount - 1),
     });
+    try {
+      await markNotificationRead(id);
+      await get().refreshUnreadCount();
+    } catch {
+      // Optimistic local read still stands.
+    }
+  },
+  markAllRead: async () => {
+    set({ unreadCount: 0, orderNotifications: 0 });
+    try {
+      await markAllNotificationsRead();
+    } catch {
+      // Ignore network errors; UI already cleared.
+    }
+  },
+  deleteNotification: async (id) => {
+    const { deletedIds, readIds, unreadCount } = get();
+    if (deletedIds.includes(id)) return;
+    const wasUnread = !readIds.includes(id);
+    set({
+      deletedIds: [...deletedIds, id],
+      unreadCount: wasUnread ? Math.max(0, unreadCount - 1) : unreadCount,
+    });
+    try {
+      await deleteNotificationApi(id);
+    } catch {
+      // Keep local hide if the server rejects (e.g. global rows).
+    }
   },
   isRead: (id) => get().readIds.includes(id),
   reset: () =>
     set({
       readIds: [],
       deletedIds: [],
-      unreadCount: countUnread([], []),
-      orderNotifications: 3,
+      unreadCount: 0,
+      orderNotifications: 0,
     }),
 }));

@@ -4,6 +4,17 @@ import { storage } from '@lib/storage';
 import type { ApiError } from '@/types';
 import { resolveApiBaseUrl } from '@utils/resolveApiBaseUrl';
 
+function requestHadAuthorization(config?: InternalAxiosRequestConfig): boolean {
+  if (!config?.headers) return false;
+  const headers = config.headers;
+  const value =
+    typeof headers.get === 'function'
+      ? (headers.get('Authorization') ?? headers.get('authorization'))
+      : ((headers as { Authorization?: string; authorization?: string }).Authorization ??
+        (headers as { authorization?: string }).authorization);
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 const AUTH_TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
@@ -114,49 +125,60 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiError>) => {
-    if (__DEV__) {
-      const method = (error.config?.method ?? 'get').toUpperCase();
-      const url = `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`;
-      console.warn(
-        `[api] ✗ ${error.response?.status ?? 'NETWORK'} ${method} ${url}`,
-        error.response?.data?.message ?? error.message,
-      );
-    }
-
     const originalConfig = error.config as
       | (InternalAxiosRequestConfig & { _retried?: boolean })
       | undefined;
 
     const isAuthEndpoint = originalConfig?.url?.includes('/auth/customer/');
+    const isUnauthorized = error.response?.status === 401;
+    const sentAuth = requestHadAuthorization(originalConfig);
 
-    if (error.response?.status === 401 && originalConfig && !originalConfig._retried && !isAuthEndpoint) {
-      originalConfig._retried = true;
+    if (__DEV__) {
+      // Guest 401s (no Bearer token) are expected — don't surface them in LogBox.
+      if (!(isUnauthorized && !sentAuth)) {
+        const method = (error.config?.method ?? 'get').toUpperCase();
+        const url = `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`;
+        console.warn(
+          `[api] ✗ ${error.response?.status ?? 'NETWORK'} ${method} ${url}`,
+          error.response?.data?.message ?? error.message,
+        );
+      }
+    }
 
-      refreshInFlight ??= performTokenRefresh().finally(() => {
-        refreshInFlight = null;
-      });
+    // Guest calls and OTP failures are not session expiry. Only refresh/logout when
+    // a request that actually sent a Bearer token was rejected.
+    if (
+      isUnauthorized &&
+      originalConfig &&
+      !isAuthEndpoint &&
+      sentAuth
+    ) {
+      if (!originalConfig._retried) {
+        originalConfig._retried = true;
 
-      const newToken = await refreshInFlight;
+        refreshInFlight ??= performTokenRefresh().finally(() => {
+          refreshInFlight = null;
+        });
 
-      if (newToken) {
-        originalConfig.headers = originalConfig.headers ?? {};
-        originalConfig.headers.Authorization = `Bearer ${newToken}`;
-        try {
-          return await api.request(originalConfig);
-        } catch (retryError) {
-          // fall through to session-expired handling below if retry also fails with 401
-          if (
-            axios.isAxiosError(retryError) &&
-            retryError.response?.status === 401
-          ) {
-            await clearSessionAndEnterGuest();
+        const newToken = await refreshInFlight;
+
+        if (newToken) {
+          originalConfig.headers = originalConfig.headers ?? {};
+          originalConfig.headers.Authorization = `Bearer ${newToken}`;
+          try {
+            return await api.request(originalConfig);
+          } catch (retryError) {
+            if (
+              axios.isAxiosError(retryError) &&
+              retryError.response?.status === 401
+            ) {
+              await clearSessionAndEnterGuest();
+            }
+            return Promise.reject(retryError);
           }
-          return Promise.reject(retryError);
         }
       }
 
-      await clearSessionAndEnterGuest();
-    } else if (error.response?.status === 401) {
       await clearSessionAndEnterGuest();
     }
 

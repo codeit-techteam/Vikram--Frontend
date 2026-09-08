@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,12 +10,16 @@ import { ScaledPressable } from '@components/ScaledPressable';
 import { useReorderFeedbackStore } from '@store/reorderFeedbackStore';
 import { borderRadius, theme } from '@constants/theme';
 
+/**
+ * A plain `BottomSheet` kept at `index={-1}` still renders a full-screen backdrop
+ * that captures touches until Reanimated flips it to `pointerEvents: 'none'`, so
+ * this uses a modal that is only mounted while presented.
+ */
 export function ReorderUnavailableSheet() {
-  const sheetRef = useRef<BottomSheet>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const visible = useReorderFeedbackStore((s) => s.unavailableSheetVisible);
   const hideUnavailableSheet = useReorderFeedbackStore((s) => s.hideUnavailableSheet);
-  const snapPoints = useMemo(() => ['38%'], []);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -25,21 +29,16 @@ export function ReorderUnavailableSheet() {
   );
 
   useEffect(() => {
-    if (visible) {
-      sheetRef.current?.snapToIndex(0);
-    } else {
-      sheetRef.current?.close();
-    }
+    if (visible) sheetRef.current?.present();
+    else sheetRef.current?.dismiss();
   }, [visible]);
 
   return (
-    <BottomSheet
+    <BottomSheetModal
       ref={sheetRef}
-      index={-1}
-      snapPoints={snapPoints}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
-      onClose={hideUnavailableSheet}
+      onDismiss={hideUnavailableSheet}
       handleIndicatorStyle={{ backgroundColor: theme.border, width: 40 }}>
       <BottomSheetView style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16 }}>
         <View style={{ alignItems: 'center', paddingTop: 8 }}>
@@ -105,6 +104,6 @@ export function ReorderUnavailableSheet() {
           </ScaledPressable>
         </View>
       </BottomSheetView>
-    </BottomSheet>
+    </BottomSheetModal>
   );
 }

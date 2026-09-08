@@ -172,6 +172,10 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const summary = await fetchLoyaltySummary();
+      if (!summary) {
+        set({ ...INITIAL_STATE });
+        return;
+      }
       set({
         ...applySummary(summary),
         loading: false,
@@ -190,6 +194,10 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     set({ historyLoading: true });
     try {
       const history = await fetchLoyaltyHistory({ page, limit: 20 });
+      if (!history) {
+        set({ ...INITIAL_STATE });
+        return;
+      }
       const mapped = history.transactions.map(mapTransaction);
       set({
         ...applySummary(history.account),

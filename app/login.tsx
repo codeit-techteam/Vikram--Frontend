@@ -116,53 +116,29 @@ export default function LoginScreen() {
             shadowRadius: 20,
             elevation: 10,
           }}>
-          {isFirstTime ? (
-            <>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: '700',
-                  color: DARK,
-                  textAlign: 'center',
-                }}>
-                Welcome to Bajriwala
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: '#666',
-                  textAlign: 'center',
-                  marginTop: 6,
-                  lineHeight: 20,
-                  marginBottom: 24,
-                }}>
-                India's trusted construction materials platform. Enter your mobile to get started.
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text
-                style={{
-                  fontSize: 24,
-                  fontWeight: '800',
-                  color: DARK,
-                  textAlign: 'center',
-                }}>
-                Welcome to Bajriwala
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: '#666',
-                  textAlign: 'center',
-                  marginTop: 6,
-                  lineHeight: 20,
-                  marginBottom: 24,
-                }}>
-                Enter your mobile number to manage site logistics and procurement.
-              </Text>
-            </>
-          )}
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: '800',
+              color: DARK,
+              textAlign: 'center',
+              letterSpacing: -0.3,
+            }}>
+            Welcome to Bajriwala
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: '#666',
+              textAlign: 'center',
+              marginTop: 8,
+              lineHeight: 21,
+              marginBottom: 22,
+            }}>
+            {isFirstTime
+              ? "India's trusted construction materials platform. Enter your mobile to get started."
+              : 'Enter your mobile number to manage site logistics and procurement.'}
+          </Text>
 
           <View style={{ marginBottom: 20 }}>
             <MobileInput
@@ -187,51 +163,63 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             onPress={handleLogin}
-            disabled={!isPhoneValid || loading}
+            disabled={loading}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('loginBtn')}
             style={{
-              backgroundColor: isPhoneValid ? GOLD : '#E0D5B8',
+              backgroundColor: GOLD,
               borderRadius: 50,
               paddingVertical: 16,
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 12,
+              flexDirection: 'row',
+              gap: 8,
+              marginBottom: 10,
               shadowColor: WARM_SHADOW,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: isPhoneValid ? 0.35 : 0,
               shadowRadius: 10,
               elevation: isPhoneValid ? 8 : 0,
-              opacity: isPhoneValid ? 1 : 0.7,
+              opacity: isPhoneValid ? 1 : 0.45,
             }}>
             {loading ? (
               <ActivityIndicator color={DARK} size="small" />
             ) : (
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '800',
-                  color: DARK,
-                  letterSpacing: 0.2,
-                }}>
-                {t('loginBtn')}
-              </Text>
+              <>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '800',
+                    color: DARK,
+                    letterSpacing: 0.2,
+                  }}>
+                  {t('loginBtn')}
+                </Text>
+                <Ionicons name="arrow-forward" size={16} color={DARK} />
+              </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleSkip}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('skipForNow')}
             style={{
-              paddingVertical: 12,
+              paddingVertical: 13,
               alignItems: 'center',
-              marginBottom: 16,
+              marginBottom: 18,
+              borderRadius: 50,
+              borderWidth: 1,
+              borderColor: 'rgba(26,26,26,0.12)',
             }}>
             <Text
               style={{
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: '700',
                 color: DARK,
-                opacity: 0.75,
+                opacity: 0.7,
               }}>
               {t('skipForNow')}
             </Text>
@@ -239,22 +227,38 @@ export default function LoginScreen() {
 
           <View
             style={{
-              backgroundColor: 'rgba(254,182,35,0.15)',
-              borderRadius: 12,
-              paddingVertical: 12,
+              backgroundColor: 'rgba(254,182,35,0.18)',
+              borderRadius: 14,
+              paddingVertical: 14,
               paddingHorizontal: 16,
               alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 10,
             }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: DARK }}>Trusted by 500+</Text>
-            <Text
+            <View
               style={{
-                fontSize: 12,
-                color: '#666666',
-                fontWeight: '500',
-                marginTop: 1,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: GOLD,
+                alignItems: 'center',
+                justifyContent: 'center',
               }}>
-              Contractors across Delhi
-            </Text>
+              <Ionicons name="people" size={16} color={DARK} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: DARK }}>Trusted by 500+</Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: '#666666',
+                  fontWeight: '500',
+                  marginTop: 1,
+                }}>
+                Contractors across Delhi
+              </Text>
+            </View>
           </View>
         </View>
 

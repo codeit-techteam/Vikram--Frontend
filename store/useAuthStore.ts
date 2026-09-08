@@ -8,6 +8,7 @@ import { GUEST_MODE_KEY } from '@constants/guest';
 import { storage } from '@lib/storage';
 import { useDeliveryStore } from '@store/deliveryStore';
 import { useGstStore } from '@store/gstStore';
+import { useLoyaltyStore } from '@store/loyaltyStore';
 import { useUserStore } from '@store/userStore';
 import type { GstDetails } from '@/types/gst';
 
@@ -95,6 +96,8 @@ interface AuthState {
   // Login-required UX
   pendingAction: (() => void) | null;
   loginSheetVisible: boolean;
+  /** Contextual copy for the login sheet, e.g. "Log in to view your orders." */
+  loginSheetReason: string | null;
 
   setPhoneNumber: (phone: string) => void;
   setSelectedRole: (role: UserRole) => void;
@@ -113,8 +116,8 @@ interface AuthState {
   refreshProfile: () => Promise<void>;
   handleSessionExpired: () => Promise<void>;
 
-  requireLogin: (pendingAction?: () => void) => boolean;
-  showLoginSheet: () => void;
+  requireLogin: (pendingAction?: () => void, reason?: string) => boolean;
+  showLoginSheet: (reason?: string) => void;
   hideLoginSheet: () => void;
   consumePendingAction: () => void;
 
@@ -138,6 +141,7 @@ const initialState = {
 
   pendingAction: null as (() => void) | null,
   loginSheetVisible: false,
+  loginSheetReason: null as string | null,
 };
 
 let hydrateInFlight: Promise<void> | null = null;
@@ -253,6 +257,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ loading: true });
 
     try {
+      const { releaseCustomerPushToken } = await import('@utils/pushNotifications');
+      await releaseCustomerPushToken();
       if (refreshToken) {
         await authApi.logout(refreshToken).catch(() => undefined);
       }
@@ -264,6 +270,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       useUserStore.getState().reset();
       useDeliveryStore.getState().reset();
+      useLoyaltyStore.getState().reset();
 
       set({
         ...initialState,
@@ -354,6 +361,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   handleSessionExpired: async () => {
     useUserStore.getState().reset();
     useDeliveryStore.getState().reset();
+    useLoyaltyStore.getState().reset();
     set({
       ...initialState,
       isHydrated: true,
@@ -361,20 +369,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await get().enterGuestMode();
   },
 
-  requireLogin: (pendingAction) => {
+  requireLogin: (pendingAction, reason) => {
     const { isLoggedIn } = get();
     if (isLoggedIn) return true;
 
-    set({ pendingAction: pendingAction ?? null, loginSheetVisible: true });
+    set({
+      pendingAction: pendingAction ?? null,
+      loginSheetReason: reason?.trim() || null,
+      loginSheetVisible: true,
+    });
     return false;
   },
 
-  showLoginSheet: () => set({ loginSheetVisible: true }),
-  hideLoginSheet: () => set({ loginSheetVisible: false }),
+  showLoginSheet: (reason) =>
+    set({ loginSheetReason: reason?.trim() || null, loginSheetVisible: true }),
+  hideLoginSheet: () => set({ loginSheetVisible: false, loginSheetReason: null }),
 
   consumePendingAction: () => {
     const { pendingAction } = get();
-    set({ pendingAction: null, loginSheetVisible: false });
+    set({ pendingAction: null, loginSheetVisible: false, loginSheetReason: null });
     if (pendingAction) pendingAction();
   },
 

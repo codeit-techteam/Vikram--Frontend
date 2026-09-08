@@ -1,5 +1,11 @@
-import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState, type ComponentType } from 'react';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const GOLD = '#FEB623';
@@ -19,6 +25,8 @@ interface MobileInputProps {
   placeholder?: string;
   error?: string | null;
   showError?: boolean;
+  /** Use `BottomSheetTextInput` when rendering inside a gorhom sheet. */
+  InputComponent?: ComponentType<TextInputProps>;
 }
 
 export function sanitizeMobileInput(value: string): string {
@@ -42,10 +50,12 @@ export function MobileInput({
   placeholder = 'Enter mobile number',
   error,
   showError = false,
+  InputComponent = TextInput,
 }: MobileInputProps) {
   const [focused, setFocused] = useState(false);
   const validationError = error ?? getMobileValidationError(value, showError);
   const hasError = Boolean(validationError);
+  const Input = InputComponent;
 
   const handleChange = (text: string) => {
     onChangeText(sanitizeMobileInput(text));
@@ -63,7 +73,7 @@ export function MobileInput({
         <View style={styles.prefix}>
           <Text style={styles.prefixText}>+91</Text>
         </View>
-        <TextInput
+        <Input
           style={styles.input}
           placeholder={placeholder}
           placeholderTextColor="#BBAA88"

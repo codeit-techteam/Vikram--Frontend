@@ -144,6 +144,7 @@ export function formatUnitCount(quantity: number, unit?: string | null): string 
     return `1 ${u}`;
   }
   if (/bag$/i.test(u)) return `${quantity} Bags`;
+  if (/pack$/i.test(u)) return `${quantity} Packs`;
   if (/piece$/i.test(u)) return `${quantity} Pieces`;
   return `${quantity} ${u}`;
 }

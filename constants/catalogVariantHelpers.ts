@@ -3,151 +3,36 @@ import type { Product, ProductVariant } from '@/types/catalog';
 export const CONTACT_FOR_SIZE = 'Contact for Size';
 export const VARIANT_COMING_SOON = 'Variant Coming Soon';
 
-export const CFT_VARIANTS = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(
-  (size) => `${size} CFT`,
-);
-
-export const PIECE_VARIANTS = [100, 200, 300, 400, 500, 1000, 2000, 3000, 4000, 5000, 6000].map(
-  (count) => `${count.toLocaleString('en-IN')} Pieces`,
-);
-
-export const BAG_VARIANTS = Array.from({ length: 100 }, (_, index) => {
-  const count = index + 1;
-  return `${count} ${count === 1 ? 'Bag' : 'Bags'}`;
-});
-
-export const ML_L_VARIANTS = ['250 ml', '500 ml', '1 L', '4 L'];
-
-export const JIVANTOR_VARIANTS = ['250 ml', '500 ml', '1 L', '4 L', '10 L', '20 L'];
-
-export const BUCKET_VARIANTS_STANDARD = ['5 Kg Bucket', '10 Kg Bucket', '20 Kg Bucket'];
-
-export const SAKARNI_POP_VARIANTS = ['5 Kg Bag', '10 Kg Bag', '20 Kg Bag', '50 Kg Bag'];
-
-/** @deprecated Use BUCKET_VARIANTS_STANDARD */
-export const KG_VARIANTS_STANDARD = BUCKET_VARIANTS_STANDARD;
-
-export const L_VARIANTS = ['10 L', '20 L'];
-
 export function formatVariantsSummary(variants: string[], maxVisible = 4): string {
   if (variants.length <= maxVisible) return variants.join(' · ');
   return `${variants.slice(0, maxVisible).join(' · ')} · +${variants.length - maxVisible} more`;
 }
 
-function mlVariant(
-  id: string,
-  label: string,
-  sizeMl: number,
-  price: number,
-): ProductVariant {
-  const sizeUnit = label.includes('L') && !label.includes('ml') ? 'L' : 'ml';
-  return {
-    id,
-    label,
-    size: sizeMl,
-    sizeUnit,
-    price,
-    bulkPrice: null,
-    inStock: true,
-  };
-}
-
-/** Fevicol Marine / SH / HeatX / SpeedX — 250ml, 500ml, 1L, 4L */
-export function createFevicolMlVariants(
-  prefix: string,
-  prices: [number, number, number, number],
-): ProductVariant[] {
-  return [
-    mlVariant(`${prefix}-v1`, '250 ml', 250, prices[0]),
-    mlVariant(`${prefix}-v2`, '500 ml', 500, prices[1]),
-    mlVariant(`${prefix}-v3`, '1 L', 1000, prices[2]),
-    mlVariant(`${prefix}-v4`, '4 L', 4000, prices[3]),
-  ];
-}
-
-export const FEVICOL_MARINE_VARIANTS = createFevicolMlVariants('marine', [180, 320, 580, 1950]);
-export const FEVICOL_SH_VARIANTS = createFevicolMlVariants('sh', [165, 300, 540, 1820]);
-export const FEVICOL_HEATX_VARIANTS = createFevicolMlVariants('heatx', [195, 355, 640, 2150]);
-export const FEVICOL_SPEEDX_VARIANTS = createFevicolMlVariants('speedx', [210, 380, 685, 2300]);
-
-export const JIVANTOR_PRODUCT_VARIANTS: ProductVariant[] = [
-  mlVariant('jiv-v1', '250 ml', 250, 175),
-  mlVariant('jiv-v2', '500 ml', 500, 320),
-  mlVariant('jiv-v3', '1 L', 1000, 580),
-  mlVariant('jiv-v4', '4 L', 4000, 1950),
-  mlVariant('jiv-v5', '10 L', 10000, 4500),
-  mlVariant('jiv-v6', '20 L', 20000, 8500),
-];
-
-function brickVariant(
-  id: string,
-  count: number,
-  price: number,
-  bulkPrice: number,
-): ProductVariant {
-  return {
-    id,
-    label: `${count.toLocaleString('en-IN')} Pieces`,
-    count,
-    price,
-    bulkPrice,
-    inStock: true,
-  };
-}
-
-export const BRICK_PACK_VARIANTS: ProductVariant[] = [
-  brickVariant('b1', 100, 850, 800),
-  brickVariant('b2', 200, 1680, 1560),
-  brickVariant('b3', 300, 2490, 2310),
-  brickVariant('b4', 400, 3280, 3040),
-  brickVariant('b5', 500, 4075, 3750),
-  brickVariant('b6', 1000, 7800, 7200),
-  brickVariant('b7', 2000, 15200, 14000),
-  brickVariant('b8', 3000, 22500, 20700),
-  brickVariant('b9', 4000, 29600, 27200),
-  brickVariant('b10', 5000, 36250, 33000),
-  brickVariant('b11', 6000, 43200, 39000),
-];
-
-function packVariant(
-  id: string,
-  label: string,
-  displayUnit: string,
-  size: number,
-  price: number,
-): ProductVariant {
-  return {
-    id,
-    label,
-    displayUnit,
-    size,
-    sizeUnit: displayUnit,
-    price,
-    bulkPrice: null,
-    inStock: true,
-  };
-}
-
-function bucketVariant(id: string, kg: number, pricePerKg: number): ProductVariant {
-  const price = Math.round(pricePerKg * kg * (kg >= 5 ? 0.97 : 1));
-  return packVariant(id, `${kg} Kg Bucket`, 'Bucket', kg, price);
-}
-
-export function createKgPackVariants(
-  prefix: string,
-  pricePerKg: number,
-  sizes: number[],
-): ProductVariant[] {
-  return sizes.map((kg, i) => bucketVariant(`${prefix}-k${i + 1}`, kg, pricePerKg));
-}
-
 export function getVariantDisplayUnit(variant: ProductVariant | undefined): string {
   if (!variant) return '';
-  return variant.displayUnit ?? variant.label;
+  return (
+    variant.unit ||
+    variant.displayUnit ||
+    variant.sizeUnit ||
+    variant.label ||
+    ''
+  );
+}
+
+/** Customer-facing chip text: "100 Pack", "50 kg", "Pack". */
+export function formatVariantChoiceLabel(variant: ProductVariant): string {
+  const unit = (variant.unit || variant.displayUnit || variant.sizeUnit || '').trim();
+  const value = (variant.value || '').trim();
+  if (value && unit) {
+    if (value.toLowerCase() === unit.toLowerCase()) return unit;
+    return `${value} ${unit}`;
+  }
+  if (variant.label?.trim()) return variant.label.trim();
+  return unit || value || 'Option';
 }
 
 export function productHasStructuredVariants(product: Product): boolean {
-  return Boolean(product.hasVariants && product.productVariants?.length);
+  return (product.productVariants?.length ?? 0) > 0;
 }
 
 export function getDefaultVariantId(product: Product): string | undefined {
@@ -164,7 +49,7 @@ export function getVariantById(
 
 export function getVariantLabels(product: Product): string[] {
   if (product.productVariants?.length) {
-    return product.productVariants.map((v) => v.label);
+    return product.productVariants.map((v) => formatVariantChoiceLabel(v));
   }
   return product.variants ?? [];
 }
@@ -224,7 +109,7 @@ export function shouldOpenAddToCartSheet(product: Product): boolean {
 
 /** True when the sheet should show variant chips. */
 export function sheetShowsVariantPicker(product: Product): boolean {
-  return getVariantCount(product) > 1;
+  return getVariantCount(product) >= 1;
 }
 
 export function getStartingPrice(product: Product): number {
@@ -249,14 +134,35 @@ export function getVariantCount(product: Product): number {
 export function getVariantAvailabilityText(product: Product): string | null {
   const count = getVariantCount(product);
   if (count <= 1) return null;
-  if (product.categoryType === 'bricks') {
-    return `Available in ${count} Pack Sizes`;
-  }
-  return `${count} Variants Available`;
+  return `${count} variants available`;
 }
 
-/** SKU-level unit label (Pieces, CFT, Bags, Bucket, L, Cubic Meter, etc.) */
+export function getVariantChooserLabel(product?: Product): string {
+  const attribute =
+    product?.variantAttribute?.trim() ||
+    product?.productVariants?.[0]?.attribute?.trim();
+  if (attribute) return `Choose ${attribute.toLowerCase()}`;
+
+  // Seeded variants predate the attribute column, so fall back to their sizing fields.
+  const sized = product?.productVariants?.some(
+    (variant) => variant.size != null || variant.sizeUnit,
+  );
+  return sized ? 'Choose size' : 'Choose pack';
+}
+
+/** SKU-level unit label. Prefer the saved catalog / variant unit so Pack/Bag/kg from Admin win. */
 export function getProductSkuUnit(product: Product): string {
+  const fromVariant = product.productVariants?.length
+    ? getVariantDisplayUnit(
+        product.productVariants.reduce((min, variant) =>
+          variant.price < min.price ? variant : min,
+        ),
+      )
+    : '';
+  const saved = (fromVariant || product.unit)?.trim();
+  if (saved && saved.toLowerCase() !== 'ml/l') {
+    return saved;
+  }
   switch (product.categoryType) {
     case 'adhesives':
       return 'L';
@@ -270,11 +176,10 @@ export function getProductSkuUnit(product: Product): string {
     case 'cement':
       return 'Bag';
     case 'wall-repair':
-      return product.unit === 'Bag' ? 'Bag' : 'Bucket';
+      return 'Bucket';
     case 'putty':
       return 'Bucket';
     default:
-      if (product.unit === 'ml/L') return 'L';
-      return product.unit;
+      return saved || 'Bag';
   }
 }

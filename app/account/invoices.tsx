@@ -3,11 +3,9 @@ import {
   ActivityIndicator,
   FlatList,
   Linking,
-  Platform,
   ScrollView,
   Text,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
 import { router, type Href } from 'expo-router';
@@ -35,10 +33,6 @@ import { formatINR } from '@utils/formatCurrency';
 import { shareInvoicePdf } from '@hooks/useInvoices';
 import { safeGoBack } from '@utils/navigation';
 import { showToast } from '@utils/toast';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const FILTERS: { key: InvoiceListFilter; label: string }[] = [
   { key: 'all', label: 'All' },
