@@ -17,9 +17,11 @@ import { sendOtp } from '@services/auth.api';
 import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
 import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
+import { navigateToHomeAfterAuth } from '@utils/navigation';
 import type { ApiError } from '@/types';
 
 const RETURNING_USER_KEY = '@bajriwala/returning_user';
+const DEV_OTP = '123456';
 
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
@@ -31,7 +33,9 @@ const BUTTON_INACTIVE = '#E8DFB8';
 export default function OTPScreen() {
   const phoneNumber = useAuthStore((s) => s.phoneNumber);
   const loginWithOtp = useAuthStore((s) => s.loginWithOtp);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(
+    __DEV__ ? DEV_OTP.split('') : ['', '', '', '', '', ''],
+  );
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -54,7 +58,7 @@ export default function OTPScreen() {
   }, [timer]);
 
   const resendOtp = async () => {
-    setOtp(['', '', '', '', '', '']);
+    setOtp(__DEV__ ? DEV_OTP.split('') : ['', '', '', '', '', '']);
     setTimer(60);
     setErrorMessage(null);
     inputRefs[0].current?.focus();
@@ -83,6 +87,12 @@ export default function OTPScreen() {
       await storage.setItem(RETURNING_USER_KEY, 'true');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      if (__DEV__ && otp.join('') === DEV_OTP) {
+        navigateToHomeAfterAuth();
+        queueMicrotask(() => useAuthStore.getState().consumePendingAction());
+        return;
+      }
+
       if (customer.isNewCustomer || !customer.roleSelected) {
         router.replace('/role-selection');
       } else if (!customer.profileCompleted) {
@@ -92,8 +102,8 @@ export default function OTPScreen() {
         if (!hasSites) {
           router.replace('/delivery-location');
         } else {
-          router.replace('/(tabs)');
-          useAuthStore.getState().consumePendingAction();
+          navigateToHomeAfterAuth();
+          queueMicrotask(() => useAuthStore.getState().consumePendingAction());
         }
       }
     } catch (error) {
@@ -176,6 +186,18 @@ export default function OTPScreen() {
             We&apos;ve sent a 6-digit code to{' '}
             <Text style={{ fontWeight: '800', color: DARK }}>+91 {phoneNumber}</Text>
           </Text>
+          {__DEV__ ? (
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: DARK,
+                textAlign: 'center',
+                marginBottom: 8,
+              }}>
+              Dev OTP: {DEV_OTP}
+            </Text>
+          ) : null}
 
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 28 }}>
             <Text style={{ color: GOLD, fontSize: 14, fontWeight: '700' }}>Change Number</Text>

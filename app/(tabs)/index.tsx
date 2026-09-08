@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router, useFocusEffect, type Href } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -51,6 +51,7 @@ import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
+import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
 import { useSearch } from '@hooks/useSearch';
 import { requireAuth } from '@utils/requireAuth';
 import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
@@ -157,18 +158,18 @@ export default function HomeScreen() {
     refresh: refreshCms,
   } = useCmsHome();
 
+  const isFocused = useSafeIsFocused();
   const {
     featured: deliveryPromotion,
     isLoading: deliveryPromoLoading,
     refresh: refreshDeliveryPromotions,
   } = useDeliveryPromotions();
 
-  useFocusEffect(
-    useCallback(() => {
-      void refreshCms();
-      void refreshDeliveryPromotions();
-    }, [refreshCms, refreshDeliveryPromotions]),
-  );
+  useEffect(() => {
+    if (!isFocused) return;
+    void refreshCms();
+    void refreshDeliveryPromotions();
+  }, [isFocused, refreshCms, refreshDeliveryPromotions]);
 
   const {
     featured: featuredProducts,
