@@ -148,6 +148,10 @@ export interface Product {
   specsMap?: Record<string, string> | null;
   carouselUrls?: string[];
   gallery?: string[];
+  /** Structured product media from API (images + optional video). */
+  media?: ProductMediaItem[];
+  videoUrl?: string | null;
+  videoThumbnailUrl?: string | null;
   relatedProducts?: Product[];
   hubInventory?: Array<{
     hubId: string;
@@ -155,6 +159,15 @@ export interface Product {
     availableQty: number;
     variantId?: string | null;
   }>;
+}
+
+export interface ProductMediaItem {
+  id: string;
+  type: 'IMAGE' | 'VIDEO';
+  url: string;
+  thumbnailUrl?: string | null;
+  isPrimary?: boolean;
+  sortOrder?: number;
 }
 
 export interface TechSpecItem {

@@ -22,9 +22,15 @@ export interface ApiProductImage {
   id: string;
   url: string;
   imageUrl?: string;
+  type?: 'IMAGE' | 'VIDEO';
   altText?: string | null;
   isPrimary: boolean;
   displayOrder: number;
+  sortOrder?: number;
+  thumbnailUrl?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  storageKey?: string | null;
 }
 
 export interface ApiProductVariant {
@@ -108,6 +114,8 @@ export interface ApiProduct {
   /** Alias of thumbnail — primary product image (R2 URL). */
   imageUrl?: string | null;
   gallery?: string[];
+  /** Full media collection (images + optional video). Prefer over images alone. */
+  media?: ApiProductImage[];
   bulkPrice?: number | null;
   bulkThreshold: number;
   bulkLabel?: string | null;

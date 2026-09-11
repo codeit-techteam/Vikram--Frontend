@@ -3,7 +3,7 @@ import {
   resolveCategoryImageSource,
   resolveProductImageSource,
 } from '@utils/catalogPlaceholders';
-import { normalizeMediaUrl } from '@utils/media';
+import { isProductVideoUrl, normalizeMediaUrl } from '@utils/media';
 import { normalizeBulkLabel, normalizeUnitLabel } from '@utils/units';
 import {
   commerceVariantKey,
@@ -164,14 +164,39 @@ function adaptVariant(variant: ApiProductVariant): ProductVariant {
   };
 }
 
+function resolveMediaType(item: {
+  type?: string | null;
+  url?: string | null;
+  imageUrl?: string | null;
+  mimeType?: string | null;
+  altText?: string | null;
+}): 'IMAGE' | 'VIDEO' {
+  if (item.type === 'VIDEO') return 'VIDEO';
+  const alt = item.altText?.trim().toUpperCase();
+  if (alt === 'PRODUCT_VIDEO' || alt === '__PRODUCT_VIDEO__' || alt === 'VIDEO') {
+    return 'VIDEO';
+  }
+  if (item.mimeType?.toLowerCase().startsWith('video/')) return 'VIDEO';
+  if (isProductVideoUrl(item.url) || isProductVideoUrl(item.imageUrl)) {
+    return 'VIDEO';
+  }
+  return 'IMAGE';
+}
+
 function resolvePrimaryImageUrl(dto: ApiProduct): string | null {
+  const mediaImages = (dto.media ?? dto.images ?? []).filter(
+    (img) => resolveMediaType(img) !== 'VIDEO',
+  );
   const candidates = [
     dto.imageUrl,
     dto.thumbnail,
-    dto.images?.find((img) => img.isPrimary)?.url,
-    dto.images?.find((img) => img.isPrimary)?.imageUrl,
+    mediaImages.find((img) => img.isPrimary)?.url,
+    mediaImages.find((img) => img.isPrimary)?.imageUrl,
+    mediaImages[0]?.url,
+    mediaImages[0]?.imageUrl,
+    dto.images?.find((img) => img.isPrimary && resolveMediaType(img) !== 'VIDEO')
+      ?.url,
     dto.images?.[0]?.url,
-    dto.images?.[0]?.imageUrl,
     dto.gallery?.[0],
   ];
   for (const candidate of candidates) {
@@ -252,13 +277,51 @@ export function adaptApiProduct(dto: ApiProduct): Product {
   const gallery =
     (dto.gallery ?? [])
       .map((url) => normalizeMediaUrl(url))
-      .filter((url): url is string => Boolean(url))
+      .filter((url): url is string => Boolean(url) && !isProductVideoUrl(url))
       .concat(
         (dto.images ?? [])
+          .filter((img) => resolveMediaType(img) !== 'VIDEO')
           .map((img) => normalizeMediaUrl(img.url || img.imageUrl || null))
           .filter((url): url is string => Boolean(url)),
       )
       .filter((url, index, arr) => arr.indexOf(url) === index) || [];
+
+  const mediaSource = (dto.media?.length ? dto.media : dto.images) ?? [];
+  const media = mediaSource
+    .map((item) => {
+      const url = normalizeMediaUrl(item.url || item.imageUrl || null);
+      if (!url) return null;
+      const type = resolveMediaType({ ...item, url });
+      return {
+        id: item.id,
+        type,
+        url,
+        thumbnailUrl: normalizeMediaUrl(item.thumbnailUrl ?? null),
+        isPrimary: type === 'IMAGE' ? item.isPrimary : false,
+        sortOrder: item.sortOrder ?? item.displayOrder,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  // Ensure gallery-only video URLs still become playable media slides.
+  for (const url of dto.gallery ?? []) {
+    const normalized = normalizeMediaUrl(url);
+    if (!normalized || !isProductVideoUrl(normalized)) continue;
+    if (media.some((item) => item.url === normalized || item.type === 'VIDEO')) {
+      continue;
+    }
+    media.push({
+      id: `gallery-video-${media.length}`,
+      type: 'VIDEO',
+      url: normalized,
+      thumbnailUrl: null,
+      isPrimary: false,
+      sortOrder: media.length,
+    });
+  }
+
+  const videoItem = media.find((item) => item.type === 'VIDEO');
   const stockLeft = dto.availableStock ?? dto.stockLeft ?? null;
   const firstBulk = bulkPricing[0];
 
@@ -347,6 +410,9 @@ export function adaptApiProduct(dto: ApiProduct): Product {
     specsMap: dto.specs ?? null,
     carouselUrls: gallery,
     gallery,
+    media,
+    videoUrl: videoItem?.url ?? null,
+    videoThumbnailUrl: videoItem?.thumbnailUrl ?? null,
     hubInventory: dto.hubInventory,
     relatedProducts: dto.relatedProducts?.map((p) => adaptApiProduct(p)),
   };

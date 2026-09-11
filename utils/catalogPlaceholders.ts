@@ -3,6 +3,7 @@ import type { ImageSourcePropType } from 'react-native';
 import { images } from '@constants/images';
 import {
   isEmptyPlaceholderUri,
+  isProductVideoUrl,
   mediaSource,
   normalizeMediaUrl,
 } from '@utils/media';
@@ -96,6 +97,7 @@ export function resolveProductCarouselSources(opts: {
 }): ImageSourcePropType[] {
   const sources: ImageSourcePropType[] = [];
   for (const url of opts.urls ?? []) {
+    if (isProductVideoUrl(url)) continue;
     const source = mediaSource(url, { updatedAt: opts.updatedAt });
     if (source) sources.push(source);
   }

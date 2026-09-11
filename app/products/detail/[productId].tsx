@@ -315,7 +315,10 @@ export default function ProductDetailScreen() {
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={() => void refresh()} />
         }>
-        <ProductImageCarousel images={carouselImages} />
+        <ProductImageCarousel
+          images={carouselImages}
+          media={product?.media}
+        />
 
         <View className="px-4 pt-4">
           <View className="flex-row flex-wrap items-center">

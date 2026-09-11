@@ -9,6 +9,16 @@ export function isRemoteMediaUrl(url?: string | null): boolean {
   return value.startsWith('http://') || value.startsWith('https://');
 }
 
+/** True for product / CMS video URLs (extension, mime path, or R2 videos/ folder). */
+export function isProductVideoUrl(url?: string | null): boolean {
+  if (!url?.trim()) return false;
+  const value = url.trim().toLowerCase();
+  const path = value.split('?')[0].split('#')[0];
+  if (/\.(mp4|webm|mov|m4v)$/.test(path)) return true;
+  if (path.includes('/videos/') || path.includes('/products/video/')) return true;
+  return false;
+}
+
 export function isEmptyPlaceholderUri(url?: string | null): boolean {
   if (!url) return true;
   return (
