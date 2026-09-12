@@ -337,9 +337,14 @@ function mapPaymentStatus(raw: unknown): Order['paymentStatus'] {
   switch (normalized) {
     case 'paid':
     case 'collected':
+    case 'authorized':
+    case 'captured':
       return 'paid';
     case 'failed':
       return 'failed';
+    case 'cancelled':
+    case 'canceled':
+      return 'cancelled';
     case 'refunded':
       return 'refunded';
     case 'pending':
@@ -432,10 +437,14 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     paymentMethodLabel:
       paymentMethod === 'CASH'
         ? 'Cash on Delivery'
-        : raw.paymentMethodLabel
-          ? String(raw.paymentMethodLabel)
-          : paymentMethod,
-    transactionId: raw.transactionId ? String(raw.transactionId) : undefined,
+        : paymentMethod === 'RAZORPAY'
+          ? 'Paid Online'
+          : raw.paymentMethodLabel
+            ? String(raw.paymentMethodLabel)
+            : paymentMethod,
+    transactionId:
+      (raw.transactionId && String(raw.transactionId)) ||
+      (payment.providerPaymentId ? String(payment.providerPaymentId) : undefined),
     shippingAddress: {
       name: String(addressRaw.name ?? customer.fullName ?? addressRaw.label ?? ''),
       phone: String(addressRaw.phone ?? customer.phone ?? ''),

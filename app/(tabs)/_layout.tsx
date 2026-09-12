@@ -1,4 +1,5 @@
-import { StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { Alert, BackHandler, Platform, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -6,8 +7,35 @@ import { AccountTabIcon } from '@components/account/AccountTabIcon';
 import { BottomTabIcon, TAB_BAR_THEME, TabIcons } from '@components/BottomNavigation';
 import { layout } from '@constants/spacing';
 import { typography } from '@constants/typography';
+import { usePaymentRecovery } from '@hooks/usePaymentRecovery';
+import { useIsAtTabRoot } from '@hooks/useSafeIsFocused';
 import { useTranslation } from '@store/languageStore';
 import { useOrderStore } from '@store/orderStore';
+
+/**
+ * Android back-to-exit on tab roots only.
+ * Uses NavigationContainerRef (never usePathname) so Stack screens like /checkout
+ * still receive a normal back press.
+ */
+function useAndroidTabExitHandler() {
+  const atTabRoot = useIsAtTabRoot();
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const backAction = () => {
+      if (!atTabRoot) return false;
+      Alert.alert('Exit Bajriwala?', 'Are you sure you want to exit?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Exit', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => sub.remove();
+  }, [atTabRoot]);
+}
 
 export default function TabLayout() {
   const { t } = useTranslation();
@@ -16,6 +44,9 @@ export default function TabLayout() {
   const activeOrders = useOrderStore(
     (st) => st.orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length,
   );
+
+  useAndroidTabExitHandler();
+  usePaymentRecovery();
 
   return (
     <Tabs

@@ -134,12 +134,21 @@ api.interceptors.response.use(
     const sentAuth = requestHadAuthorization(originalConfig);
 
     if (__DEV__) {
+      const status = error.response?.status;
+      const reqUrl = error.config?.url ?? '';
       // Guest 401s (no Bearer token) are expected — don't surface them in LogBox.
-      if (!(isUnauthorized && !sentAuth)) {
+      const quietGuest401 = isUnauthorized && !sentAuth;
+      // Payment recovery probes older backends that may not have Razorpay routes yet.
+      const quietMissingPaymentsRoute =
+        status === 404 &&
+        /\/payments\/razorpay\/(config|pending|status\/[^/?]+|cancel)(\?|$)/.test(
+          reqUrl,
+        );
+      if (!quietGuest401 && !quietMissingPaymentsRoute) {
         const method = (error.config?.method ?? 'get').toUpperCase();
-        const url = `${error.config?.baseURL ?? ''}${error.config?.url ?? ''}`;
+        const url = `${error.config?.baseURL ?? ''}${reqUrl}`;
         console.warn(
-          `[api] ✗ ${error.response?.status ?? 'NETWORK'} ${method} ${url}`,
+          `[api] ✗ ${status ?? 'NETWORK'} ${method} ${url}`,
           error.response?.data?.message ?? error.message,
         );
       }

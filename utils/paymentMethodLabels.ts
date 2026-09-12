@@ -1,6 +1,8 @@
 import type { PaymentMethodId } from '@constants/paymentMethods';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  razorpay: 'Paid Online',
+  RAZORPAY: 'Paid Online',
   upi: 'Pay with UPI',
   cards: 'Pay with Cards',
   cash_on_delhivery: 'Cash on Delhivery',

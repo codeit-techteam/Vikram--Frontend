@@ -283,8 +283,13 @@ export const useCartStore = create<CartState>()(
 
       togglePoints: () => set((state) => ({ pointsApplied: !state.pointsApplied })),
 
-      clearCart: () =>
-        set((state) => ({ items: [], cartBumpVersion: state.cartBumpVersion + 1 })),
+      clearCart: () => {
+        set((state) => ({ items: [], cartBumpVersion: state.cartBumpVersion + 1 }));
+        // Explicit user/host clear — wipe server cart without going through empty sync.
+        void import('@services/cart.api')
+          .then(({ clearServerCart }) => clearServerCart())
+          .catch(() => undefined);
+      },
 
       clear: () => get().clearCart(),
 

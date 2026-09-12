@@ -24,6 +24,11 @@ interface CheckoutDeliveryQuoteProps {
   onRetry?: () => void;
   onChangeAddress?: () => void;
   onAddAddress?: () => void;
+  onClearCart?: () => void;
+}
+
+function isProductMissingMessage(message?: string | null): boolean {
+  return Boolean(message && /product not found/i.test(message));
 }
 
 export function CheckoutDeliveryQuote({
@@ -34,12 +39,17 @@ export function CheckoutDeliveryQuote({
   onRetry,
   onChangeAddress,
   onAddAddress,
+  onClearCart,
 }: CheckoutDeliveryQuoteProps) {
   const { t } = useTranslation();
   const vehicle = getVehicleTier(preview?.deliveryVehicleType);
   const vehicleLabel =
     preview?.deliveryVehicleDisplayName || vehicle.label;
   const rawMessage = preview?.deliveryMessage?.trim() || '';
+  const productMissingMessage =
+    [errorMessage, preview?.readinessMessage, preview?.deliveryMessage].find(
+      isProductMissingMessage,
+    ) ?? null;
   const etaLabel = (() => {
     if (preferenceLabel?.trim()) return preferenceLabel.trim();
     if (rawMessage && !/unavailable/i.test(rawMessage)) return rawMessage;
@@ -101,7 +111,34 @@ export function CheckoutDeliveryQuote({
     );
   }
 
-  if (status === 'error') {
+  if (status === 'error' || productMissingMessage) {
+    if (productMissingMessage) {
+      return (
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Ionicons name="alert-circle-outline" size={18} color="#FF3B30" />
+            <Text style={[styles.title, { flex: 1 }]}>
+              Cart products are out of sync
+            </Text>
+          </View>
+          <Text style={styles.body}>
+            {productMissingMessage}. This usually happens after switching between
+            DigitalOcean and a local backend. Clear the cart and add products again
+            from Catalog.
+          </Text>
+          {onClearCart ? (
+            <ScaledPressable onPress={onClearCart} style={styles.primaryBtn}>
+              <Text style={styles.primaryBtnText}>Clear cart & browse</Text>
+            </ScaledPressable>
+          ) : onRetry ? (
+            <ScaledPressable onPress={onRetry} style={styles.linkBtn}>
+              <Text style={styles.linkText}>{t('retry')}</Text>
+            </ScaledPressable>
+          ) : null}
+        </View>
+      );
+    }
+
     return (
       <View style={styles.card}>
         <View style={styles.row}>

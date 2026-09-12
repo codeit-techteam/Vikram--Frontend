@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -20,8 +20,8 @@ import { CheckoutDeliveryQuote } from '@components/checkout/CheckoutDeliveryQuot
 import type { CheckoutDeliveryStatus } from '@components/checkout/CheckoutDeliveryQuote';
 import { DeliveryDestinationCard } from '@components/checkout/DeliveryDestinationCard';
 import { DeliveryPreferenceSection } from '@components/checkout/DeliveryPreferenceSection';
-import { PaymentComingSoonSheet } from '@components/checkout/PaymentComingSoonSheet';
 import { PaymentMethodCard } from '@components/checkout/PaymentMethodCard';
+import { RazorpayWebCheckout } from '@components/checkout/RazorpayWebCheckout';
 import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
 import { useSites } from '@hooks/useSites';
 import { GstBottomSheet } from '@components/gst/GstBottomSheet';
@@ -43,6 +43,11 @@ import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
 import { useServiceability } from '@hooks/useServiceability';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
 import { placeOrder } from '@services/orders.api';
+import {
+  cancelRazorpayPayment,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from '@services/payments.api';
 import { syncLocalCartToServer } from '@services/cart.api';
 import {
   fetchCheckoutPreview,
@@ -66,6 +71,14 @@ import {
   type PaymentMethodId,
 } from '@constants/paymentMethods';
 import { isValidDeliveryCoordinates } from '@utils/geo';
+import {
+  buildRazorpayOptions,
+  openNativeRazorpayCheckout,
+  RazorpayCheckoutError,
+  type NativeRazorpayOptions,
+  type RazorpayCheckoutSuccess,
+} from '@lib/openRazorpayCheckout';
+import { clearPendingPayment, savePendingPayment } from '@lib/pendingPayment';
 import type { GstValidationResult } from '@/types/gst';
 import type {
   DeliveryPreferenceType,
@@ -76,7 +89,6 @@ const QUICK_CHIP_KEYS = ['callOnArrival', 'leaveAtSecurity', 'heavyVehicleAccess
 
 type ActiveSheet =
   | { type: 'gst' }
-  | { type: 'payment'; title: string; message: string }
   | null;
 
 function getApiErrorMessage(error: unknown): string {
@@ -218,6 +230,8 @@ export default function CheckoutScreen() {
   });
 
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const customer = useAuthStore((s) => s.customer);
+  const { retryOrderId } = useLocalSearchParams<{ retryOrderId?: string }>();
   const availablePoints = useLoyaltyStore((s) => s.totalPoints);
   const availableValue = useLoyaltyStore((s) => s.availableValue);
   const refreshLoyalty = useLoyaltyStore((s) => s.refresh);
@@ -266,6 +280,13 @@ export default function CheckoutScreen() {
   const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
+  const [webCheckoutOptions, setWebCheckoutOptions] =
+    useState<NativeRazorpayOptions | null>(null);
+  const onlineSessionRef = useRef<{
+    internalOrderId: string;
+    orderNumber: string;
+    razorpayOrderId: string | null;
+  } | null>(null);
 
   const savingsOpacity = useSharedValue(1);
 
@@ -592,15 +613,8 @@ export default function CheckoutScreen() {
   }, [preferenceType, selectedSlotId, checkoutPreview?.deliveryOptions, scheduleDate]);
 
   const handlePaymentMethodPress = (method: (typeof PAYMENT_METHODS)[number]) => {
-    if (method.comingSoon) {
-      setActiveSheet({
-        type: 'payment',
-        title: t(method.comingSoonTitleKey),
-        message: t(method.comingSoonMessageKey),
-      });
-      return;
-    }
-
+    // UPI / Cards both open Razorpay Standard Checkout after Place Order.
+    // Do not show the legacy "Coming Soon" sheet.
     if (method.enabled) {
       setPaymentMethod(method.id);
     }
@@ -617,6 +631,209 @@ export default function CheckoutScreen() {
     await saveGstDetails(payload);
     triggerSuccessBanner();
     setActiveSheet(null);
+  };
+
+  const finishPlacedOrder = async (input: {
+    orderId: string;
+    orderNumber?: string;
+    paymentId?: string;
+    paidOnline?: boolean;
+    placed?: Record<string, unknown>;
+  }) => {
+    setPaySuccess(true);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const placed = input.placed ?? {};
+    const apiOrder = normalizeApiOrder({
+      ...placed,
+      id: input.orderId,
+      orderNumber: input.orderNumber ?? placed.orderNumber,
+    });
+    const orderId = apiOrder.id || input.orderId;
+    const preference = (
+      placed as {
+        deliveryPreference?: {
+          label?: string;
+          scheduledSlotLabel?: string;
+          scheduledDateLabel?: string;
+        };
+      }
+    ).deliveryPreference;
+    const deliveryEtaLabel =
+      preference?.scheduledDateLabel && preference.scheduledSlotLabel
+        ? `${preference.scheduledDateLabel}, ${preference.scheduledSlotLabel}`
+        : selectedSlot
+          ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
+          : checkoutPreview?.deliveryOptions?.asap.etaLabel ||
+            apiOrder.expectedDelivery ||
+            displayPreview?.deliveryMessage ||
+            displayPreview?.deliveringBy ||
+            t('updatingDeliveryEstimate');
+
+    if (orderId) {
+      queryClient.setQueryData(['order', orderId], apiOrder);
+    }
+    await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+    if (orderId) {
+      void queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+    }
+
+    addOrder(
+      buildOrderFromCheckout({
+        id: orderId,
+        items: [...items],
+        total: checkoutTotal,
+        site: selectedSite!,
+        paymentMethod,
+        deliveryETA: deliveryEtaLabel,
+      }),
+    );
+
+    await clearPendingPayment();
+    clearCart();
+    useCartStore.setState({ pointsApplied: false });
+    void useLoyaltyStore.getState().refresh();
+    setPaying(false);
+    router.replace({
+      pathname: '/order-success',
+      params: {
+        orderId,
+        orderNumber: input.orderNumber ?? '',
+        paymentId: input.paymentId ?? '',
+        amount: String(checkoutTotal),
+        paidOnline: input.paidOnline ? '1' : '0',
+      },
+    });
+  };
+
+  const verifyOnlinePayment = async (
+    session: {
+      internalOrderId: string;
+      orderNumber: string;
+      razorpayOrderId: string | null;
+    },
+    checkoutResult: RazorpayCheckoutSuccess,
+  ) => {
+    try {
+      const verified = await verifyRazorpayPayment({
+        internalOrderId: session.internalOrderId,
+        razorpay_payment_id: checkoutResult.razorpay_payment_id,
+        razorpay_order_id: checkoutResult.razorpay_order_id,
+        razorpay_signature: checkoutResult.razorpay_signature,
+      });
+      await finishPlacedOrder({
+        orderId: verified.internalOrderId,
+        orderNumber: verified.orderNumber,
+        paymentId: verified.providerPaymentId ?? undefined,
+        paidOnline: true,
+        placed: verified as unknown as Record<string, unknown>,
+      });
+    } catch (error) {
+      setPaying(false);
+      router.replace({
+        pathname: '/payment-result',
+        params: {
+          status: 'checking',
+          orderId: session.internalOrderId,
+          message: getApiErrorMessage(error),
+        },
+      });
+    }
+  };
+
+  const startOnlineCheckout = async (session: {
+    keyId: string;
+    razorpayOrderId: string | null;
+    amount: number;
+    currency: string;
+    internalOrderId: string;
+    orderNumber: string;
+    alreadyPaid?: boolean;
+    name: string;
+    description: string;
+    customer: { name: string; email: string; phone: string };
+  }) => {
+    if (session.alreadyPaid) {
+      await finishPlacedOrder({
+        orderId: session.internalOrderId,
+        orderNumber: session.orderNumber,
+        paidOnline: true,
+      });
+      return;
+    }
+
+    if (!session.razorpayOrderId || !session.keyId) {
+      setPaying(false);
+      Alert.alert(
+        t('paymentFailedTitle'),
+        'Unable to start secure checkout. Please try again.',
+      );
+      return;
+    }
+
+    await savePendingPayment({
+      internalOrderId: session.internalOrderId,
+      orderNumber: session.orderNumber,
+      razorpayOrderId: session.razorpayOrderId,
+      amountPaise: session.amount,
+      currency: session.currency,
+      createdAt: new Date().toISOString(),
+    });
+    onlineSessionRef.current = {
+      internalOrderId: session.internalOrderId,
+      orderNumber: session.orderNumber,
+      razorpayOrderId: session.razorpayOrderId,
+    };
+
+    const options = buildRazorpayOptions({
+      keyId: session.keyId,
+      amountPaise: session.amount,
+      currency: session.currency,
+      razorpayOrderId: session.razorpayOrderId,
+      name: session.name,
+      description: session.description,
+      customer: {
+        name: session.customer.name || customer?.name || '',
+        email: session.customer.email || customer?.email || '',
+        phone: session.customer.phone || customer?.phone || '',
+      },
+      checkoutMethod: paymentMethod === 'upi' ? 'upi' : 'cards',
+    });
+
+    try {
+      const checkoutResult = await openNativeRazorpayCheckout(options);
+      await verifyOnlinePayment(session, checkoutResult);
+    } catch (error) {
+      if (error instanceof RazorpayCheckoutError && error.nativeUnavailable) {
+        setWebCheckoutOptions(options);
+        return;
+      }
+      if (error instanceof RazorpayCheckoutError && error.cancelled) {
+        try {
+          await cancelRazorpayPayment(session.internalOrderId);
+        } catch {
+          // Status will reconcile on retry.
+        }
+        setPaying(false);
+        router.replace({
+          pathname: '/payment-result',
+          params: {
+            status: 'cancelled',
+            orderId: session.internalOrderId,
+          },
+        });
+        return;
+      }
+      setPaying(false);
+      router.replace({
+        pathname: '/payment-result',
+        params: {
+          status: 'failed',
+          orderId: session.internalOrderId,
+          message: error instanceof Error ? error.message : undefined,
+        },
+      });
+    }
   };
 
   const handlePay = async () => {
@@ -652,13 +869,30 @@ export default function CheckoutScreen() {
       return;
     }
 
+    const isOnline = paymentMethod === 'upi' || paymentMethod === 'cards';
+
     setPaying(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       await syncLocalCartToServer(items);
-
       const remark = instructions.trim().slice(0, 250) || undefined;
+
+      if (isOnline) {
+        const session = await createRazorpayOrder({
+          addressId: selectedSite.id,
+          notes: remark,
+          loyaltyPointsToRedeem: loyaltyPoints > 0 ? loyaltyPoints : undefined,
+          deliveryPreferenceType: preferenceType,
+          scheduledSlotId: selectedSlotId ?? undefined,
+          deliveryCustomerRemark: remark,
+          internalOrderId: retryOrderId,
+          checkoutMethod: paymentMethod === 'upi' ? 'upi' : 'card',
+        });
+        await startOnlineCheckout(session);
+        return;
+      }
+
       const placed = await placeOrder({
         addressId: selectedSite.id,
         notes: remark,
@@ -669,71 +903,16 @@ export default function CheckoutScreen() {
         deliveryCustomerRemark: remark,
       });
 
-      setPaySuccess(true);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
       const apiOrder = normalizeApiOrder(placed as Record<string, unknown>);
-      const orderId = apiOrder.id || apiOrder.orderNumber;
-      const preference = (
-        placed as {
-          deliveryPreference?: {
-            label?: string;
-            scheduledSlotLabel?: string;
-            scheduledDateLabel?: string;
-          };
-        }
-      ).deliveryPreference;
-      const deliveryEtaLabel =
-        preference?.scheduledDateLabel && preference.scheduledSlotLabel
-          ? `${preference.scheduledDateLabel}, ${preference.scheduledSlotLabel}`
-          : selectedSlot
-            ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
-            : checkoutPreview?.deliveryOptions?.asap.etaLabel ||
-              apiOrder.expectedDelivery ||
-              displayPreview?.deliveryMessage ||
-              displayPreview?.deliveringBy ||
-              t('updatingDeliveryEstimate');
-
-      // Seed React Query so Track/Details bind to API order immediately.
-      if (orderId) {
-        queryClient.setQueryData(['order', orderId], apiOrder);
-      }
-      await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
-      if (orderId) {
-        void queryClient.invalidateQueries({ queryKey: ['order', orderId] });
-      }
-
-      // Brief local success toast only — Track screens fetch by id from API.
-      addOrder(
-        buildOrderFromCheckout({
-          id: orderId || String((placed as { orderNumber?: string }).orderNumber),
-          items: [...items],
-          total: checkoutTotal,
-          site: selectedSite,
-          paymentMethod,
-          deliveryETA: deliveryEtaLabel,
-        }),
-      );
-
-      clearCart();
-      useCartStore.setState({ pointsApplied: false });
-      void useLoyaltyStore.getState().refresh();
-      setPaying(false);
-      router.replace({
-        pathname: '/order-success',
-        params: { orderId },
+      await finishPlacedOrder({
+        orderId: apiOrder.id || apiOrder.orderNumber,
+        orderNumber: String((placed as { orderNumber?: string }).orderNumber ?? ''),
+        placed: placed as Record<string, unknown>,
       });
     } catch (error) {
       setPaying(false);
       setPaySuccess(false);
-      const axiosData = (error as { response?: { data?: { message?: string | string[] } } })
-        ?.response?.data;
-      const apiMessage = Array.isArray(axiosData?.message)
-        ? axiosData.message.join(', ')
-        : axiosData?.message;
-      const message =
-        apiMessage ||
-        (error instanceof Error ? error.message : 'Unable to place order');
+      const message = getApiErrorMessage(error) || 'Unable to place order';
       Alert.alert('Order failed', message);
     }
   };
@@ -818,6 +997,10 @@ export default function CheckoutScreen() {
           }}
           onChangeAddress={openAddressPicker}
           onAddAddress={openAddressPicker}
+          onClearCart={() => {
+            clearCart();
+            router.replace('/(tabs)/catalog');
+          }}
           preferenceLabel={
             selectedSlot
               ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
@@ -959,7 +1142,7 @@ export default function CheckoutScreen() {
             title={t(method.titleKey)}
             subtitle={t(method.subtitleKey)}
             description={t(method.descriptionKey)}
-            badge={method.comingSoon ? t('paymentComingSoon') : t('paymentAvailable')}
+            badge={t('paymentAvailable')}
             selected={paymentMethod === method.id}
             onPress={() => handlePaymentMethodPress(method)}
           />
@@ -994,17 +1177,53 @@ export default function CheckoutScreen() {
               <Text className="ml-2 text-base font-bold text-onPrimary">{t('confirmed')}!</Text>
             </>
           ) : (
-            <Text className="text-base font-bold text-onPrimary">{t('payConfirmOrder')} →</Text>
+            <Text className="text-base font-bold text-onPrimary">
+              {paymentMethod === 'cash_on_delhivery'
+                ? `${t('payConfirmOrder')} →`
+                : `${t('paySecurely')} →`}
+            </Text>
           )}
         </ScaledPressable>
       </ScrollView>
       </SafeAreaView>
 
-      <PaymentComingSoonSheet
-        visible={activeSheet?.type === 'payment'}
-        title={activeSheet?.type === 'payment' ? activeSheet.title : ''}
-        message={activeSheet?.type === 'payment' ? activeSheet.message : ''}
-        onClose={() => setActiveSheet(null)}
+      <RazorpayWebCheckout
+        visible={Boolean(webCheckoutOptions)}
+        options={webCheckoutOptions}
+        onSuccess={(result) => {
+          const session = onlineSessionRef.current;
+          setWebCheckoutOptions(null);
+          if (!session) {
+            setPaying(false);
+            return;
+          }
+          void verifyOnlinePayment(session, result);
+        }}
+        onCancel={() => {
+          const session = onlineSessionRef.current;
+          setWebCheckoutOptions(null);
+          setPaying(false);
+          if (session) {
+            void cancelRazorpayPayment(session.internalOrderId).catch(() => undefined);
+            router.replace({
+              pathname: '/payment-result',
+              params: { status: 'cancelled', orderId: session.internalOrderId },
+            });
+          }
+        }}
+        onFailure={(message) => {
+          const session = onlineSessionRef.current;
+          setWebCheckoutOptions(null);
+          setPaying(false);
+          router.replace({
+            pathname: '/payment-result',
+            params: {
+              status: 'failed',
+              orderId: session?.internalOrderId || '',
+              message,
+            },
+          });
+        }}
       />
 
       <GstBottomSheet

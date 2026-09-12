@@ -22,9 +22,16 @@ import { useOrderStore } from '@store/orderStore';
 export default function OrderSuccessScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
-  const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const { orderId, orderNumber, paymentId, amount, paidOnline } = useLocalSearchParams<{
+    orderId: string;
+    orderNumber?: string;
+    paymentId?: string;
+    amount?: string;
+    paidOnline?: string;
+  }>();
   const order = useOrderStore((s) => (orderId ? s.getOrder(orderId) : undefined));
-  const displayId = orderId ?? order?.id ?? 'BJW-982441';
+  const displayId = orderNumber || orderId || order?.id || 'BJW-982441';
+  const isPaidOnline = paidOnline === '1';
   const hasGst = useGstStore((s) => s.verified);
 
   const checkScale = useSharedValue(0);
@@ -85,8 +92,29 @@ export default function OrderSuccessScreen() {
             className="h-24 w-24 items-center justify-center rounded-full bg-primary">
             <Ionicons name="checkmark" size={48} color="#FFFFFF" />
           </Animated.View>
-          <Text className="mt-6 text-2xl font-bold text-text">{t('orderConfirmed')}</Text>
-          <Text className="mt-2 text-sm font-semibold text-primary">ID: #{displayId}</Text>
+          <Text className="mt-6 text-2xl font-bold text-text">
+            {isPaidOnline ? t('paymentSuccessful') : t('orderConfirmed')}
+          </Text>
+          <Text className="mt-2 text-sm font-semibold text-primary">
+            {t('orderConfirmed')} · #{displayId}
+          </Text>
+
+          {isPaidOnline ? (
+            <View className="mt-4 w-full rounded-card border border-border p-4">
+              <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
+                {t('paymentMethod').toUpperCase()}
+              </Text>
+              <Text className="mt-2 text-sm font-bold text-text">{t('paidOnline')}</Text>
+              {amount ? (
+                <Text className="mt-1 text-sm text-text-secondary">₹{amount}</Text>
+              ) : null}
+              {paymentId ? (
+                <Text className="mt-2 text-xs text-text-secondary">
+                  {t('paymentIdLabel')}: {paymentId}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {hasGst ? (
             <View className="mt-4">
@@ -168,9 +196,21 @@ export default function OrderSuccessScreen() {
           </View>
 
           <ScaledPressable
-            onPress={() => router.push(`/orders/view/${displayId}`)}
+            onPress={() => router.push(`/orders/view/${orderId || displayId}`)}
             className="mt-6 w-full items-center rounded-pill bg-primary py-4">
-            <Text className="text-base font-bold text-onPrimary">{t('viewOrderBtn')}</Text>
+            <Text className="text-base font-bold text-onPrimary">{t('trackOrder')}</Text>
+          </ScaledPressable>
+          <ScaledPressable
+            onPress={() => router.push(`/orders/view/${orderId || displayId}`)}
+            className="mt-3 w-full items-center rounded-pill border border-border py-4">
+            <Text className="text-base font-bold text-text">{t('viewOrderBtn')}</Text>
+          </ScaledPressable>
+          <ScaledPressable
+            onPress={() => router.replace('/(tabs)')}
+            className="mt-3 py-3">
+            <Text className="text-sm font-semibold text-text-secondary">
+              {t('continueShopping')}
+            </Text>
           </ScaledPressable>
         </View>
       </ScrollView>

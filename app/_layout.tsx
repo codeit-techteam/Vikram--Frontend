@@ -1,8 +1,7 @@
 import '../global.css';
 
 import { useEffect } from 'react';
-import { Alert, BackHandler, Platform } from 'react-native';
-import { Stack, usePathname } from 'expo-router';
+import { Stack } from 'expo-router';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -19,47 +18,19 @@ import { QueryProvider } from '@providers/QueryProvider';
 import { RealtimeProvider } from '@providers/RealtimeProvider';
 import { PushNotificationProvider } from '@providers/PushNotificationProvider';
 import { startCartServerSync } from '@services/cart.api';
+import { reconcileCartWithApiHost } from '@lib/reconcileCartWithApiHost';
 import { useAuthStore } from '@store/useAuthStore';
 
 SplashScreen.preventAutoHideAsync();
-
-const TAB_ROUTES = ['/', '/(tabs)', '/(tabs)/catalog', '/(tabs)/orders', '/(tabs)/account'];
-
-function isTabRoot(pathname: string) {
-  return TAB_ROUTES.includes(pathname);
-}
-
-/** Keep this out of RootLayout so the Stack does not remount on every route change. */
-function AndroidTabExitHandler() {
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    const backAction = () => {
-      if (isTabRoot(pathname)) {
-        Alert.alert('Exit Bajriwala?', 'Are you sure you want to exit?', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Exit', onPress: () => BackHandler.exitApp() },
-        ]);
-        return true;
-      }
-      return false;
-    };
-
-    const sub = BackHandler.addEventListener('hardwareBackPress', backAction);
-    return () => sub.remove();
-  }, [pathname]);
-
-  return null;
-}
 
 export default function RootLayout() {
   const hydrateSession = useAuthStore((s) => s.hydrateSession);
 
   useEffect(() => {
     SplashScreen.hideAsync();
-    startCartServerSync();
+    void reconcileCartWithApiHost().finally(() => {
+      startCartServerSync();
+    });
     void hydrateSession();
   }, [hydrateSession]);
 
@@ -99,6 +70,10 @@ export default function RootLayout() {
                 name="order-success"
                 options={{ headerShown: false, gestureEnabled: false }}
               />
+              <Stack.Screen
+                name="payment-result"
+                options={{ headerShown: false, gestureEnabled: false }}
+              />
               <Stack.Screen name="emergency-order" options={{ headerShown: false }} />
               <Stack.Screen name="notifications" options={{ headerShown: false }} />
               <Stack.Screen name="support" options={{ headerShown: false }} />
@@ -123,7 +98,6 @@ export default function RootLayout() {
               <Stack.Screen name="bulk-procurement/enquiry-detail" options={{ headerShown: false }} />
               <Stack.Screen name="offers" options={{ headerShown: false }} />
             </Stack>
-            <AndroidTabExitHandler />
             <VoiceAssistantSheet />
             <VariantBottomSheet />
             <AddToCartSuccessToast />

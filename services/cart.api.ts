@@ -69,10 +69,10 @@ function sameServerLine(
 /**
  * Upsert each local line onto the server (PATCH absolute qty / POST new / DELETE extras).
  * Never wipe the server cart first — a failed re-add used to empty checkout.
+ * Never DELETE the whole cart just because local is empty (rehydrate / host-switch races).
  */
 export async function syncLocalCartToServer(items: CartItem[]): Promise<void> {
   if (items.length === 0) {
-    await clearServerCart();
     return;
   }
 

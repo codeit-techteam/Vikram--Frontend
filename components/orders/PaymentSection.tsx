@@ -23,6 +23,7 @@ const PAYMENT_STATUS_CONFIG: Record<
   paid: { label: 'Paid', color: '#2E7D32', bg: '#E8F5E9' },
   pending: { label: 'Pending', color: '#B8860B', bg: '#FFF8E1' },
   failed: { label: 'Failed', color: '#C62828', bg: '#FFEBEE' },
+  cancelled: { label: 'Cancelled', color: '#6D4C41', bg: '#EFEBE9' },
   refunded: { label: 'Refunded', color: '#1B5E20', bg: '#C8E6C9' },
 };
 

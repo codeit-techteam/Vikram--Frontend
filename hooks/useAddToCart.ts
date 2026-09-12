@@ -6,7 +6,6 @@ import { useCartStore } from '@store/cartStore';
 import { useEtaStore } from '@store/etaStore';
 import type { Product } from '@/types/catalog';
 import { productToCartItem, sanitizeEtaMinutes, type CartItemOptions } from '@utils/cartHelpers';
-import { requireAuthOr } from '@utils/requireAuth';
 
 export type AddToCartButtonState = 'idle' | 'loading' | 'success';
 
@@ -14,6 +13,7 @@ const LOADING_MS = 180;
 
 /**
  * Optimistic local cart update + best-effort server sync.
+ * Auth is required at checkout, not when adding items (guest browsing OK).
  * Listing screens open VariantBottomSheet first so quantity is always chosen.
  */
 export function useAddToCart() {
@@ -32,36 +32,29 @@ export function useAddToCart() {
           : 1;
       const clampedQty = Math.max(minOrder, Math.max(1, Math.floor(quantity) || 1));
 
-      const runAdd = async () => {
-        setButtonState('loading');
-        await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
+      setButtonState('loading');
+      await new Promise((resolve) => setTimeout(resolve, LOADING_MS));
 
-        try {
-          const cartItem = productToCartItem(product, clampedQty, {
-            ...options,
-            etaMinutes: sanitizeEtaMinutes(options?.etaMinutes ?? eta?.deliveryETA),
-          });
-          const outcome = upsertItem(cartItem);
+      try {
+        const cartItem = productToCartItem(product, clampedQty, {
+          ...options,
+          etaMinutes: sanitizeEtaMinutes(options?.etaMinutes ?? eta?.deliveryETA),
+        });
+        const outcome = upsertItem(cartItem);
 
-          setButtonState('success');
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          showFeedback({ outcome });
+        setButtonState('success');
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showFeedback({ outcome });
 
-          setTimeout(() => setButtonState('idle'), 600);
-          return outcome;
-        } catch {
-          setButtonState('idle');
-          return null;
+        setTimeout(() => setButtonState('idle'), 600);
+        return outcome;
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[cart] addToCart failed', error);
         }
-      };
-
-      if (!requireAuthOr(() => {
-        void runAdd();
-      })) {
+        setButtonState('idle');
         return null;
       }
-
-      return runAdd();
     },
     [upsertItem, buttonState, showFeedback, eta],
   );

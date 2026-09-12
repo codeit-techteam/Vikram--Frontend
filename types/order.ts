@@ -12,7 +12,7 @@ export type OrderStatus =
 
 export type OrderFilterStatus = 'all' | 'active' | 'delivered' | 'cancelled';
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
 
 export type RefundStatus = 'pending' | 'credited' | 'failed' | 'none';
 
