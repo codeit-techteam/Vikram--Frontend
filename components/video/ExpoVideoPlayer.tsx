@@ -12,15 +12,61 @@ import {
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
 
-const LOAD_TIMEOUT_MS = 25_000;
+const LOAD_TIMEOUT_MS = 20_000;
 
-function resolveVideoSource(source: VideoSource): VideoSource {
-  if (typeof source === 'string') {
-    return source.split('?')[0]?.split('#')[0] || source;
-  }
+function sourceUri(source: VideoSource): string | null {
+  if (typeof source === 'string') return source;
   if (source && typeof source === 'object' && 'uri' in source && source.uri) {
-    const clean = source.uri.split('?')[0]?.split('#')[0] || source.uri;
-    return { ...source, uri: clean };
+    return source.uri;
+  }
+  return null;
+}
+
+/** Drop image cache-busters only — keep signed query params. */
+function stripCacheBuster(uri: string): string {
+  try {
+    const url = new URL(uri);
+    url.searchParams.delete('v');
+    url.searchParams.delete('updated');
+    url.hash = '';
+    const query = url.searchParams.toString();
+    return query
+      ? `${url.origin}${url.pathname}?${query}`
+      : `${url.origin}${url.pathname}`;
+  } catch {
+    return uri
+      .replace(/([?&])(v|updated)=\d+/g, '')
+      .replace(/[?&]$/, '')
+      .split('#')[0];
+  }
+}
+
+function toPlayableVideoSource(source: VideoSource): VideoSource {
+  if (typeof source === 'number' || source == null) return source;
+
+  const asObject = (uri: string, rest?: Extract<VideoSource, object>) => {
+    const clean = stripCacheBuster(uri);
+    const path = clean.split('?')[0]?.toLowerCase() ?? clean;
+    const progressive =
+      /\.(mp4|m4v|mov)$/.test(path) || path.includes('/videos/');
+    return {
+      ...(rest && typeof rest === 'object' ? rest : {}),
+      uri: clean,
+      contentType: rest && 'contentType' in rest && rest.contentType
+        ? rest.contentType
+        : progressive
+          ? 'progressive'
+          : 'auto',
+      useCaching:
+        rest && 'useCaching' in rest && typeof rest.useCaching === 'boolean'
+          ? rest.useCaching
+          : true,
+    } satisfies VideoSource;
+  };
+
+  if (typeof source === 'string') return asObject(source);
+  if (typeof source === 'object' && 'uri' in source && source.uri) {
+    return asObject(source.uri, source);
   }
   return source;
 }
@@ -62,10 +108,13 @@ export function ExpoVideoPlayer({
   const [failed, setFailed] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
+  const [laidOut, setLaidOut] = useState(false);
   const onReadyChangeRef = useRef(onReadyChange);
   onReadyChangeRef.current = onReadyChange;
+  const lastUriRef = useRef<string | null>(null);
 
-  const resolvedSource = useMemo(() => resolveVideoSource(source), [source]);
+  const resolvedSource = useMemo(() => toPlayableVideoSource(source), [source]);
+  const resolvedUri = sourceUri(resolvedSource);
   // Android Modal / overlay playback is unreliable with SurfaceView.
   const resolvedSurface =
     surfaceType ?? (Platform.OS === 'android' ? 'textureView' : 'surfaceView');
@@ -87,6 +136,15 @@ export function ExpoVideoPlayer({
   }, [loop, muted, player]);
 
   useEffect(() => {
+    const isFirstLoad = lastUriRef.current === null;
+    const uriChanged = resolvedUri !== lastUriRef.current;
+    lastUriRef.current = resolvedUri;
+
+    // useVideoPlayer already loads the initial source. Replacing on mount
+    // detaches the Android surface and leaves a black frame in Expo Go.
+    if (isFirstLoad && reloadToken === 0) return;
+    if (!uriChanged && reloadToken === 0) return;
+
     markReady(false);
     setFailed(false);
     try {
@@ -95,24 +153,23 @@ export function ExpoVideoPlayer({
       /* replace can throw if player is released */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedSource, reloadToken]);
+  }, [resolvedUri, reloadToken, player]);
 
   useEffect(() => {
     if (paused) {
       player.pause();
       return;
     }
-    if (!autoPlay) return;
-    // Delay play until the view has laid out — avoids Android black-frame starts.
+    if (!autoPlay || !laidOut) return;
     const timer = setTimeout(() => {
       try {
         player.play();
       } catch {
         /* ignore */
       }
-    }, Platform.OS === 'android' ? 120 : 0);
+    }, Platform.OS === 'android' ? 160 : 40);
     return () => clearTimeout(timer);
-  }, [autoPlay, paused, player, reloadToken, resolvedSource]);
+  }, [autoPlay, paused, player, laidOut, reloadToken, resolvedUri]);
 
   useEffect(() => {
     if (player.status === 'readyToPlay') {
@@ -136,16 +193,13 @@ export function ExpoVideoPlayer({
     });
 
     const timeout = setTimeout(() => {
-      if (player.status !== 'readyToPlay') {
-        // Keep trying visually if audio already works — don't force failed too early
-        // when frames are delayed on Android TextureView.
-        if (retryCount < maxRetries) {
-          setRetryCount((n) => n + 1);
-          setReloadToken((n) => n + 1);
-        } else {
-          setFailed(true);
-          markReady(false);
-        }
+      if (player.status === 'readyToPlay') return;
+      if (retryCount < maxRetries) {
+        setRetryCount((n) => n + 1);
+        setReloadToken((n) => n + 1);
+      } else if (player.status === 'error' || player.status === 'idle') {
+        setFailed(true);
+        markReady(false);
       }
     }, LOAD_TIMEOUT_MS);
 
@@ -158,7 +212,7 @@ export function ExpoVideoPlayer({
 
   if (failed) {
     return (
-      <View style={[styles.container, style]}>
+      <View style={[styles.container, style]} collapsable={false}>
         {posterUrl ? (
           <Image source={{ uri: posterUrl }} style={styles.fill} contentFit="cover" />
         ) : null}
@@ -177,9 +231,14 @@ export function ExpoVideoPlayer({
   }
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[styles.container, style]}
+      collapsable={false}
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        if (width > 1 && height > 1) setLaidOut(true);
+      }}>
       <VideoView
-        key={`video-${reloadToken}-${resolvedSurface}`}
         style={styles.fill}
         player={player}
         contentFit={contentFit}
@@ -214,7 +273,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#000',
-    overflow: 'hidden',
   },
   fill: {
     width: '100%',

@@ -42,7 +42,21 @@ interface ProductImageCarouselProps {
 }
 
 function cleanMediaUrl(url: string): string {
-  return url.split('?')[0]?.split('#')[0] || url;
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete('v');
+    parsed.searchParams.delete('updated');
+    parsed.hash = '';
+    const query = parsed.searchParams.toString();
+    return query
+      ? `${parsed.origin}${parsed.pathname}?${query}`
+      : `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return url
+      .replace(/([?&])(v|updated)=\d+/g, '')
+      .replace(/[?&]$/, '')
+      .split('#')[0];
+  }
 }
 
 function buildSlides(
@@ -175,6 +189,7 @@ export function ProductImageCarousel({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [videoOpen, setVideoOpen] = useState(false);
+  const [videoSurfaceReady, setVideoSurfaceReady] = useState(false);
   const [activeVideo, setActiveVideo] = useState<{
     url: string;
     posterUri?: string | null;
@@ -268,6 +283,7 @@ export function ProductImageCarousel({
 
   const closeVideo = () => {
     setVideoOpen(false);
+    setVideoSurfaceReady(false);
     setActiveVideo(null);
   };
 
@@ -448,9 +464,13 @@ export function ProductImageCarousel({
         visible={videoOpen && Boolean(activeVideo)}
         animationType="slide"
         presentationStyle="fullScreen"
+        statusBarTranslucent
+        hardwareAccelerated
+        onShow={() => setVideoSurfaceReady(true)}
         onRequestClose={closeVideo}
         supportedOrientations={['portrait', 'landscape']}>
         <View
+          collapsable={false}
           style={{
             flex: 1,
             backgroundColor: '#000',
@@ -484,28 +504,30 @@ export function ProductImageCarousel({
           </View>
 
           <View
+            collapsable={false}
             style={{
               flex: 1,
               justifyContent: 'center',
               alignItems: 'center',
-              paddingHorizontal: Platform.OS === 'android' ? 0 : 0,
             }}>
-            {activeVideo ? (
+            {videoSurfaceReady && activeVideo ? (
               <View
+                collapsable={false}
                 style={{
                   width: SCREEN_WIDTH,
                   height: playerHeight,
                   backgroundColor: '#000',
                 }}>
                 <ExpoVideoPlayer
-                  key={activeVideo.url}
-                  source={{ uri: activeVideo.url }}
+                  source={{ uri: activeVideo.url, contentType: 'progressive' }}
                   autoPlay
                   muted={false}
                   loop={false}
                   contentFit="contain"
                   nativeControls
-                  surfaceType="textureView"
+                  {...(Platform.OS === 'android'
+                    ? { surfaceType: 'textureView' as const }
+                    : {})}
                   posterUrl={activeVideo.posterUri}
                   style={{ width: SCREEN_WIDTH, height: playerHeight }}
                 />
