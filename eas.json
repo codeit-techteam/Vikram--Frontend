@@ -16,7 +16,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "development"
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
       }
     },
     "preview": {
@@ -31,7 +32,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "preview"
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
       }
     },
     "production": {
@@ -44,7 +46,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
       }
     }
   },

@@ -11,6 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bajriwala.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
+      },
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow Bajriwala to use speech recognition for voice search.",
         "NSMicrophoneUsageDescription": "Allow Bajriwala to use your microphone for voice search.",
@@ -21,6 +24,11 @@
       "package": "com.bajriwala.app",
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#FEB623",
         "foregroundImage": "./assets/android-icon-foreground.png",

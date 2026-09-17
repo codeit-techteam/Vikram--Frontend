@@ -37,7 +37,7 @@ import {
   type BulkPreferredContact,
   type CreateBulkEnquiryPayload,
 } from '@services/bulk.api';
-import { LocationService } from '@services/LocationService';
+import { LocationError, LocationService } from '@services/LocationService';
 import { SITE_TYPE_OPTIONS } from '@services/sites.api';
 import { useBulkEnquiryStore } from '@store/bulkEnquiryStore';
 import { useAuthStore } from '@store/useAuthStore';
@@ -608,13 +608,12 @@ export default function BulkEnquiryScreen() {
       }));
       setErrors((prev) => ({ ...prev, location: undefined }));
     } catch (error) {
-      const denied =
-        error instanceof Error && error.message === 'LOCATION_PERMISSION_DENIED';
       setErrors((prev) => ({
         ...prev,
-        location: denied
-          ? 'Location permission denied. Enter address manually.'
-          : 'Could not detect location. Enter address manually.',
+        location:
+          error instanceof LocationError
+            ? `${error.message} Enter address manually.`
+            : 'Could not detect location. Enter address manually.',
       }));
       setAddressMode(true);
       setForm((prev) => ({

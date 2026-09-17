@@ -3,13 +3,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import MapView, { Marker, type Region } from 'react-native-maps';
+import MapView, { type Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BackHeader } from '@components/BackHeader';
@@ -17,6 +19,10 @@ import { PrimaryButton } from '@components/PrimaryButton';
 import { SiteDetailsSheet } from '@components/location/SiteDetailsSheet';
 import { LocationService, type ResolvedAddress } from '@services/LocationService';
 import { theme } from '@constants/theme';
+
+const PIN_SIZE = 40;
+/** Tight enough to feel live, loose enough to stay inside Google's free tier. */
+const GEOCODE_DEBOUNCE_MS = 450;
 
 export default function ConfirmLocationScreen() {
   const params = useLocalSearchParams<{
@@ -44,7 +50,9 @@ export default function ConfirmLocationScreen() {
     longitude: initialLng,
   });
   const [geocoding, setGeocoding] = useState(false);
+  const [recentering, setRecentering] = useState(false);
   const sheetRef = useRef<BottomSheetModal>(null);
+  const mapRef = useRef<MapView>(null);
   const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const region: Region = useMemo(
@@ -75,14 +83,34 @@ export default function ConfirmLocationScreen() {
     }
   }, [initialLat, initialLng, params.address, refreshAddress]);
 
+  useEffect(
+    () => () => {
+      if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+    },
+    [],
+  );
+
   const onRegionChangeComplete = (next: Region) => {
-    const nextCoords = { latitude: next.latitude, longitude: next.longitude };
-    setCoords(nextCoords);
+    setCoords({ latitude: next.latitude, longitude: next.longitude });
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
     geocodeTimer.current = setTimeout(() => {
       void refreshAddress(next.latitude, next.longitude);
-    }, 450);
+    }, GEOCODE_DEBOUNCE_MS);
   };
+
+  const recenterToUser = useCallback(async () => {
+    setRecentering(true);
+    try {
+      await LocationService.ensureReady();
+      const next = await LocationService.getCurrentPosition();
+      // Animating the camera fires onRegionChangeComplete, which re-geocodes.
+      mapRef.current?.animateToRegion({ ...next, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
+    } catch {
+      // The pin stays where it is; the user can still drag the map.
+    } finally {
+      setRecentering(false);
+    }
+  }, []);
 
   const handleConfirm = () => {
     sheetRef.current?.present();
@@ -106,34 +134,37 @@ export default function ConfirmLocationScreen() {
 
       <View className="flex-1">
         <MapView
+          ref={mapRef}
           style={{ flex: 1 }}
-          region={region}
+          initialRegion={region}
           onRegionChangeComplete={onRegionChangeComplete}
           showsUserLocation
-          showsMyLocationButton={false}>
-          <Marker
-            coordinate={coords}
-            draggable
-            onDragEnd={(e) => {
-              const { latitude, longitude } = e.nativeEvent.coordinate;
-              setCoords({ latitude, longitude });
-              void refreshAddress(latitude, longitude);
-            }}
-          />
-        </MapView>
+          showsMyLocationButton={false}
+          toolbarEnabled={false}
+        />
 
-        {/* Fixed center pin affordance when dragging map */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: '42%',
-            left: 0,
-            right: 0,
-            alignItems: 'center',
-          }}>
-          <Ionicons name="location" size={36} color={theme.primary} />
+        {/* Single centre pin: the map centre is the selected point, so the pin tip
+            is offset by half its own height to land exactly on it. */}
+        <View pointerEvents="none" style={styles.pinLayer}>
+          <Ionicons
+            name="location"
+            size={PIN_SIZE}
+            color={theme.primary}
+            style={{ marginBottom: PIN_SIZE / 2 }}
+          />
         </View>
+
+        <Pressable
+          onPress={() => void recenterToUser()}
+          disabled={recentering}
+          style={styles.recenterButton}
+          hitSlop={8}>
+          {recentering ? (
+            <ActivityIndicator size="small" color={theme.primary} />
+          ) : (
+            <Ionicons name="locate" size={20} color={theme.primary} />
+          )}
+        </Pressable>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -189,3 +220,26 @@ export default function ConfirmLocationScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  pinLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recenterButton: {
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 22,
+    bottom: 200,
+    elevation: 6,
+    height: 44,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    width: 44,
+  },
+});

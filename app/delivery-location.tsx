@@ -21,6 +21,7 @@ import { SiteDetailsSheet } from '@components/location/SiteDetailsSheet';
 import { theme } from '@constants/theme';
 import { useSiteMutations, useSites } from '@hooks/useSites';
 import {
+  LocationError,
   LocationService,
   type PlaceSuggestion,
   type ResolvedAddress,
@@ -40,6 +41,7 @@ export default function DeliveryLocationScreen() {
   const [searching, setSearching] = useState(false);
   const [fetchingGps, setFetchingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsBlocked, setGpsBlocked] = useState(false);
   const [listFilter, setListFilter] = useState('');
   const [editSite, setEditSite] = useState<DeliverySite | null>(null);
   const [sheetAddress, setSheetAddress] = useState<ResolvedAddress | null>(null);
@@ -105,8 +107,13 @@ export default function DeliveryLocationScreen() {
     try {
       const addr = await LocationService.resolvePlace(item.placeId);
       openConfirm(addr);
-    } catch {
-      setGpsError('Unable to resolve that place. Try again or use current location.');
+    } catch (e) {
+      setGpsBlocked(false);
+      setGpsError(
+        e instanceof LocationError
+          ? e.message
+          : 'Unable to resolve that place. Try again or use current location.',
+      );
     } finally {
       setSearching(false);
     }
@@ -114,14 +121,15 @@ export default function DeliveryLocationScreen() {
 
   const onFetchLocation = async () => {
     setGpsError(null);
+    setGpsBlocked(false);
     setFetchingGps(true);
     try {
       const addr = await LocationService.fetchCurrentAddress();
       openConfirm(addr);
     } catch (e) {
-      const code = (e as Error)?.message;
-      if (code === 'LOCATION_PERMISSION_DENIED') {
-        setGpsError('Location permission denied. Search an address instead.');
+      if (e instanceof LocationError) {
+        setGpsBlocked(e.code === 'PERMISSION_BLOCKED' || e.code === 'SERVICES_DISABLED');
+        setGpsError(e.message);
       } else {
         setGpsError('Could not fetch location. Check GPS and try again.');
       }
@@ -258,7 +266,22 @@ export default function DeliveryLocationScreen() {
             )}
           </Pressable>
           {gpsError ? (
-            <Text style={{ color: '#C0392B', marginTop: 8, fontSize: 13 }}>{gpsError}</Text>
+            <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: '#C0392B', fontSize: 13, flex: 1 }}>{gpsError}</Text>
+              {gpsBlocked ? (
+                <Pressable onPress={() => void LocationService.openSettings()} hitSlop={6}>
+                  <Text
+                    style={{
+                      color: theme.primary,
+                      fontWeight: '800',
+                      fontSize: 13,
+                      textDecorationLine: 'underline',
+                    }}>
+                    Open Settings
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           ) : null}
         </View>
 
