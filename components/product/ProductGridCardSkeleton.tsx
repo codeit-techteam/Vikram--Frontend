@@ -4,9 +4,16 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ShimmerPlaceholder } from '@components/ui/ShimmerPlaceholder';
 import { getProductGridCardWidth } from '@components/product/productGridLayout';
 
-function ProductGridCardSkeletonComponent() {
+interface ProductGridCardSkeletonProps {
+  /** Explicit card width — matches the grid when a sidebar narrows the viewport. */
+  width?: number;
+}
+
+function ProductGridCardSkeletonComponent({
+  width: widthOverride,
+}: ProductGridCardSkeletonProps) {
   const { width } = useWindowDimensions();
-  const cardWidth = getProductGridCardWidth(width);
+  const cardWidth = widthOverride ?? getProductGridCardWidth(width);
 
   return (
     <View style={[styles.card, { width: cardWidth }]}>

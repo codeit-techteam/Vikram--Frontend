@@ -28,19 +28,26 @@ export function useProducts(
 
   const query = useInfiniteQuery({
     queryKey: [PRODUCTS_QUERY_KEY, mergedParams, pageSize],
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam, signal }) => {
       const page =
         mergedParams.category
-          ? await fetchCategoryProducts(mergedParams.category, {
-              ...mergedParams,
-              page: pageParam,
-              limit: pageSize,
-            })
-          : await fetchProducts({
-              ...mergedParams,
-              page: pageParam,
-              limit: pageSize,
-            });
+          ? await fetchCategoryProducts(
+              mergedParams.category,
+              {
+                ...mergedParams,
+                page: pageParam,
+                limit: pageSize,
+              },
+              signal,
+            )
+          : await fetchProducts(
+              {
+                ...mergedParams,
+                page: pageParam,
+                limit: pageSize,
+              },
+              signal,
+            );
 
       if (pageParam === 1) {
         useProductStore.getState().setProducts(page.items, JSON.stringify(mergedParams));

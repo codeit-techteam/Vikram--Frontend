@@ -18,6 +18,33 @@ export interface ApiCategory {
   children?: ApiCategory[];
 }
 
+/** One selectable rail entry from `GET /categories/:id/facets`. */
+export interface ApiCategoryFacetValue {
+  /** Value to send back as a query param (`brand`, `grade`, `productType`, or child slug). */
+  value: string;
+  label: string;
+  productCount: number;
+  imageUrl?: string | null;
+  /** Present on subcategory facets only. */
+  id?: string;
+}
+
+export interface ApiCategoryFacets {
+  category: {
+    id: string;
+    slug: string;
+    name: string;
+    nameHi?: string | null;
+    imageUrl?: string | null;
+  };
+  totalProducts: number;
+  subcategories: ApiCategoryFacetValue[];
+  brands: ApiCategoryFacetValue[];
+  productTypes: ApiCategoryFacetValue[];
+  grades: ApiCategoryFacetValue[];
+  priceRange?: { min: number; max: number } | null;
+}
+
 export interface ApiProductImage {
   id: string;
   url: string;

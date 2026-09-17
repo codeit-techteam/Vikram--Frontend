@@ -15,6 +15,7 @@ export interface CatalogCategory {
   isFeatured: boolean;
   isActive: boolean;
   productCount: number;
+  children?: CatalogCategory[];
   /** @deprecated Prefer slug/name from API */
   imageSearch?: string;
 }

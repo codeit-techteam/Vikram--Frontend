@@ -39,15 +39,18 @@ interface ProductGridCardProps {
   product: Product;
   categoryId?: string;
   categoryName?: string;
+  /** Explicit card width — used when the grid shares the screen with a sidebar. */
+  width?: number;
 }
 
 function ProductGridCardComponent({
   product,
   categoryId,
   categoryName,
+  width: widthOverride,
 }: ProductGridCardProps) {
   const { width } = useWindowDimensions();
-  const cardWidth = getProductGridCardWidth(width);
+  const cardWidth = widthOverride ?? getProductGridCardWidth(width);
   const language = useLanguageStore((s) => s.language);
   const openSheet = useVariantStore((s) => s.open);
   const updateQuantity = useCartStore((s) => s.updateQuantity);

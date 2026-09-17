@@ -226,7 +226,7 @@ function adaptBulkPricing(dto: ApiProduct): BulkPricingTier[] {
 }
 
 export function adaptApiCategory(dto: ApiCategory): CatalogCategory {
-  const imageUrl = normalizeMediaUrl(dto.imageUrl ?? dto.image ?? null);
+  const imageUrl = normalizeMediaUrl(dto.imageUrl ?? dto.image ?? dto.iconUrl ?? dto.icon ?? null);
   return {
     id: dto.id,
     slug: dto.slug,
@@ -240,6 +240,7 @@ export function adaptApiCategory(dto: ApiCategory): CatalogCategory {
     isFeatured: dto.isFeatured,
     isActive: dto.isVisible,
     productCount: dto.productCount ?? 0,
+    children: dto.children?.map(adaptApiCategory),
   };
 }
 

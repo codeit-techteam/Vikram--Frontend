@@ -142,6 +142,7 @@ export async function searchProductsApi(
 export async function fetchCategoryProducts(
   categoryIdOrSlug: string,
   params: Omit<ProductQueryParams, 'category'> = {},
+  signal?: AbortSignal,
 ): Promise<ProductListPage> {
   const query = new URLSearchParams();
   if (params.page != null) query.set('page', String(params.page));
@@ -157,9 +158,15 @@ export async function fetchCategoryProducts(
   if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
   if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
   if (params.hubId) query.set('hubId', params.hubId);
+  // Location lets the backend resolve the nearest hub, so stock and ETA on the
+  // cards are the real per-hub values rather than catalog defaults.
+  if (params.latitude != null) query.set('latitude', String(params.latitude));
+  if (params.longitude != null) query.set('longitude', String(params.longitude));
+  if (params.pincode) query.set('pincode', params.pincode);
   const qs = query.toString();
   const { data } = await api.get<ApiResponse<ApiProductList>>(
     `/categories/${encodeURIComponent(categoryIdOrSlug)}/products${qs ? `?${qs}` : ''}`,
+    { signal },
   );
   const payload = data.data;
   return {

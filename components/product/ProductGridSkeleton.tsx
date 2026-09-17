@@ -9,7 +9,12 @@ import {
 
 const SKELETON_COUNT = 9;
 
-function ProductGridSkeletonComponent() {
+interface ProductGridSkeletonProps {
+  /** Explicit card width — used when a sidebar narrows the grid. */
+  cardWidth?: number;
+}
+
+function ProductGridSkeletonComponent({ cardWidth }: ProductGridSkeletonProps) {
   const data = useMemo(
     () => Array.from({ length: SKELETON_COUNT }, (_, i) => ({ id: `product-skeleton-${i}` })),
     [],
@@ -24,7 +29,7 @@ function ProductGridSkeletonComponent() {
       showsVerticalScrollIndicator={false}
       columnWrapperStyle={styles.columnWrapper}
       contentContainerStyle={styles.content}
-      renderItem={() => <ProductGridCardSkeleton />}
+      renderItem={() => <ProductGridCardSkeleton width={cardWidth} />}
     />
   );
 }

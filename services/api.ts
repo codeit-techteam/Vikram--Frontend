@@ -144,7 +144,10 @@ api.interceptors.response.use(
         /\/payments\/razorpay\/(config|pending|status\/[^/?]+|cancel)(\?|$)/.test(
           reqUrl,
         );
-      if (!quietGuest401 && !quietMissingPaymentsRoute) {
+      // Facets is a newer catalog route; production may still 404 until deploy.
+      const quietMissingFacetsRoute =
+        status === 404 && /\/categories\/[^/]+\/facets(\?|$)/.test(reqUrl);
+      if (!quietGuest401 && !quietMissingPaymentsRoute && !quietMissingFacetsRoute) {
         const method = (error.config?.method ?? 'get').toUpperCase();
         const url = `${error.config?.baseURL ?? ''}${reqUrl}`;
         console.warn(
