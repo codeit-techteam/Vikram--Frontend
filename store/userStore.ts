@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { CustomerProfile } from '@services/customer.api';
 
@@ -95,12 +97,21 @@ interface UserState {
   reset: () => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
-  user: EMPTY_USER,
-  updateUser: (partial) => set((state) => ({ user: { ...state.user, ...partial } })),
-  setAvatar: (uri) => set((state) => ({ user: { ...state.user, avatar: uri } })),
-  setFromProfile: (profile) => set({ user: mapProfileToUser(profile) }),
-  reset: () => set({ user: EMPTY_USER }),
-}));
+export const useUserStore = create<UserState>()(
+  persist(
+    (set) => ({
+      user: EMPTY_USER,
+      updateUser: (partial) => set((state) => ({ user: { ...state.user, ...partial } })),
+      setAvatar: (uri) => set((state) => ({ user: { ...state.user, avatar: uri } })),
+      setFromProfile: (profile) => set({ user: mapProfileToUser(profile) }),
+      reset: () => set({ user: EMPTY_USER }),
+    }),
+    {
+      name: 'bajriwala-user-profile',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ user: state.user }),
+    },
+  ),
+);
 
 export { EMPTY_USER };

@@ -26,8 +26,17 @@ export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
   const user = useUserStore((s) => s.user);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isGuest = useAuthStore((s) => s.isGuest);
+  const sessionCustomer = useAuthStore((s) => s.customer);
   const showGuestState = !isLoggedIn || isGuest;
-  const displayName = showGuestState || !user.name ? 'Guest User' : user.name;
+  const displayName =
+    showGuestState
+      ? 'Guest User'
+      : user.name?.trim() ||
+        sessionCustomer?.name?.trim() ||
+        user.phone?.trim() ||
+        sessionCustomer?.phone?.trim() ||
+        'Your Account';
+  const displayAvatar = user.avatar || sessionCustomer?.profileImage || null;
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-12);
 
@@ -65,9 +74,9 @@ export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
           </ScaledPressable>
 
           <View className="flex-row items-end gap-3">
-            {user.avatar ? (
+            {displayAvatar ? (
               <Image
-                source={{ uri: user.avatar }}
+                source={{ uri: displayAvatar }}
                 style={{
                   width: 48,
                   height: 48,
@@ -79,15 +88,17 @@ export function DrawerHeader({ onEditPress, isDrawerOpen }: DrawerHeaderProps) {
               />
             ) : (
               <InitialsAvatar
-                name={showGuestState ? '' : user.name}
+                name={showGuestState ? '' : displayName}
                 size={48}
                 style={{ borderWidth: 2, borderColor: '#FFFFFF' }}
               />
             )}
             <View className="flex-1 pb-1">
               <Text className="text-base font-bold text-text-inverse">{displayName}</Text>
-              {!showGuestState && user.company ? (
-                <Text className="text-xs text-text-inverse/90">{user.company}</Text>
+              {!showGuestState && (user.company || sessionCustomer?.companyName) ? (
+                <Text className="text-xs text-text-inverse/90">
+                  {user.company || sessionCustomer?.companyName}
+                </Text>
               ) : null}
             </View>
           </View>

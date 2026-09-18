@@ -65,7 +65,7 @@ export default function CompleteProfileScreen() {
           fullName: trimmed,
           language,
         });
-        await refreshProfile();
+        await refreshProfile().catch(() => undefined);
       } else if (!skip) {
         setErrorMessage('Please enter your full name.');
         setLoading(false);

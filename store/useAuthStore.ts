@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@services/api';
 import * as authApi from '@services/auth.api';
 import type { AuthCustomer } from '@services/auth.api';
-import { getProfile } from '@services/customer.api';
+import { getProfile, type CustomerProfile } from '@services/customer.api';
 import { GUEST_MODE_KEY } from '@constants/guest';
 import { storage } from '@lib/storage';
 import { useDeliveryStore } from '@store/deliveryStore';
@@ -113,7 +113,7 @@ interface AuthState {
   hydrateSession: () => Promise<void>;
   loginWithOtp: (mobile: string, otp: string) => Promise<SessionCustomer>;
   logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: (existing?: CustomerProfile) => Promise<CustomerProfile>;
   handleSessionExpired: () => Promise<void>;
 
   requireLogin: (pendingAction?: () => void, reason?: string) => boolean;
@@ -144,6 +144,83 @@ const initialState = {
   loginSheetReason: null as string | null,
 };
 
+const AUTH_CUSTOMER_KEY = 'auth_customer';
+
+function applySessionToUserStore(customer: SessionCustomer) {
+  const current = useUserStore.getState().user;
+  useUserStore.getState().updateUser({
+    name: customer.name || current.name,
+    phone: customer.phone || current.phone,
+    email: customer.email || current.email,
+    company: customer.companyName || current.company,
+    avatar: customer.profileImage || current.avatar,
+  });
+}
+
+async function persistCustomer(customer: SessionCustomer | null) {
+  if (customer) {
+    await storage.setObject(AUTH_CUSTOMER_KEY, customer);
+  } else {
+    await storage.removeItem(AUTH_CUSTOMER_KEY);
+  }
+}
+
+function applyProfileStores(profile: CustomerProfile, current: SessionCustomer | null) {
+  useUserStore.getState().setFromProfile(profile);
+
+  const gstObj = profile.gst && typeof profile.gst === 'object' ? profile.gst : null;
+  const gstin =
+    profile.gstNumber ??
+    (typeof profile.gst === 'string' ? profile.gst : undefined) ??
+    gstObj?.gstin ??
+    null;
+
+  if (gstin) {
+    const details: GstDetails = {
+      gstNumber: gstin,
+      businessName:
+        gstObj?.companyName ?? profile.legalEntityName ?? profile.companyName ?? '',
+      registeredAddress: profile.registeredAddress ?? '',
+      state: gstObj?.jurisdiction?.split('–')[0]?.trim() ?? '',
+      pan: gstObj?.pan ?? profile.panNumber ?? '',
+      status: gstObj?.verified ? 'verified' : 'pending',
+      businessType: profile.businessType ?? '',
+      updatedAt: gstObj?.verifiedAt ?? undefined,
+    };
+    useGstStore.getState().setFromProfile(details);
+  } else {
+    useGstStore.getState().setFromProfile(null);
+  }
+
+  const nextCustomer: SessionCustomer = current
+    ? {
+        ...current,
+        name: profile.name ?? profile.fullName ?? current.name,
+        phone: profile.phone ?? profile.mobile ?? current.phone,
+        email: profile.email ?? current.email,
+        companyName: profile.companyName ?? current.companyName,
+        membership:
+          (typeof profile.membership === 'string' ? profile.membership : undefined) ??
+          current.membership,
+        profileImage: profile.profileImage ?? current.profileImage,
+        profileCompleted: profile.profileCompleted ?? current.profileCompleted,
+        roleSelected: profile.roleSelected ?? current.roleSelected,
+      }
+    : {
+        id: profile.id,
+        name: profile.name ?? profile.fullName ?? '',
+        phone: profile.phone ?? profile.mobile ?? '',
+        email: profile.email ?? '',
+        membership: typeof profile.membership === 'string' ? profile.membership : '',
+        profileImage: profile.profileImage ?? null,
+        companyName: profile.companyName ?? '',
+        profileCompleted: profile.profileCompleted,
+        roleSelected: profile.roleSelected,
+      };
+
+  return nextCustomer;
+}
+
 let hydrateInFlight: Promise<void> | null = null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -171,16 +248,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setSession: async ({ accessToken, refreshToken, customer, isNewCustomer }) => {
+    const sessionCustomer = toSessionCustomer(customer, isNewCustomer);
     await Promise.all([
       storage.setItem(AUTH_TOKEN_KEY, accessToken),
       storage.setItem(REFRESH_TOKEN_KEY, refreshToken),
       storage.removeItem(GUEST_MODE_KEY),
+      persistCustomer(sessionCustomer),
     ]);
 
+    applySessionToUserStore(sessionCustomer);
     set({
       token: accessToken,
       refreshToken,
-      customer: toSessionCustomer(customer, isNewCustomer),
+      customer: sessionCustomer,
       isLoggedIn: true,
       isGuest: false,
     });
@@ -194,10 +274,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: true });
 
       try {
-        const [token, refreshTokenValue, guestFlag] = await Promise.all([
+        const [token, refreshTokenValue, guestFlag, cachedCustomer] = await Promise.all([
           storage.getItem(AUTH_TOKEN_KEY),
           storage.getItem(REFRESH_TOKEN_KEY),
           storage.getItem(GUEST_MODE_KEY),
+          storage.getObject<SessionCustomer>(AUTH_CUSTOMER_KEY),
         ]);
 
         if (!token) {
@@ -207,21 +288,58 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             token: null,
             refreshToken: null,
             customer: null,
+            loading: false,
+            isHydrated: true,
           });
           return;
         }
 
-        set({ token, refreshToken: refreshTokenValue, isLoggedIn: true, isGuest: false });
+        if (cachedCustomer) {
+          applySessionToUserStore(cachedCustomer);
+        }
+
+        set({
+          token,
+          refreshToken: refreshTokenValue,
+          isLoggedIn: true,
+          isGuest: false,
+          customer: cachedCustomer,
+          loading: false,
+          isHydrated: true,
+        });
         await storage.removeItem(GUEST_MODE_KEY);
 
-        try {
-          const me = await authApi.getMe();
-          set({ customer: toSessionCustomer(me) });
-          await get().refreshProfile();
-        } catch {
-          // getMe/refreshProfile failures already trigger the 401 → refresh → guest
-          // fallback inside the api interceptor when the token is truly invalid.
-        }
+        await Promise.all([
+          authApi
+            .getMe()
+            .then(async (me) => {
+              const session = toSessionCustomer(me);
+              applySessionToUserStore(session);
+              set((state) => ({
+                customer: state.customer
+                  ? {
+                      ...session,
+                      name: session.name || state.customer.name,
+                      phone: session.phone || state.customer.phone,
+                      email: session.email || state.customer.email,
+                      companyName:
+                        session.companyName || state.customer.companyName,
+                      profileImage:
+                        session.profileImage || state.customer.profileImage,
+                      profileCompleted:
+                        session.profileCompleted ?? state.customer.profileCompleted,
+                      roleSelected:
+                        session.roleSelected ?? state.customer.roleSelected,
+                    }
+                  : session,
+              }));
+              await persistCustomer(get().customer);
+            })
+            .catch(() => undefined),
+          get()
+            .refreshProfile()
+            .catch(() => undefined),
+        ]);
       } finally {
         set({ loading: false, isHydrated: true });
       }
@@ -245,7 +363,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isNewCustomer: session.isNewCustomer,
       });
       await get().clearGuestMode();
-      await get().refreshProfile();
+      try {
+        await get().refreshProfile();
+      } catch {
+        // Name/phone from verify-otp are already on screen.
+      }
       return get().customer as SessionCustomer;
     } finally {
       set({ loading: false });
@@ -266,6 +388,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await Promise.all([
         storage.removeItem(AUTH_TOKEN_KEY),
         storage.removeItem(REFRESH_TOKEN_KEY),
+        storage.removeItem(AUTH_CUSTOMER_KEY),
       ]);
 
       useUserStore.getState().reset();
@@ -282,11 +405,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  refreshProfile: async () => {
-    try {
-      const profile = await getProfile();
-      useUserStore.getState().setFromProfile(profile);
+  refreshProfile: async (existing) => {
+    const profile = existing ?? (await getProfile());
+    const nextCustomer = applyProfileStores(profile, get().customer);
+    set({ customer: nextCustomer });
+    await persistCustomer(nextCustomer);
 
+    void (async () => {
       try {
         const { getSites } = await import('@services/sites.api');
         const deliverySites = await getSites();
@@ -307,61 +432,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           useDeliveryStore.getState().setProfileSitesFromAddresses(profile.addresses);
         }
       }
+    })();
 
-      const gstObj =
-        profile.gst && typeof profile.gst === 'object' ? profile.gst : null;
-      const gstin =
-        profile.gstNumber ??
-        (typeof profile.gst === 'string' ? profile.gst : undefined) ??
-        gstObj?.gstin ??
-        null;
-
-      if (gstin) {
-        const details: GstDetails = {
-          gstNumber: gstin,
-          businessName:
-            gstObj?.companyName ??
-            profile.legalEntityName ??
-            profile.companyName ??
-            '',
-          registeredAddress: profile.registeredAddress ?? '',
-          state: gstObj?.jurisdiction?.split('–')[0]?.trim() ?? '',
-          pan: gstObj?.pan ?? profile.panNumber ?? '',
-          status: gstObj?.verified ? 'verified' : 'pending',
-          businessType: profile.businessType ?? '',
-          updatedAt: gstObj?.verifiedAt ?? undefined,
-        };
-        useGstStore.getState().setFromProfile(details);
-      } else {
-        useGstStore.getState().setFromProfile(null);
-      }
-
-      set((state) => ({
-        customer: state.customer
-          ? {
-              ...state.customer,
-              name: profile.name ?? profile.fullName ?? state.customer.name,
-              phone: profile.phone ?? profile.mobile ?? state.customer.phone,
-              email: profile.email ?? state.customer.email,
-              companyName: profile.companyName ?? state.customer.companyName,
-              membership:
-                (typeof profile.membership === 'string' ? profile.membership : undefined) ??
-                state.customer.membership,
-              profileImage: profile.profileImage ?? state.customer.profileImage,
-              profileCompleted: profile.profileCompleted ?? state.customer.profileCompleted,
-              roleSelected: profile.roleSelected ?? state.customer.roleSelected,
-            }
-          : state.customer,
-      }));
-    } catch {
-      // Non-fatal — screens fall back to whatever is already in userStore/customer.
-    }
+    return profile;
   },
 
   handleSessionExpired: async () => {
     useUserStore.getState().reset();
     useDeliveryStore.getState().reset();
     useLoyaltyStore.getState().reset();
+    await persistCustomer(null);
     set({
       ...initialState,
       isHydrated: true,
@@ -393,6 +473,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   reset: () => {
     void storage.removeItem(GUEST_MODE_KEY);
+    void persistCustomer(null);
     set(initialState);
   },
 }));

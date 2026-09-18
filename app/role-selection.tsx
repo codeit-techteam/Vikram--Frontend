@@ -106,7 +106,7 @@ export default function RoleSelectionScreen() {
     setErrorMessage(null);
     try {
       await selectRole(roleId);
-      await refreshProfile();
+      await refreshProfile().catch(() => undefined);
       router.push('/complete-profile');
     } catch (error) {
       const apiErr = error as ApiError;

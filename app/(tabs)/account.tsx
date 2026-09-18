@@ -35,6 +35,7 @@ import { useAuthStore } from '@store/useAuthStore';
 import { updateProfile } from '@services/customer.api';
 import { formatSiteType } from '@services/sites.api';
 import { useSites, useSiteMutations } from '@hooks/useSites';
+import { useCustomerProfile } from '@hooks/useCustomerProfile';
 import { formatInvoiceDate, maskPan } from '@utils/invoiceAdapters';
 import { pickAvatarImage } from '@utils/pickAvatar';
 import { requireAuth } from '@utils/requireAuth';
@@ -68,6 +69,7 @@ export default function AccountScreen() {
   const isGuest = useAuthStore((s) => s.isGuest);
   const sessionCustomer = useAuthStore((s) => s.customer);
   const showGuestState = !isLoggedIn || isGuest;
+  useCustomerProfile(!showGuestState);
   const { data: apiSites = [], isLoading: sitesLoading } = useSites(isLoggedIn && !isGuest);
   const { setPrimary, remove } = useSiteMutations();
 
@@ -83,6 +85,14 @@ export default function AccountScreen() {
         }))
       : profileSites;
 
+  const displayName =
+    user.name?.trim() ||
+    sessionCustomer?.name?.trim() ||
+    user.phone?.trim() ||
+    sessionCustomer?.phone?.trim() ||
+    '';
+  const displayCompany = user.company?.trim() || sessionCustomer?.companyName?.trim() || '';
+  const displayAvatar = user.avatar || sessionCustomer?.profileImage || null;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sitesOpen, setSitesOpen] = useState(true);
   const [editSite, setEditSite] = useState<ProfileSite | null>(null);
@@ -200,14 +210,14 @@ export default function AccountScreen() {
                 <ScaledPressable onPress={handleAvatarPress}>
                   <Animated.View style={avatarStyle}>
                     <View>
-                      {user.avatar ? (
+                      {displayAvatar ? (
                         <Image
-                          source={{ uri: user.avatar }}
+                          source={{ uri: displayAvatar }}
                           style={{ width: 64, height: 64, borderRadius: 32 }}
                           contentFit="cover"
                         />
                       ) : (
-                        <InitialsAvatar name={user.name || '?'} size={64} />
+                        <InitialsAvatar name={displayName || '?'} size={64} />
                       )}
                       <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full bg-primary">
                         <Ionicons name="camera" size={12} color="#FFFFFF" />
@@ -218,10 +228,10 @@ export default function AccountScreen() {
 
                 <View className="flex-1">
                   <Text className="text-xl font-bold text-text">
-                    {user.name || sessionCustomer?.name || sessionCustomer?.phone || 'Loading profile…'}
+                    {displayName || 'Your Account'}
                   </Text>
-                  {user.company ? (
-                    <Text className="mt-0.5 text-sm text-text-secondary">{user.company}</Text>
+                  {displayCompany ? (
+                    <Text className="mt-0.5 text-sm text-text-secondary">{displayCompany}</Text>
                   ) : null}
                 </View>
               </View>
