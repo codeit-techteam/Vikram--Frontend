@@ -8,7 +8,8 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled'
   | 'payment_failed'
-  | 'refunded';
+  | 'refunded'
+  | 'reschedule_requested';
 
 export type OrderFilterStatus = 'all' | 'active' | 'delivered' | 'cancelled';
 
@@ -85,6 +86,13 @@ export interface Order {
   version?: number;
   expectedDelivery?: string;
   deliveryPreference?: import('@/types/deliveryPreference').DeliveryPreferenceView;
+  deliveryCallOnArrival?: boolean;
+  deliveryLeaveAtSecurity?: boolean;
+  deliveryHeavyVehicleAccess?: boolean;
+  openAreaConfirmed?: boolean | null;
+  proposedStartAt?: string | null;
+  proposedEndAt?: string | null;
+  rescheduleReason?: string | null;
   deliveredAt?: string;
   products: OrderProduct[];
   subtotal: number;

@@ -84,8 +84,14 @@ import type {
   DeliveryPreferenceType,
   DeliverySlotOption,
 } from '@/types/deliveryPreference';
+import { HEAVY_VEHICLE_TYPES } from '@/types/deliveryPreference';
 
 const QUICK_CHIP_KEYS = ['callOnArrival', 'leaveAtSecurity', 'heavyVehicleAccess'] as const;
+type QuickChipKey = (typeof QUICK_CHIP_KEYS)[number];
+
+function createIdempotencyKey(): string {
+  return `ord_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+}
 
 type ActiveSheet =
   | { type: 'gst' }
@@ -265,6 +271,13 @@ export default function CheckoutScreen() {
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>(DEFAULT_PAYMENT_METHOD);
   const [instructions, setInstructions] = useState('');
+  const [instructionFlags, setInstructionFlags] = useState<Record<QuickChipKey, boolean>>({
+    callOnArrival: false,
+    leaveAtSecurity: false,
+    heavyVehicleAccess: false,
+  });
+  const [openAreaConfirmed, setOpenAreaConfirmed] = useState<boolean | null>(null);
+  const placeIdempotencyKeyRef = useRef<string | null>(null);
   const [useLoyalty, setUseLoyalty] = useState(
     () => useCartStore.getState().pointsApplied,
   );
@@ -466,6 +479,9 @@ export default function CheckoutScreen() {
       ? localLoyalty.discountAmount
       : 0;
   const bikeDelivery = displayPreview?.bikeDeliveryFree ?? false;
+  const requiresOpenArea = HEAVY_VEHICLE_TYPES.has(
+    String(displayPreview?.deliveryVehicleType ?? ''),
+  );
 
   const quoteIsStale = previewSourceKey !== quoteSourceKey;
   const deliveryQuoteStatus: CheckoutDeliveryStatus = (() => {
@@ -491,7 +507,8 @@ export default function CheckoutScreen() {
     checkoutPreview?.serviceable !== false &&
     !quoteLoading &&
     !paying &&
-    (preferenceType === 'ASAP' || Boolean(selectedSlotId));
+    (preferenceType === 'ASAP' || Boolean(selectedSlotId)) &&
+    (!requiresOpenArea || openAreaConfirmed === true);
 
   const loyaltyEligible =
     availablePoints > 0 && localSubtotal >= minRedeemOrderValue;
@@ -550,6 +567,16 @@ export default function CheckoutScreen() {
     setInstructions((prev) => {
       const next = prev ? `${prev}. ${chip}` : chip;
       return next.slice(0, 250);
+    });
+  };
+
+  const toggleInstructionFlag = (key: QuickChipKey) => {
+    setInstructionFlags((prev) => {
+      const next = !prev[key];
+      if (next) {
+        appendChip(t(key));
+      }
+      return { ...prev, [key]: next };
     });
   };
 
@@ -877,6 +904,17 @@ export default function CheckoutScreen() {
     try {
       await syncLocalCartToServer(items);
       const remark = instructions.trim().slice(0, 250) || undefined;
+      if (!placeIdempotencyKeyRef.current) {
+        placeIdempotencyKeyRef.current = createIdempotencyKey();
+      }
+      const idempotencyKey = placeIdempotencyKeyRef.current;
+      const deliveryPayload = {
+        deliveryCallOnArrival: instructionFlags.callOnArrival,
+        deliveryLeaveAtSecurity: instructionFlags.leaveAtSecurity,
+        deliveryHeavyVehicleAccess: instructionFlags.heavyVehicleAccess,
+        openAreaConfirmed:
+          openAreaConfirmed === null ? undefined : openAreaConfirmed,
+      };
 
       if (isOnline) {
         const session = await createRazorpayOrder({
@@ -886,10 +924,13 @@ export default function CheckoutScreen() {
           deliveryPreferenceType: preferenceType,
           scheduledSlotId: selectedSlotId ?? undefined,
           deliveryCustomerRemark: remark,
+          ...deliveryPayload,
           internalOrderId: retryOrderId,
           checkoutMethod: paymentMethod === 'upi' ? 'upi' : 'card',
+          idempotencyKey,
         });
         await startOnlineCheckout(session);
+        placeIdempotencyKeyRef.current = null;
         return;
       }
 
@@ -901,7 +942,10 @@ export default function CheckoutScreen() {
         deliveryPreferenceType: preferenceType,
         scheduledSlotId: selectedSlotId ?? undefined,
         deliveryCustomerRemark: remark,
+        ...deliveryPayload,
+        idempotencyKey,
       });
+      placeIdempotencyKeyRef.current = null;
 
       const apiOrder = normalizeApiOrder(placed as Record<string, unknown>);
       await finishPlacedOrder({
@@ -972,15 +1016,83 @@ export default function CheckoutScreen() {
             {instructions.length}/250
           </Text>
           <View className="mt-2 flex-row flex-wrap gap-2">
-            {QUICK_CHIP_KEYS.map((chipKey) => (
-              <ScaledPressable
-                key={chipKey}
-                onPress={() => appendChip(t(chipKey))}
-                className="rounded-full border border-border px-3 py-1.5">
-                <Text className="text-xs text-text-secondary">{t(chipKey)}</Text>
-              </ScaledPressable>
-            ))}
+            {QUICK_CHIP_KEYS.map((chipKey) => {
+              const active = instructionFlags[chipKey];
+              return (
+                <ScaledPressable
+                  key={chipKey}
+                  onPress={() => toggleInstructionFlag(chipKey)}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    active ? 'border-primary bg-primary/15' : 'border-border'
+                  }`}>
+                  <Text
+                    className={`text-xs ${active ? 'font-bold text-text' : 'text-text-secondary'}`}>
+                    {t(chipKey)}
+                  </Text>
+                </ScaledPressable>
+              );
+            })}
           </View>
+        </View>
+
+        {requiresOpenArea ? (
+          <View className="mb-3 rounded-card border border-border bg-surface p-4">
+            <Text className="mb-1 font-bold text-text">Site Access</Text>
+            <Text className="mb-3 text-xs text-text-secondary">
+              This order requires vehicle access to the delivery site. Is there an
+              open/accessible area for delivery?
+            </Text>
+            <View className="flex-row gap-2">
+              <ScaledPressable
+                onPress={() => setOpenAreaConfirmed(true)}
+                className={`flex-1 rounded-xl border px-3 py-3 ${
+                  openAreaConfirmed === true
+                    ? 'border-primary bg-primary/15'
+                    : 'border-border bg-background'
+                }`}>
+                <Text className="text-center text-sm font-bold text-text">
+                  Yes — vehicle can access
+                </Text>
+              </ScaledPressable>
+              <ScaledPressable
+                onPress={() => setOpenAreaConfirmed(false)}
+                className={`flex-1 rounded-xl border px-3 py-3 ${
+                  openAreaConfirmed === false
+                    ? 'border-primary bg-primary/15'
+                    : 'border-border bg-background'
+                }`}>
+                <Text className="text-center text-sm font-bold text-text">
+                  No — limited access
+                </Text>
+              </ScaledPressable>
+            </View>
+          </View>
+        ) : null}
+
+        <View className="mb-3 rounded-card border border-primary/40 bg-primary/10 p-4">
+          <Text className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+            Delivery Summary
+          </Text>
+          <Text className="mt-2 text-base font-bold text-text">
+            {selectedSlot
+              ? `${selectedSlot.dateLabel} · ${selectedSlot.label}`
+              : preferenceType === 'ASAP'
+                ? checkoutPreview?.deliveryOptions?.asap.etaLabel ||
+                  'Deliver as soon as possible'
+                : 'Choose a delivery time'}
+          </Text>
+          {checkoutPreview?.deliveryOptions?.operatingWindow ? (
+            <Text className="mt-1 text-xs text-text-secondary">
+              Delivery Hours:{' '}
+              {checkoutPreview.deliveryOptions.operatingWindow.start} –{' '}
+              {checkoutPreview.deliveryOptions.operatingWindow.end} · Sunday: No
+              Delivery
+            </Text>
+          ) : (
+            <Text className="mt-1 text-xs text-text-secondary">
+              Delivery Hours: 11:00 AM – 4:30 PM · Sunday: No Delivery
+            </Text>
+          )}
         </View>
 
         <CheckoutDeliveryQuote

@@ -174,6 +174,11 @@ export async function placeOrder(payload: {
   deliveryPreferenceType?: 'ASAP' | 'TODAY' | 'TOMORROW' | 'SCHEDULED';
   scheduledSlotId?: string;
   deliveryCustomerRemark?: string;
+  deliveryCallOnArrival?: boolean;
+  deliveryLeaveAtSecurity?: boolean;
+  deliveryHeavyVehicleAccess?: boolean;
+  openAreaConfirmed?: boolean;
+  idempotencyKey?: string;
 }): Promise<Record<string, unknown>> {
   const { data } = await api.post<ApiResponse<Record<string, unknown>>>(
     ORDERS_BASE,
@@ -185,7 +190,32 @@ export async function placeOrder(payload: {
       deliveryPreferenceType: payload.deliveryPreferenceType,
       scheduledSlotId: payload.scheduledSlotId,
       deliveryCustomerRemark: payload.deliveryCustomerRemark,
+      deliveryCallOnArrival: payload.deliveryCallOnArrival,
+      deliveryLeaveAtSecurity: payload.deliveryLeaveAtSecurity,
+      deliveryHeavyVehicleAccess: payload.deliveryHeavyVehicleAccess,
+      openAreaConfirmed: payload.openAreaConfirmed,
     },
+    payload.idempotencyKey
+      ? { headers: { 'Idempotency-Key': payload.idempotencyKey } }
+      : undefined,
+  );
+  return data.data;
+}
+
+export async function acceptOrderReschedule(
+  orderId: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await api.post<ApiResponse<Record<string, unknown>>>(
+    `${ORDERS_BASE}/${orderId}/reschedule/accept`,
+  );
+  return data.data;
+}
+
+export async function declineOrderReschedule(
+  orderId: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await api.post<ApiResponse<Record<string, unknown>>>(
+    `${ORDERS_BASE}/${orderId}/reschedule/decline`,
   );
   return data.data;
 }

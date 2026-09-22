@@ -46,6 +46,7 @@ export const CUSTOMER_TIMELINE_INDEX: Record<OrderStatus, number> = {
   cancelled: -1,
   payment_failed: -1,
   refunded: 4,
+  reschedule_requested: 1,
 };
 
 /** Index into CUSTOMER_PROGRESS_STEPS for list cards. */
@@ -60,6 +61,7 @@ export const CUSTOMER_PROGRESS_INDEX: Record<OrderStatus, number> = {
   cancelled: -1,
   payment_failed: -1,
   refunded: 3,
+  reschedule_requested: 0,
 };
 
 const CUSTOMER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -73,6 +75,7 @@ const CUSTOMER_STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: 'Cancelled',
   payment_failed: 'Payment Failed',
   refunded: 'Delivered',
+  reschedule_requested: 'Reschedule Requested',
 };
 
 const CUSTOMER_STATUS_MESSAGES: Record<OrderStatus, string> = {
@@ -86,6 +89,7 @@ const CUSTOMER_STATUS_MESSAGES: Record<OrderStatus, string> = {
   cancelled: 'This order was cancelled.',
   payment_failed: 'Payment failed for this order.',
   refunded: 'Your order has been delivered successfully.',
+  reschedule_requested: 'Your delivery schedule needs your attention.',
 };
 
 /** Push / in-app notification copy keyed by customer milestone. */

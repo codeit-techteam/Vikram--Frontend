@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -31,6 +31,12 @@ import {
   shouldShowDeliveryOtp,
 } from '@utils/customerOrderStatus';
 import { theme, borderRadius } from '@constants/theme';
+import {
+  acceptOrderReschedule,
+  declineOrderReschedule,
+} from '@services/orders.api';
+import { useQueryClient } from '@tanstack/react-query';
+import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
 
 function formatDeliveredLabel(deliveredAt?: string) {
   if (!deliveredAt) return null;
@@ -53,8 +59,49 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
     downloadInvoicePdf,
   } = useOrder(orderId);
   const { reorder, isReordering } = useReorder();
+  const queryClient = useQueryClient();
   const [downloading, setDownloading] = useState(false);
   const [otpDismissed, setOtpDismissed] = useState(false);
+  const [rescheduleBusy, setRescheduleBusy] = useState(false);
+
+  const handleAcceptReschedule = useCallback(async () => {
+    if (!orderId) return;
+    setRescheduleBusy(true);
+    try {
+      await acceptOrderReschedule(orderId);
+      await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+      await queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+      Alert.alert('Schedule updated', 'You accepted the new delivery time.');
+    } catch (error) {
+      Alert.alert(
+        'Unable to accept',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    } finally {
+      setRescheduleBusy(false);
+    }
+  }, [orderId, queryClient]);
+
+  const handleDeclineReschedule = useCallback(async () => {
+    if (!orderId) return;
+    setRescheduleBusy(true);
+    try {
+      await declineOrderReschedule(orderId);
+      await queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+      await queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+      Alert.alert(
+        'Reschedule declined',
+        'Please contact support or place a new schedule request with the hub.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Unable to decline',
+        error instanceof Error ? error.message : 'Please try again.',
+      );
+    } finally {
+      setRescheduleBusy(false);
+    }
+  }, [orderId, queryClient]);
 
   const handleDownloadInvoice = useCallback(async () => {
     if (!orderId) return;
@@ -252,6 +299,77 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
 
         <DeliveryAddress address={order.shippingAddress} />
 
+        {String(order.status) === 'reschedule_requested' ||
+        order.proposedStartAt ? (
+          <View
+            style={{
+              borderRadius: borderRadius.lg,
+              borderWidth: 1,
+              borderColor: theme.primary,
+              backgroundColor: '#FFF8E8',
+              padding: 16,
+              marginTop: 12,
+            }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>
+              Delivery schedule needs your attention
+            </Text>
+            {order.proposedStartAt && order.proposedEndAt ? (
+              <Text style={{ marginTop: 6, fontSize: 13, color: theme.textSecondary }}>
+                Hub proposed:{' '}
+                {new Date(order.proposedStartAt).toLocaleString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}{' '}
+                –{' '}
+                {new Date(order.proposedEndAt).toLocaleTimeString('en-IN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+            ) : null}
+            {order.rescheduleReason ? (
+              <Text style={{ marginTop: 4, fontSize: 12, color: theme.textSecondary }}>
+                {order.rescheduleReason}
+              </Text>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <ScaledPressable
+                disabled={rescheduleBusy}
+                onPress={() => void handleAcceptReschedule()}
+                style={{
+                  flex: 1,
+                  borderRadius: 12,
+                  backgroundColor: theme.primary,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}>
+                {rescheduleBusy ? (
+                  <ActivityIndicator color="#111" />
+                ) : (
+                  <Text style={{ fontWeight: '700', color: '#111' }}>Accept</Text>
+                )}
+              </ScaledPressable>
+              <ScaledPressable
+                disabled={rescheduleBusy}
+                onPress={() => void handleDeclineReschedule()}
+                style={{
+                  flex: 1,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}>
+                <Text style={{ fontWeight: '700', color: theme.textPrimary }}>
+                  Decline
+                </Text>
+              </ScaledPressable>
+            </View>
+          </View>
+        ) : null}
+
         {order.deliveryPreference ? (
           <View
             style={{
@@ -280,6 +398,24 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
                 {order.deliveryPreference.customerRemark}
               </Text>
             ) : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+              {order.deliveryCallOnArrival ? (
+                <Text style={{ fontSize: 11, color: theme.textSecondary }}>Call on Arrival</Text>
+              ) : null}
+              {order.deliveryLeaveAtSecurity ? (
+                <Text style={{ fontSize: 11, color: theme.textSecondary }}>Leave at Security</Text>
+              ) : null}
+              {order.deliveryHeavyVehicleAccess ? (
+                <Text style={{ fontSize: 11, color: theme.textSecondary }}>
+                  Heavy Vehicle Access
+                </Text>
+              ) : null}
+              {order.openAreaConfirmed ? (
+                <Text style={{ fontSize: 11, color: theme.textSecondary }}>
+                  Open Area Confirmed
+                </Text>
+              ) : null}
+            </View>
           </View>
         ) : null}
 

@@ -85,8 +85,13 @@ type CreateRazorpayOrderPayload = {
   deliveryPreferenceType?: 'ASAP' | 'TODAY' | 'TOMORROW' | 'SCHEDULED';
   scheduledSlotId?: string;
   deliveryCustomerRemark?: string;
+  deliveryCallOnArrival?: boolean;
+  deliveryLeaveAtSecurity?: boolean;
+  deliveryHeavyVehicleAccess?: boolean;
+  openAreaConfirmed?: boolean;
   internalOrderId?: string;
   checkoutMethod?: RazorpayCheckoutMethod;
+  idempotencyKey?: string;
 };
 
 export async function getRazorpayConfig(): Promise<RazorpayPublicConfig> {
@@ -107,9 +112,13 @@ export async function getRazorpayConfig(): Promise<RazorpayPublicConfig> {
 export async function createRazorpayOrder(
   payload: CreateRazorpayOrderPayload,
 ): Promise<RazorpayCheckoutSession> {
+  const { idempotencyKey, ...body } = payload;
   const { data } = await api.post<ApiResponse<RazorpayCheckoutSession>>(
     '/payments/razorpay/create-order',
-    payload,
+    body,
+    idempotencyKey
+      ? { headers: { 'Idempotency-Key': idempotencyKey } }
+      : undefined,
   );
   return data.data;
 }

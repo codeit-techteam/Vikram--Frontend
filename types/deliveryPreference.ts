@@ -21,13 +21,33 @@ export interface DeliveryDayOption {
   dateLabel: string;
   slots: DeliverySlotOption[];
   reason?: string | null;
+  isHoliday?: boolean;
+  holidayReason?: string | null;
 }
 
 export interface DeliveryScheduledDay {
   date: string;
   dateLabel: string;
   available: boolean;
+  isHoliday?: boolean;
+  holidayReason?: string | null;
   slots: DeliverySlotOption[];
+}
+
+export interface DeliveryCalendarDay {
+  dateKey: string;
+  dateLabel: string;
+  isHoliday: boolean;
+  holidayReason?: string | null;
+  weekday: number;
+}
+
+export interface DeliveryOperatingWindow {
+  start: string;
+  end: string;
+  startMinutes: number;
+  endMinutes: number;
+  slotDurationMinutes: number;
 }
 
 export interface DeliveryOptions {
@@ -44,6 +64,8 @@ export interface DeliveryOptions {
   splitDelivery?: boolean;
   splitDeliveryMessage?: string | null;
   timezone?: string;
+  operatingWindow?: DeliveryOperatingWindow | null;
+  calendar?: DeliveryCalendarDay[];
   asap: {
     available: boolean;
     etaMinMinutes?: number | null;
@@ -78,5 +100,21 @@ export interface DeliveryPreferenceView {
   snapshot?: {
     etaLabel?: string | null;
     vehicleDisplayName?: string | null;
+    hubName?: string | null;
   } | null;
 }
+
+export interface DeliveryInstructionsPayload {
+  text?: string;
+  callOnArrival: boolean;
+  leaveAtSecurity: boolean;
+  heavyVehicleAccess: boolean;
+  openAreaConfirmed?: boolean | null;
+}
+
+export const HEAVY_VEHICLE_TYPES = new Set([
+  'THREE_WHEELER_LOADER',
+  'FULL_TRUCK',
+  'HEAVY_LOADER',
+  'RMC_TRANSIT_MIXER',
+]);

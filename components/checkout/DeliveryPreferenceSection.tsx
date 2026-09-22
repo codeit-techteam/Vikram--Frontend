@@ -164,17 +164,32 @@ export function DeliveryPreferenceSection({
           contentContainerStyle={{ gap: 8 }}>
           {options.scheduled.map((day) => {
             const active = (selectedDate ?? options.scheduled[0]?.date) === day.date;
+            const holiday = Boolean(day.isHoliday) || !day.available;
             return (
               <ScaledPressable
                 key={day.date}
+                disabled={holiday}
                 onPress={() => onSelectScheduleDate(day.date)}
                 className={`rounded-full border px-3 py-2 ${
-                  active ? 'border-primary bg-primary' : 'border-border bg-background'
+                  holiday
+                    ? 'border-border bg-background opacity-50'
+                    : active
+                      ? 'border-primary bg-primary'
+                      : 'border-border bg-background'
                 }`}>
                 <Text
-                  className={`text-xs font-bold ${active ? 'text-onPrimary' : 'text-text'}`}>
+                  className={`text-xs font-bold ${
+                    holiday
+                      ? 'text-text-secondary'
+                      : active
+                        ? 'text-onPrimary'
+                        : 'text-text'
+                  }`}>
                   {day.dateLabel}
                 </Text>
+                {day.isHoliday ? (
+                  <Text className="text-[10px] text-text-secondary">Holiday</Text>
+                ) : null}
               </ScaledPressable>
             );
           })}

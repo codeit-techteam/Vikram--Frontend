@@ -24,6 +24,11 @@ export const ORDER_STATUS_BADGES: Record<OrderStatus, StatusBadgeConfig> = {
   cancelled: { label: 'Cancelled', color: '#C62828', backgroundColor: '#FFEBEE' },
   payment_failed: { label: 'Payment Failed', color: '#C62828', backgroundColor: '#FFEBEE' },
   refunded: { label: 'Delivered', color: '#2E7D32', backgroundColor: '#E8F5E9' },
+  reschedule_requested: {
+    label: 'Reschedule Requested',
+    color: '#B8860B',
+    backgroundColor: '#FFF8E1',
+  },
 };
 
 export const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
@@ -33,6 +38,7 @@ export const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
   'packed',
   'ready_for_dispatch',
   'out_for_delivery',
+  'reschedule_requested',
 ];
 
 export const ORDER_FILTERS: { id: OrderFilterStatus; label: string }[] = [

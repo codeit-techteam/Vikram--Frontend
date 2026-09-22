@@ -43,6 +43,7 @@ const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
   DISPATCHED: 'out_for_delivery',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
+  RESCHEDULE_REQUESTED: 'reschedule_requested',
   pending: 'pending',
   confirmed: 'confirmed',
   processing: 'processing',
@@ -53,6 +54,7 @@ const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
   cancelled: 'cancelled',
   payment_failed: 'payment_failed',
   refunded: 'refunded',
+  reschedule_requested: 'reschedule_requested',
 };
 
 function mapLegacyStatus(status: LegacyOrderStatus): OrderStatus {
@@ -422,6 +424,16 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     version,
     expectedDelivery,
     deliveryPreference: (raw.deliveryPreference as Order['deliveryPreference']) ?? undefined,
+    deliveryCallOnArrival: Boolean(raw.deliveryCallOnArrival),
+    deliveryLeaveAtSecurity: Boolean(raw.deliveryLeaveAtSecurity),
+    deliveryHeavyVehicleAccess: Boolean(raw.deliveryHeavyVehicleAccess),
+    openAreaConfirmed:
+      raw.openAreaConfirmed === undefined || raw.openAreaConfirmed === null
+        ? null
+        : Boolean(raw.openAreaConfirmed),
+    proposedStartAt: raw.proposedStartAt ? String(raw.proposedStartAt) : null,
+    proposedEndAt: raw.proposedEndAt ? String(raw.proposedEndAt) : null,
+    rescheduleReason: raw.rescheduleReason ? String(raw.rescheduleReason) : null,
     deliveredAt,
     products,
     subtotal: Number(raw.subtotal ?? 0),
