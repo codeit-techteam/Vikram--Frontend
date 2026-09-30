@@ -362,6 +362,27 @@ export const strings = {
     changePaymentMethod: 'Change Payment Method',
     refreshStatus: 'Refresh Status',
     backToHome: 'Back to Home',
+    checkingPaymentShortBody: 'We are confirming your payment.',
+    paymentTimeoutTitle: 'Payment status is taking longer than expected',
+    paymentTimeoutBody:
+      'If money was debited, your order will be confirmed automatically. You can refresh or check the order.',
+    paymentNetworkTitle: 'Unable to verify payment right now',
+    paymentNetworkBody: 'Please check your connection and try again. Your order is safe.',
+    paymentNotCompletedTitle: 'Payment not completed',
+    paymentNotCompletedBody:
+      'We have not received a payment for this order yet. You can pay now to confirm it.',
+    paymentOrderClosedTitle: 'Order closed',
+    paymentOrderClosedBody:
+      'This order was closed because payment was not completed. Please place the order again.',
+    paymentRefundPendingTitle: 'Refund in progress',
+    paymentRefundPendingBody:
+      'We received your payment after this order was closed. The amount will be refunded to your account.',
+    paymentSessionExpiredTitle: 'Please log in again',
+    paymentSessionExpiredBody:
+      'Your session expired while we were checking the payment. Log in to see the latest status.',
+    logIn: 'Log In',
+    awaitingPayment: 'Awaiting Payment',
+    completePayment: 'Complete Payment',
     paySecurely: 'Pay Securely',
     paymentSuccessful: 'Payment Successful',
     paidOnline: 'Paid Online',
@@ -1186,6 +1207,27 @@ export const strings = {
     changePaymentMethod: 'भुगतान विधि बदलें',
     refreshStatus: 'स्थिति ताज़ा करें',
     backToHome: 'होम पर जाएँ',
+    checkingPaymentShortBody: 'हम आपके भुगतान की पुष्टि कर रहे हैं।',
+    paymentTimeoutTitle: 'भुगतान स्थिति में अपेक्षा से अधिक समय लग रहा है',
+    paymentTimeoutBody:
+      'यदि पैसे कटे हैं, तो आपका ऑर्डर अपने आप कन्फर्म हो जाएगा। आप स्थिति ताज़ा कर सकते हैं या ऑर्डर देख सकते हैं।',
+    paymentNetworkTitle: 'अभी भुगतान की पुष्टि नहीं हो पा रही',
+    paymentNetworkBody: 'कृपया अपना इंटरनेट कनेक्शन जाँचें और फिर कोशिश करें। आपका ऑर्डर सुरक्षित है।',
+    paymentNotCompletedTitle: 'भुगतान पूरा नहीं हुआ',
+    paymentNotCompletedBody:
+      'इस ऑर्डर के लिए अभी तक भुगतान नहीं मिला है। कन्फर्म करने के लिए अभी भुगतान करें।',
+    paymentOrderClosedTitle: 'ऑर्डर बंद हो गया',
+    paymentOrderClosedBody:
+      'भुगतान पूरा न होने के कारण यह ऑर्डर बंद कर दिया गया। कृपया फिर से ऑर्डर करें।',
+    paymentRefundPendingTitle: 'रिफंड प्रक्रिया में है',
+    paymentRefundPendingBody:
+      'ऑर्डर बंद होने के बाद आपका भुगतान मिला। राशि आपके खाते में वापस कर दी जाएगी।',
+    paymentSessionExpiredTitle: 'कृपया फिर से लॉग इन करें',
+    paymentSessionExpiredBody:
+      'भुगतान जाँचते समय आपका सत्र समाप्त हो गया। नवीनतम स्थिति देखने के लिए लॉग इन करें।',
+    logIn: 'लॉग इन करें',
+    awaitingPayment: 'भुगतान बाकी',
+    completePayment: 'भुगतान पूरा करें',
     paySecurely: 'सुरक्षित भुगतान करें',
     paymentSuccessful: 'भुगतान सफल',
     paidOnline: 'ऑनलाइन भुगतान',

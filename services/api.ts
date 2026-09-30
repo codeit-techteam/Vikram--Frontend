@@ -212,6 +212,7 @@ api.interceptors.response.use(
           : isNetwork
             ? 'NETWORK'
             : error.response?.data?.code,
+      retryable: error.response?.data?.retryable,
     };
 
     return Promise.reject(apiError);

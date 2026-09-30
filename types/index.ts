@@ -4,6 +4,8 @@ export interface ApiError {
   errors?: Record<string, string[]>;
   /** TIMEOUT | NETWORK | CANCELLED, or a backend error code such as DELIVERY_SLOT_UNAVAILABLE. */
   code?: string;
+  /** Set by payment endpoints: whether retrying the same action can succeed. */
+  retryable?: boolean;
 }
 
 export interface PaginatedResponse<T> {

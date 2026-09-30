@@ -385,11 +385,15 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
   const paymentStatusRaw = String(
     payment.status ?? raw.paymentStatus ?? 'PENDING',
   );
+  const paymentStatus = mapPaymentStatus(paymentStatusRaw);
+  const awaitingPayment =
+    paymentMethod === 'RAZORPAY' && status === 'pending' && paymentStatus !== 'paid';
   const isTerminal =
     status === 'delivered' || status === 'cancelled' || status === 'refunded';
-  const expectedDelivery = isTerminal
-    ? undefined
-    : formatEta(raw.expectedDeliveryAt ?? raw.expectedDelivery);
+  const expectedDelivery =
+    isTerminal || awaitingPayment
+      ? undefined
+      : formatEta(raw.expectedDeliveryAt ?? raw.expectedDelivery);
 
   const updatedAt = raw.updatedAt ? String(raw.updatedAt) : undefined;
   const explicitVersion =
@@ -418,7 +422,12 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     id: String(raw.id ?? ''),
     orderNumber: String(raw.orderNumber ?? raw.id ?? ''),
     status,
-    statusLabel,
+    statusLabel: awaitingPayment
+      ? paymentStatus === 'failed'
+        ? 'Payment Failed'
+        : 'Awaiting Payment'
+      : statusLabel,
+    awaitingPayment,
     createdAt,
     updatedAt,
     version,
@@ -444,13 +453,15 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     platformFee: Number(raw.platformFee ?? 0),
     grandTotal: Number(raw.grandTotal ?? raw.total ?? 0),
     savings: raw.savings ? Number(raw.savings) : undefined,
-    paymentStatus: mapPaymentStatus(paymentStatusRaw),
+    paymentStatus,
     paymentMethod,
     paymentMethodLabel:
       paymentMethod === 'CASH'
         ? 'Cash on Delivery'
         : paymentMethod === 'RAZORPAY'
-          ? 'Paid Online'
+          ? paymentStatus === 'paid' || paymentStatus === 'refunded'
+            ? 'Paid Online'
+            : 'Online Payment'
           : raw.paymentMethodLabel
             ? String(raw.paymentMethodLabel)
             : paymentMethod,
@@ -467,7 +478,7 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
         (addressRaw.instructions ? String(addressRaw.instructions) : undefined) ||
         (raw.notes ? String(raw.notes) : undefined),
     },
-    tracking: ACTIVE_ORDER_STATUSES.includes(status)
+    tracking: ACTIVE_ORDER_STATUSES.includes(status) && !awaitingPayment
       ? {
           currentStep: status,
           steps: timeline,

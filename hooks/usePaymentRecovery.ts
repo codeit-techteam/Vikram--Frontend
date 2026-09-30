@@ -6,7 +6,10 @@ import { useAuthStore } from '@store/useAuthStore';
 import { clearPendingPayment, getPendingPayment } from '@lib/pendingPayment';
 
 /**
- * Recover unpaid Razorpay attempts after app restart.
+ * Recover Razorpay attempts interrupted by an app restart.
+ * Only steps in when money actually moved (PAID / PROCESSING). An order that was
+ * opened but never paid is left alone — My Orders offers "Complete Payment" —
+ * so the app never boots into a "Checking payment status" screen with nothing to check.
  * Intentionally avoids usePathname/useRootNavigationState — those throw
  * "Couldn't find a navigation context" during tab/stack transitions and block checkout.
  */
@@ -32,7 +35,7 @@ export function usePaymentRecovery() {
         }
 
         const status = await getRazorpayStatus(pending.internalOrderId);
-        if (status.paid) {
+        if (status.state === 'PAID') {
           await clearPendingPayment();
           router.replace({
             pathname: '/order-success',
@@ -41,37 +44,24 @@ export function usePaymentRecovery() {
               orderNumber: status.orderNumber,
               paymentId: status.providerPaymentId ?? '',
               amount: String(status.amount),
+              paymentMethod: status.method ?? '',
               paidOnline: '1',
             },
           });
           return;
         }
 
-        if (
-          status.paymentStatus === 'FAILED' ||
-          status.gatewayStatus === 'FAILED' ||
-          status.gatewayStatus === 'VERIFICATION_FAILED'
-        ) {
+        if (status.state === 'PROCESSING') {
           router.replace({
             pathname: '/payment-result',
-            params: {
-              status: 'failed',
-              orderId: status.internalOrderId,
-            },
+            params: { status: 'checking', orderId: status.internalOrderId },
           });
           return;
         }
 
-        router.replace({
-          pathname: '/payment-result',
-          params: {
-            status: 'checking',
-            orderId: status.internalOrderId,
-          },
-        });
+        await clearPendingPayment();
       } catch {
-        // Pending/status may 404 on backends without Razorpay routes — drop stale local pending.
-        ran.current = false;
+        // Recovery is best-effort; the order list still shows the real payment state.
         await clearPendingPayment().catch(() => undefined);
       }
     })();

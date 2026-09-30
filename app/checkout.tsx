@@ -53,6 +53,7 @@ import { placeOrder } from '@services/orders.api';
 import {
   cancelRazorpayPayment,
   createRazorpayOrder,
+  readPaymentApiError,
   verifyRazorpayPayment,
 } from '@services/payments.api';
 import { syncLocalCartToServer } from '@services/cart.api';
@@ -817,21 +818,41 @@ export default function CheckoutScreen() {
         razorpay_order_id: checkoutResult.razorpay_order_id,
         razorpay_signature: checkoutResult.razorpay_signature,
       });
-      await finishPlacedOrder({
-        orderId: verified.internalOrderId,
-        orderNumber: verified.orderNumber,
-        paymentId: verified.providerPaymentId ?? undefined,
-        paidOnline: true,
-        placed: verified as unknown as Record<string, unknown>,
-      });
-    } catch (error) {
+      if (verified.state === 'PAID') {
+        await finishPlacedOrder({
+          orderId: verified.internalOrderId,
+          orderNumber: verified.orderNumber,
+          paymentId: verified.providerPaymentId ?? undefined,
+          paidOnline: true,
+          placed: verified as unknown as Record<string, unknown>,
+        });
+        return;
+      }
       setPaying(false);
       router.replace({
         pathname: '/payment-result',
         params: {
-          status: 'checking',
+          status: verified.state === 'FAILED' ? 'failed' : 'checking',
           orderId: session.internalOrderId,
-          message: getApiErrorMessage(error),
+          fromCallback: '1',
+        },
+      });
+    } catch (error) {
+      setPaying(false);
+      const apiError = readPaymentApiError(error);
+      // Retryable/network errors mean "unknown yet"; the status screen reconciles with Razorpay.
+      const definitelyFailed = !apiError.retryable && !apiError.network && !apiError.sessionExpired;
+      logCheckoutEvent('payment_verify_error', {
+        code: apiError.code ?? 'UNKNOWN',
+        status: apiError.status ?? 0,
+      });
+      router.replace({
+        pathname: '/payment-result',
+        params: {
+          status: definitelyFailed ? 'failed' : 'checking',
+          orderId: session.internalOrderId,
+          fromCallback: '1',
+          message: definitelyFailed ? (apiError.message ?? undefined) : undefined,
         },
       });
     }
@@ -999,7 +1020,7 @@ export default function CheckoutScreen() {
       });
 
       if (isOnline) {
-        const session = await createRazorpayOrder({
+        const onlinePayload = {
           addressId: selectedSite.id,
           notes: remark,
           loyaltyPointsToRedeem: loyaltyPoints > 0 ? loyaltyPoints : undefined,
@@ -1007,10 +1028,24 @@ export default function CheckoutScreen() {
           scheduledSlotId: selectedSlotId ?? undefined,
           deliveryCustomerRemark: remark,
           ...deliveryPayload,
-          internalOrderId: retryOrderId,
-          checkoutMethod: paymentMethod === 'upi' ? 'upi' : 'card',
+          checkoutMethod: paymentMethod === 'upi' ? ('upi' as const) : ('card' as const),
           idempotencyKey,
-        });
+        };
+        let session;
+        try {
+          session = await createRazorpayOrder({
+            ...onlinePayload,
+            internalOrderId: retryOrderId,
+          });
+        } catch (error) {
+          // The earlier order expired or was closed; pay for the current cart instead.
+          if (!retryOrderId || readPaymentApiError(error).code !== 'ORDER_CANCELLED') {
+            throw error;
+          }
+          logCheckoutEvent('payment_retry_order_closed', {});
+          router.setParams({ retryOrderId: undefined });
+          session = await createRazorpayOrder(onlinePayload);
+        }
         await startOnlineCheckout(session);
         placeIdempotencyKeyRef.current = null;
         return;

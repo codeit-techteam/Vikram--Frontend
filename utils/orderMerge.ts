@@ -122,6 +122,16 @@ export function normalizeDeliveredFields(order: Order): Order {
     deliveredAt: order.deliveredAt ?? order.updatedAt,
   });
 
+  if (order.awaitingPayment) {
+    return {
+      ...order,
+      statusLabel: order.statusLabel ?? statusLabel,
+      timeline,
+      expectedDelivery: undefined,
+      tracking: undefined,
+    };
+  }
+
   if (order.status !== 'delivered' && order.status !== 'refunded') {
     return {
       ...order,

@@ -14,7 +14,7 @@ import { DeliveryAddress } from '@components/orders/DeliveryAddress';
 import { DeliveryOtpSheet } from '@components/orders/DeliveryOtpSheet';
 import { OrderDetailSkeleton } from '@components/orders/OrderSkeleton';
 import { OrderProducts } from '@components/orders/OrderProducts';
-import { OrderStatusBadge } from '@components/orders/OrderStatusBadge';
+import { OrderStatusBadge, PaymentPendingBadge } from '@components/orders/OrderStatusBadge';
 import { OrderTimeline } from '@components/orders/OrderTimeline';
 import { PaymentSection } from '@components/orders/PaymentSection';
 import { PriceSummary } from '@components/orders/PriceSummary';
@@ -188,7 +188,8 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
     );
   }
 
-  const showTrack = isActiveStatus(order.status);
+  const awaitingPayment = Boolean(order.awaitingPayment);
+  const showTrack = isActiveStatus(order.status) && !awaitingPayment;
   const isDelivered = order.status === 'delivered' || order.status === 'refunded';
   const canCancel =
     typeof order.canCancel === 'boolean'
@@ -239,7 +240,11 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             <Text style={{ fontSize: 12, color: theme.textMuted }}>
               Order #{order.orderNumber}
             </Text>
-            <OrderStatusBadge status={order.status} compact />
+            {awaitingPayment ? (
+              <PaymentPendingBadge failed={order.paymentStatus === 'failed'} />
+            ) : (
+              <OrderStatusBadge status={order.status} compact />
+            )}
           </View>
           <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
             Placed on {formatDateKey(order.createdAt)}
@@ -258,26 +263,66 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
             </Text>
           ) : (
             <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary, marginTop: 8 }}>
-              {getCustomerStatusLabel(order.status)}
+              {awaitingPayment
+                ? (order.statusLabel ?? 'Awaiting Payment')
+                : getCustomerStatusLabel(order.status)}
             </Text>
           )}
         </Animated.View>
 
-        <CurrentStatusCard
-          status={order.status}
-          estimatedMinutes={order.tracking?.estimatedMinutes}
-          estimatedArrival={order.expectedDelivery ?? order.tracking?.estimatedArrival}
-          partnerAssigned={partnerAssigned}
-          driverName={order.driver?.name ?? order.tracking?.driver?.name}
-          vehicleNumber={
-            order.driver?.vehicleNumber ?? order.tracking?.driver?.vehicleNumber
-          }
-          driverReached={Boolean(order.driverReachedAt)}
-          isDelivered={isDelivered}
-          deliveredAtLabel={formatDeliveredLabel(order.deliveredAt)}
-        />
+        {awaitingPayment ? (
+          <View
+            style={{
+              borderRadius: borderRadius.lg,
+              borderWidth: 1,
+              borderColor: theme.primary,
+              backgroundColor: theme.primaryUltraLight,
+              padding: 16,
+            }}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
+              {order.paymentStatus === 'failed' ? 'Payment failed' : 'Payment not completed'}
+            </Text>
+            <Text style={{ marginTop: 6, fontSize: 13, color: theme.textSecondary }}>
+              This order will be confirmed and sent to the hub once payment is received.
+            </Text>
+            <ScaledPressable
+              onPress={() =>
+                router.push({
+                  pathname: '/payment-result',
+                  params: { status: 'checking', orderId: order.id },
+                })
+              }
+              style={{
+                marginTop: 12,
+                backgroundColor: theme.primary,
+                borderRadius: borderRadius.md,
+                paddingVertical: 12,
+                alignItems: 'center',
+              }}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary }}>
+                Complete Payment
+              </Text>
+            </ScaledPressable>
+          </View>
+        ) : (
+          <>
+            <CurrentStatusCard
+              status={order.status}
+              estimatedMinutes={order.tracking?.estimatedMinutes}
+              estimatedArrival={order.expectedDelivery ?? order.tracking?.estimatedArrival}
+              partnerAssigned={partnerAssigned}
+              driverName={order.driver?.name ?? order.tracking?.driver?.name}
+              vehicleNumber={
+                order.driver?.vehicleNumber ?? order.tracking?.driver?.vehicleNumber
+              }
+              driverReached={Boolean(order.driverReachedAt)}
+              isDelivered={isDelivered}
+              deliveredAtLabel={formatDeliveredLabel(order.deliveredAt)}
+            />
 
-        <OrderTimeline steps={timeline} />
+            <OrderTimeline steps={timeline} />
+          </>
+        )}
 
         <View>
           <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary, marginBottom: 12 }}>

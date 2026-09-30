@@ -1,12 +1,11 @@
-import { isAxiosError } from 'axios';
-
 import { api } from '@services/api';
-import type { ApiResponse } from '@/types';
+import type { ApiError, ApiResponse } from '@/types';
 
 export type RazorpayCheckoutMethod = 'upi' | 'card' | 'netbanking' | 'wallet';
 
 function isMissingPaymentsRoute(error: unknown): boolean {
-  return isAxiosError(error) && error.response?.status === 404;
+  const apiError = error as Partial<ApiError> | null;
+  return apiError?.statusCode === 404 && !apiError.code;
 }
 
 export type RazorpayPublicConfig = {
@@ -32,21 +31,15 @@ export type RazorpayCheckoutSession = {
   };
 };
 
-export type RazorpayVerifyResult = {
-  success: boolean;
-  replay?: boolean;
-  internalOrderId: string;
-  orderNumber: string;
-  orderStatus: string;
-  paymentStatus: string;
-  gatewayStatus: string;
-  providerPaymentId: string | null;
-  providerOrderId: string;
-  amount: number;
-  amountPaise: number;
-  currency: string;
-  capturedAt: string | null;
-};
+/** Backend-derived customer payment state; the app never infers success locally. */
+export type CustomerPaymentState =
+  | 'PAID'
+  | 'PROCESSING'
+  | 'AWAITING_PAYMENT'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'ORDER_CANCELLED'
+  | 'REFUND_PENDING';
 
 export type RazorpayPaymentStatus = {
   internalOrderId: string;
@@ -54,16 +47,60 @@ export type RazorpayPaymentStatus = {
   orderStatus: string;
   paymentStatus: string;
   paymentMethod: string;
+  state: CustomerPaymentState;
+  retryable: boolean;
   provider: string;
   providerOrderId: string | null;
   providerPaymentId: string | null;
   gatewayStatus: string | null;
+  method: string | null;
+  failureReason: string | null;
+  cancelReason: string | null;
   amount: number;
   amountPaise: number;
   currency: string;
   paid: boolean;
   capturedAt: string | null;
+  expiresAt: string | null;
+  expectedDeliveryAt: string | null;
+  deliveryPreferenceType: string | null;
+  reconcileFailed: boolean;
 };
+
+export type RazorpayVerifyResult = RazorpayPaymentStatus & {
+  success: boolean;
+  replay?: boolean;
+};
+
+export type PaymentApiError = {
+  code: string | null;
+  message: string | null;
+  retryable: boolean;
+  status: number | null;
+  /** Request never got an HTTP answer (offline, DNS, timeout). */
+  network: boolean;
+  sessionExpired: boolean;
+};
+
+/** Reads the normalized ApiError produced by the axios interceptor in services/api. */
+export function readPaymentApiError(error: unknown): PaymentApiError {
+  const apiError = (error ?? {}) as Partial<ApiError>;
+  const status =
+    typeof apiError.statusCode === 'number' && apiError.statusCode > 0 ? apiError.statusCode : null;
+  const network =
+    apiError.code === 'NETWORK' || apiError.code === 'TIMEOUT' || apiError.statusCode === 0;
+  return {
+    code: apiError.code ?? null,
+    message: typeof apiError.message === 'string' ? apiError.message : null,
+    retryable:
+      typeof apiError.retryable === 'boolean'
+        ? apiError.retryable
+        : network || status == null || status >= 500,
+    status,
+    network,
+    sessionExpired: status === 401,
+  };
+}
 
 export type PendingRazorpayCheckout = {
   internalOrderId: string;
@@ -76,6 +113,8 @@ export type PendingRazorpayCheckout = {
   gatewayStatus: string | null;
   paymentStatus: string;
   orderStatus: string;
+  state?: CustomerPaymentState;
+  expiresAt?: string;
 };
 
 type CreateRazorpayOrderPayload = {
@@ -150,9 +189,11 @@ export async function cancelRazorpayPayment(
 
 export async function getRazorpayStatus(
   orderId: string,
+  options?: { timeoutMs?: number },
 ): Promise<RazorpayPaymentStatus> {
   const { data } = await api.get<ApiResponse<RazorpayPaymentStatus>>(
     `/payments/razorpay/status/${orderId}`,
+    { timeout: options?.timeoutMs ?? 12000, headers: { 'Cache-Control': 'no-cache' } },
   );
   return data.data;
 }

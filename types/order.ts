@@ -107,6 +107,8 @@ export interface Order {
   paymentMethod: string;
   paymentMethodLabel?: string;
   transactionId?: string;
+  /** Online order placed but not yet paid — not confirmed, no delivery promise yet. */
+  awaitingPayment?: boolean;
   shippingAddress: ShippingAddress;
   tracking?: OrderTracking;
   refund?: OrderRefund;

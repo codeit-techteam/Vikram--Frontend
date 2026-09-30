@@ -7,7 +7,11 @@ import * as Haptics from 'expo-haptics';
 
 import { OrderCardActions } from '@components/orders/OrderCardActions';
 import { ActiveOrderProgress } from '@components/orders/OrderTimeline';
-import { EnRouteBadge, OrderStatusBadge } from '@components/orders/OrderStatusBadge';
+import {
+  EnRouteBadge,
+  OrderStatusBadge,
+  PaymentPendingBadge,
+} from '@components/orders/OrderStatusBadge';
 import { OrderProductPreview } from '@components/orders/OrderProducts';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { STATUS_PROGRESS_INDEX, isActiveStatus } from '@constants/orderStatus';
@@ -306,8 +310,80 @@ export const CancelledOrderCard = memo(function CancelledOrderCard(props: OrderC
   );
 });
 
+export const AwaitingPaymentOrderCard = memo(function AwaitingPaymentOrderCard(
+  props: OrderCardBaseProps,
+) {
+  const { order } = props;
+  const failed = order.paymentStatus === 'failed';
+
+  return (
+    <OrderCardShell
+      {...props}
+      footer={
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <ScaledPressable
+            onPress={async () => {
+              await Haptics.selectionAsync();
+              router.push({
+                pathname: '/payment-result',
+                params: { status: 'checking', orderId: order.id },
+              });
+            }}
+            style={{
+              backgroundColor: theme.primary,
+              borderRadius: borderRadius.md,
+              paddingVertical: 12,
+              alignItems: 'center',
+              marginTop: 8,
+            }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary }}>
+              Complete Payment
+            </Text>
+          </ScaledPressable>
+        </View>
+      }>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
+              {failed ? 'Payment Failed' : 'Awaiting Payment'}
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
+              Pay to confirm this order
+            </Text>
+          </View>
+          <PaymentPendingBadge failed={failed} />
+        </View>
+        <View style={{ marginTop: 12 }}>
+          <OrderProductPreview products={order.products} />
+        </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            paddingTop: 10,
+            borderTopWidth: 1,
+            borderTopColor: theme.ultraLightGray,
+          }}>
+          <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+            {order.products.length} item{order.products.length > 1 ? 's' : ''}
+          </Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: theme.textPrimary }}>
+            {formatINR(order.grandTotal, false)}
+          </Text>
+        </View>
+      </View>
+    </OrderCardShell>
+  );
+});
+
 export const OrderCard = memo(function OrderCard(props: OrderCardBaseProps) {
   const { order } = props;
+
+  if (order.awaitingPayment) {
+    return <AwaitingPaymentOrderCard {...props} />;
+  }
 
   if (isActiveStatus(order.status)) {
     return <ActiveOrderCard {...props} />;

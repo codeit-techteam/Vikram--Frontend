@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -18,33 +17,68 @@ import { VerifiedBadge } from '@components/gst/VerifiedBadge';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useGstStore } from '@store/gstStore';
 import { useOrderStore } from '@store/orderStore';
+import { useOrder } from '@hooks/useOrder';
+
+const PAID_VIA_LABELS: Record<string, string> = {
+  upi: 'UPI',
+  card: 'Card',
+  netbanking: 'NetBanking',
+  wallet: 'Wallet',
+  emi: 'EMI',
+};
 
 export default function OrderSuccessScreen() {
   const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
-  const { orderId, orderNumber, paymentId, amount, paidOnline } = useLocalSearchParams<{
-    orderId: string;
-    orderNumber?: string;
-    paymentId?: string;
-    amount?: string;
-    paidOnline?: string;
-  }>();
+  const { orderId, orderNumber, paymentId, amount, paidOnline, paymentMethod } =
+    useLocalSearchParams<{
+      orderId: string;
+      orderNumber?: string;
+      paymentId?: string;
+      amount?: string;
+      paidOnline?: string;
+      paymentMethod?: string;
+    }>();
   const order = useOrderStore((s) => (orderId ? s.getOrder(orderId) : undefined));
-  const displayId = orderNumber || orderId || order?.id || 'BJW-982441';
+  const { order: apiOrder } = useOrder(orderId);
+  const displayId = orderNumber || apiOrder?.orderNumber || orderId || order?.id || '';
   const isPaidOnline = paidOnline === '1';
   const hasGst = useGstStore((s) => s.verified);
+  const scheduledLabel =
+    apiOrder?.deliveryPreference?.scheduledDateLabel &&
+    apiOrder.deliveryPreference.scheduledSlotLabel
+      ? `${apiOrder.deliveryPreference.scheduledDateLabel}, ${apiOrder.deliveryPreference.scheduledSlotLabel}`
+      : undefined;
+  const deliveryEta =
+    scheduledLabel ??
+    apiOrder?.expectedDelivery ??
+    order?.deliveryETA ??
+    order?.estimatedDelivery ??
+    order?.eta ??
+    'Soon';
+  const addressTitle =
+    apiOrder?.shippingAddress?.name || order?.deliverySite?.name || 'Delivery site';
+  const addressLine =
+    apiOrder?.shippingAddress?.address || order?.deliverySite?.address || 'Address saved with order';
+  const paidVia = paymentMethod ? PAID_VIA_LABELS[paymentMethod.toLowerCase()] : undefined;
+  const placedAtLabel = new Date(apiOrder?.createdAt ?? Date.now()).toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const checkScale = useSharedValue(0);
   const [visibleSteps, setVisibleSteps] = useState(0);
 
   const timeline = useMemo(
     () => [
-      { labelKey: 'ordered' as const, sub: 'Today, 10:45 AM', done: true },
+      { labelKey: 'ordered' as const, sub: placedAtLabel, done: true },
       { labelKey: 'processing' as const, sub: t('systemValidated'), done: true },
       { labelKey: 'dispatched' as const, sub: t('expectedIn'), done: false },
       { labelKey: 'delivery' as const, sub: t('arrivalAtSite'), done: false },
     ],
-    [t, language],
+    [t, language, placedAtLabel],
   );
 
   useEffect(() => {
@@ -104,7 +138,9 @@ export default function OrderSuccessScreen() {
               <Text className="text-[10px] font-bold tracking-widest text-text-secondary">
                 {t('paymentMethod').toUpperCase()}
               </Text>
-              <Text className="mt-2 text-sm font-bold text-text">{t('paidOnline')}</Text>
+              <Text className="mt-2 text-sm font-bold text-text">
+                {paidVia ? `${t('paidOnline')} · ${paidVia}` : t('paidOnline')}
+              </Text>
               {amount ? (
                 <Text className="mt-1 text-sm text-text-secondary">₹{amount}</Text>
               ) : null}
@@ -126,9 +162,7 @@ export default function OrderSuccessScreen() {
             <View className="flex-1 rounded-card bg-trust p-3">
               <Ionicons name="time-outline" size={18} color="#FEB623" />
               <Text className="mt-2 text-[10px] font-bold text-text-secondary">{t('deliveryETA')}</Text>
-              <Text className="text-sm font-bold text-text">
-                {order?.deliveryETA ?? order?.estimatedDelivery ?? order?.eta ?? 'Soon'}
-              </Text>
+              <Text className="text-sm font-bold text-text">{deliveryEta}</Text>
             </View>
             <View className="flex-1 rounded-card bg-trust p-3">
               <Ionicons name="location-outline" size={18} color="#FEB623" />
@@ -136,7 +170,7 @@ export default function OrderSuccessScreen() {
                 {t('deliveryAddress')}
               </Text>
               <Text className="text-sm font-bold text-text" numberOfLines={2}>
-                {order?.deliverySite?.name ?? 'Your site'}
+                {addressTitle}
               </Text>
             </View>
           </View>
@@ -179,24 +213,13 @@ export default function OrderSuccessScreen() {
             <Ionicons name="location-outline" size={20} color="#FEB623" />
             <View className="flex-1">
               <Text className="text-[10px] font-bold text-text-secondary">{t('deliveryAddress')}</Text>
-              <Text className="mt-1 text-sm font-bold text-text">
-                {order?.deliverySite?.name ?? 'Delivery site'}
-              </Text>
-              <Text className="mt-1 text-xs text-text-secondary">
-                {order?.deliverySite?.address ?? 'Address saved with order'}
-              </Text>
+              <Text className="mt-1 text-sm font-bold text-text">{addressTitle}</Text>
+              <Text className="mt-1 text-xs text-text-secondary">{addressLine}</Text>
             </View>
-            <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=120&q=80',
-              }}
-              style={{ width: 56, height: 56, borderRadius: 8 }}
-              contentFit="cover"
-            />
           </View>
 
           <ScaledPressable
-            onPress={() => router.push(`/orders/view/${orderId || displayId}`)}
+            onPress={() => router.push(`/orders/details/${orderId || displayId}`)}
             className="mt-6 w-full items-center rounded-pill bg-primary py-4">
             <Text className="text-base font-bold text-onPrimary">{t('trackOrder')}</Text>
           </ScaledPressable>
