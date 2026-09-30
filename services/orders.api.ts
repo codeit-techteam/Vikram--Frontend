@@ -178,6 +178,8 @@ export async function placeOrder(payload: {
   deliveryLeaveAtSecurity?: boolean;
   deliveryHeavyVehicleAccess?: boolean;
   openAreaConfirmed?: boolean;
+  deliveryTermsAccepted?: boolean;
+  deliveryTermsVersion?: string;
   idempotencyKey?: string;
 }): Promise<Record<string, unknown>> {
   const { data } = await api.post<ApiResponse<Record<string, unknown>>>(

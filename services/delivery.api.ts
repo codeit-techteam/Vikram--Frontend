@@ -59,6 +59,8 @@ export interface FetchEtaParams {
   cartItems?: DeliveryEtaCartItem[];
 }
 
+export const DELIVERY_REQUEST_TIMEOUT_MS = 15000;
+
 export async function fetchDeliveryEta(
   params: FetchEtaParams & { signal?: AbortSignal },
 ): Promise<DeliveryEtaResult> {
@@ -68,7 +70,7 @@ export async function fetchDeliveryEta(
       longitude: params.longitude,
       pincode: params.pincode,
       cartItems: params.cartItems,
-    }, { signal: params.signal });
+    }, { signal: params.signal, timeout: DELIVERY_REQUEST_TIMEOUT_MS });
     return data.data;
   }
 
@@ -80,7 +82,7 @@ export async function fetchDeliveryEta(
 
   const { data } = await api.get<ApiResponse<DeliveryEtaResult>>(
     `/delivery/eta?${query.toString()}`,
-    { signal: params.signal },
+    { signal: params.signal, timeout: DELIVERY_REQUEST_TIMEOUT_MS },
   );
   return data.data;
 }
@@ -123,12 +125,16 @@ export function formatEtaLabel(eta: DeliveryEtaResult | null | undefined): strin
   });
 }
 
-export async function fetchDeliveryOptions(addressId?: string) {
+export async function fetchDeliveryOptions(
+  addressId?: string,
+  options?: { signal?: AbortSignal },
+) {
   const query = new URLSearchParams();
   if (addressId) query.set('addressId', addressId);
   const qs = query.toString();
   const { data } = await api.get<ApiResponse<import('@/types/deliveryPreference').DeliveryOptions>>(
     `/delivery/options${qs ? `?${qs}` : ''}`,
+    { signal: options?.signal, timeout: DELIVERY_REQUEST_TIMEOUT_MS },
   );
   return data.data;
 }
@@ -136,6 +142,6 @@ export async function fetchDeliveryOptions(addressId?: string) {
 export async function holdDeliverySlot(slotId: string) {
   const { data } = await api.post<
     ApiResponse<{ reservationId: string; slotId: string; status: string; expiresAt: string | null }>
-  >(`/delivery/slots/${slotId}/hold`, {});
+  >(`/delivery/slots/${slotId}/hold`, {}, { timeout: DELIVERY_REQUEST_TIMEOUT_MS });
   return data.data;
 }

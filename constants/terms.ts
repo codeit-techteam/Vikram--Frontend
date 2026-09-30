@@ -14,6 +14,11 @@ export interface TermsSection {
 
 export const TERMS_STORAGE_KEY = 'bajriwala_terms_accepted_v1';
 
+export const DELIVERY_POLICY_SECTION_ID = 'delivery-policy';
+
+/** Bump whenever the delivery-policy bullets change; stored on each order as deliveryTermsVersion. */
+export const DELIVERY_TERMS_VERSION = '2026-09-30';
+
 export const TERMS_META = {
   title: 'Bajriwala Terms & Conditions',
   lastUpdated: 'August 3, 2026',
@@ -47,13 +52,16 @@ export const TERMS_SECTIONS: TermsSection[] = [
     ],
   },
   {
-    id: 'delivery-policy',
+    id: DELIVERY_POLICY_SECTION_ID,
     title: 'Delivery Policy',
     bullets: [
-      'Delivery ETA depends on location.',
-      'Heavy materials may require truck allocation.',
-      'Small orders may use bike delivery.',
-      'Delays due to weather or force majeure are possible.',
+      'Deliveries run only within the delivery hours shown at checkout. Sundays and announced holidays are non-delivery days.',
+      'Delivery ETA depends on location, stock at the nearest hub and vehicle availability. Estimates are not guaranteed delivery times.',
+      'Scheduled slots are reserved for a limited time at checkout and are confirmed only after the order is placed.',
+      'Heavy materials may require truck or loader allocation; please ensure the site has vehicle access and an unloading area.',
+      'Someone must be available at the site to receive and check the materials. Unloading beyond the vehicle point may be chargeable.',
+      'The hub may propose a new slot if a delivery cannot be completed as scheduled; you can accept or decline it from your order.',
+      'Delays due to weather, traffic restrictions, site access issues or force majeure are possible.',
     ],
   },
   {

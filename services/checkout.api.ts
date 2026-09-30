@@ -67,9 +67,12 @@ export interface CheckoutPreview {
   };
 }
 
+export const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
+
 export async function fetchCheckoutPreview(params?: {
   addressId?: string;
   loyaltyPointsToRedeem?: number;
+  signal?: AbortSignal;
 }): Promise<CheckoutPreview> {
   const query = new URLSearchParams();
   if (params?.addressId) query.set('addressId', params.addressId);
@@ -79,6 +82,7 @@ export async function fetchCheckoutPreview(params?: {
   const qs = query.toString();
   const { data } = await api.get<ApiResponse<CheckoutPreview>>(
     `/checkout${qs ? `?${qs}` : ''}`,
+    { signal: params?.signal, timeout: CHECKOUT_REQUEST_TIMEOUT_MS },
   );
   return data.data;
 }

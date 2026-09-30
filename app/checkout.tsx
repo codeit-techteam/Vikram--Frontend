@@ -20,6 +20,7 @@ import { CheckoutDeliveryQuote } from '@components/checkout/CheckoutDeliveryQuot
 import type { CheckoutDeliveryStatus } from '@components/checkout/CheckoutDeliveryQuote';
 import { DeliveryDestinationCard } from '@components/checkout/DeliveryDestinationCard';
 import { DeliveryPreferenceSection } from '@components/checkout/DeliveryPreferenceSection';
+import { DeliveryTermsSection } from '@components/checkout/DeliveryTermsSection';
 import { PaymentMethodCard } from '@components/checkout/PaymentMethodCard';
 import { RazorpayWebCheckout } from '@components/checkout/RazorpayWebCheckout';
 import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
@@ -42,6 +43,12 @@ import { normalizeApiOrder } from '@utils/orderAdapters';
 import { ORDERS_QUERY_KEY } from '@hooks/useOrders';
 import { useServiceability } from '@hooks/useServiceability';
 import { useDeliveryEta } from '@hooks/useDeliveryEta';
+import { useCheckoutDeliveryOptions } from '@hooks/useCheckoutDeliveryOptions';
+import {
+  getApiErrorMessage as readApiErrorMessage,
+  getApiErrorStatus,
+  isCancelledApiError,
+} from '@services/api';
 import { placeOrder } from '@services/orders.api';
 import {
   cancelRazorpayPayment,
@@ -55,6 +62,10 @@ import {
 } from '@services/checkout.api';
 import { formatEtaLabel, holdDeliverySlot, type DeliveryEtaResult } from '@services/delivery.api';
 import { safeGoBack } from '@utils/navigation';
+import { logCheckoutEvent } from '@utils/checkoutLogger';
+import { describeClosedDays } from '@utils/deliverySchedule';
+import { withDeadline } from '@utils/withDeadline';
+import { DELIVERY_TERMS_VERSION } from '@constants/terms';
 import { requireAuth } from '@utils/requireAuth';
 import { formatINR } from '@utils/formatCurrency';
 import {
@@ -97,16 +108,11 @@ type ActiveSheet =
   | { type: 'gst' }
   | null;
 
+/** Whole quote chain (cart sync + preview + optional loyalty preview) must settle within this. */
+const QUOTE_DEADLINE_MS = 25000;
+
 function getApiErrorMessage(error: unknown): string {
-  const axiosData = (error as { response?: { data?: { message?: string | string[] } } })
-    ?.response?.data;
-  const apiMessage = Array.isArray(axiosData?.message)
-    ? axiosData.message.join(', ')
-    : axiosData?.message;
-  return (
-    apiMessage ||
-    (error instanceof Error ? error.message : 'Unable to calculate delivery right now.')
-  );
+  return readApiErrorMessage(error, 'Unable to calculate delivery right now.');
 }
 
 function isAddressId(value?: string): value is string {
@@ -168,9 +174,9 @@ function previewFromEta(
 }
 
 function isMissingAddressError(error: unknown): boolean {
-  const status = (error as { response?: { status?: number } })?.response?.status;
-  const message = getApiErrorMessage(error);
-  return status === 404 || /no delivery address/i.test(message);
+  return (
+    getApiErrorStatus(error) === 404 || /no delivery address/i.test(getApiErrorMessage(error))
+  );
 }
 
 export default function CheckoutScreen() {
@@ -212,6 +218,8 @@ export default function CheckoutScreen() {
   );
   const addressPickerRef = useRef<BottomSheetModal>(null);
   const quoteRequestSeq = useRef(0);
+  const quoteAbortRef = useRef<AbortController | null>(null);
+  const failedSlotIdsRef = useRef<Set<string>>(new Set());
   const openAddressPicker = useCallback(() => {
     addressPickerRef.current?.present();
   }, []);
@@ -289,6 +297,8 @@ export default function CheckoutScreen() {
   const [scheduleDate, setScheduleDate] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [deliveryTermsAccepted, setDeliveryTermsAccepted] = useState(false);
+  const [showTermsHint, setShowTermsHint] = useState(false);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -342,13 +352,20 @@ export default function CheckoutScreen() {
       setLoyaltyError(null);
       setDeliveryError(null);
       const requestId = ++quoteRequestSeq.current;
+      quoteAbortRef.current?.abort();
+      const controller = new AbortController();
+      quoteAbortRef.current = controller;
       const addressId = isAddressId(selectedSite.id) ? selectedSite.id : undefined;
-      try {
+      const startedAt = Date.now();
+      logCheckoutEvent('quote_started', { requestId, items: items.length, applyLoyalty });
+
+      const runQuote = async () => {
         await syncLocalCartToServer(items);
         if (requestId !== quoteRequestSeq.current) return;
         const base = await fetchCheckoutPreview({
           addressId,
           loyaltyPointsToRedeem: 0,
+          signal: controller.signal,
         });
         if (requestId !== quoteRequestSeq.current) return;
 
@@ -361,6 +378,7 @@ export default function CheckoutScreen() {
           const withLoyalty = await fetchCheckoutPreview({
             addressId,
             loyaltyPointsToRedeem: base.maxRedeemablePoints,
+            signal: controller.signal,
           });
           if (requestId !== quoteRequestSeq.current) return;
           setCheckoutPreview(withLoyalty);
@@ -374,23 +392,39 @@ export default function CheckoutScreen() {
           setCheckoutPreview(base);
           setLoyaltyError('Unable to apply BajriPro Points. Please try again.');
         }
+      };
+
+      try {
+        await withDeadline(runQuote(), QUOTE_DEADLINE_MS, t('deliveryEstimateSlow'), controller);
+        if (requestId === quoteRequestSeq.current) {
+          logCheckoutEvent('quote_loaded', { requestId, ms: Date.now() - startedAt });
+        }
       } catch (e) {
         if (requestId !== quoteRequestSeq.current) return;
+        logCheckoutEvent('quote_failed', {
+          requestId,
+          ms: Date.now() - startedAt,
+          status: getApiErrorStatus(e) ?? null,
+          code: (e as { code?: string })?.code ?? null,
+        });
+        if (isCancelledApiError(e)) return;
         if (isMissingAddressError(e)) {
           setDeliveryError(null);
           return;
         }
         setDeliveryError(getApiErrorMessage(e));
-        void refreshEta();
       } finally {
-        if (requestId !== quoteRequestSeq.current) return;
-        setPreviewSourceKey(quoteSourceKey);
-        setQuoteLoading(false);
-        setLoyaltyLoading(false);
+        if (requestId === quoteRequestSeq.current) {
+          setPreviewSourceKey(quoteSourceKey);
+          setQuoteLoading(false);
+          setLoyaltyLoading(false);
+        }
       }
     },
-    [items, selectedSite?.id, hasDestinationCoords, quoteSourceKey, savingsOpacity, refreshEta],
+    [items, selectedSite?.id, hasDestinationCoords, quoteSourceKey, savingsOpacity, t],
   );
+
+  useEffect(() => () => quoteAbortRef.current?.abort(), []);
 
   useEffect(() => {
     void refreshCheckoutPreview(useLoyalty);
@@ -398,15 +432,34 @@ export default function CheckoutScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: useLoyalty handled by toggle
   }, [cartSignature, selectedSite?.id, hasDestinationCoords]);
 
+  const quoteIsStale = previewSourceKey !== quoteSourceKey;
+  const deliveryOptionsQuery = useCheckoutDeliveryOptions({
+    addressId: selectedSite?.id && isAddressId(selectedSite.id) ? selectedSite.id : undefined,
+    cartSignature,
+    enabled: items.length > 0 && hasDestinationCoords,
+  });
+  const deliveryOptions =
+    (!quoteIsStale ? checkoutPreview?.deliveryOptions : undefined) ??
+    deliveryOptionsQuery.data ??
+    checkoutPreview?.deliveryOptions ??
+    null;
+  const deliveryOptionsLoading =
+    !deliveryOptions && (deliveryOptionsQuery.fetchStatus === 'fetching' || quoteLoading);
+  const deliveryOptionsError = deliveryOptionsQuery.error
+    ? getApiErrorMessage(deliveryOptionsQuery.error)
+    : null;
+  const closedDaysLabel = describeClosedDays(deliveryOptions?.calendar);
+
   useEffect(() => {
     setPreferenceType('ASAP');
     setSelectedSlotId(null);
     setSelectedSlot(null);
     setScheduleDate(null);
+    failedSlotIdsRef.current.clear();
   }, [quoteSourceKey]);
 
   useEffect(() => {
-    const options = checkoutPreview?.deliveryOptions;
+    const options = deliveryOptions;
     if (!options?.serviceable) return;
     const fallback = options.defaultPreference ?? 'ASAP';
     setPreferenceType((current) => {
@@ -416,10 +469,14 @@ export default function CheckoutScreen() {
       if (current === 'SCHEDULED' && options.scheduled.length > 0) return current;
       return fallback;
     });
-    if (!scheduleDate && options.scheduled[0]?.date) {
-      setScheduleDate(options.scheduled[0].date);
+    const firstBookableDate =
+      options.scheduled.find(
+        (day) => !day.isHoliday && day.slots.some((slot) => slot.available),
+      )?.date ?? options.scheduled[0]?.date;
+    if (!scheduleDate && firstBookableDate) {
+      setScheduleDate(firstBookableDate);
     }
-  }, [checkoutPreview?.deliveryOptions, scheduleDate]);
+  }, [deliveryOptions, scheduleDate]);
 
   const localLoyalty = useMemo(
     () =>
@@ -483,22 +540,22 @@ export default function CheckoutScreen() {
     String(displayPreview?.deliveryVehicleType ?? ''),
   );
 
-  const quoteIsStale = previewSourceKey !== quoteSourceKey;
+  // ETA is advisory: only the checkout quote (bounded by QUOTE_DEADLINE_MS) may show 'loading'.
   const deliveryQuoteStatus: CheckoutDeliveryStatus = (() => {
     if (sitesLoading && !selectedSite) return 'loading';
     if (!selectedSite) return 'no_address';
     if (!hasDestinationCoords) return 'invalid_location';
-    if ((quoteLoading || etaLoading) && !displayPreview) return 'loading';
-    if (quoteIsStale && quoteLoading && !displayPreview) return 'loading';
-    if (checkoutPreview?.serviceable) return 'available';
-    if (eta?.serviceable && etaLabel) return 'available';
-    if (checkoutPreview && checkoutPreview.serviceable === false) return 'unavailable';
-    if (eta && eta.serviceable === false) return 'unavailable';
-    if (deliveryError && !etaLabel) return 'error';
-    if (displayPreview?.serviceable) return 'available';
-    return quoteLoading || etaLoading ? 'loading' : 'error';
+    if (checkoutPreview && !quoteIsStale) {
+      return checkoutPreview.serviceable ? 'available' : 'unavailable';
+    }
+    if (quoteLoading) return displayPreview?.serviceable ? 'available' : 'loading';
+    if (deliveryError) return 'error';
+    if (checkoutPreview) return checkoutPreview.serviceable ? 'available' : 'unavailable';
+    if (eta) return eta.serviceable && etaLabel ? 'available' : 'unavailable';
+    return 'error';
   })();
 
+  const slotRequirementMet = preferenceType === 'ASAP' || Boolean(selectedSlotId);
   const canPlaceOrder =
     items.length > 0 &&
     Boolean(selectedSite) &&
@@ -507,7 +564,8 @@ export default function CheckoutScreen() {
     checkoutPreview?.serviceable !== false &&
     !quoteLoading &&
     !paying &&
-    (preferenceType === 'ASAP' || Boolean(selectedSlotId)) &&
+    slotRequirementMet &&
+    deliveryTermsAccepted &&
     (!requiresOpenArea || openAreaConfirmed === true);
 
   const loyaltyEligible =
@@ -587,17 +645,11 @@ export default function CheckoutScreen() {
       setSelectedSlot(null);
       return;
     }
-    const options = checkoutPreview?.deliveryOptions;
+    const options = deliveryOptions;
     if (type === 'SCHEDULED' && !scheduleDate && options?.scheduled[0]?.date) {
       setScheduleDate(options.scheduled[0].date);
     }
-    const firstSlot =
-      type === 'TODAY'
-        ? options?.today.slots[0]
-        : type === 'TOMORROW'
-          ? options?.tomorrow.slots[0]
-          : options?.scheduled.find((d) => d.date === (scheduleDate ?? options.scheduled[0]?.date))
-              ?.slots[0];
+    const firstSlot = findBookableSlot(type, scheduleDate);
     if (firstSlot) {
       void handleSelectSlot(firstSlot);
     } else {
@@ -606,38 +658,55 @@ export default function CheckoutScreen() {
     }
   };
 
+  const findBookableSlot = (
+    type: DeliveryPreferenceType,
+    date: string | null,
+  ): DeliverySlotOption | undefined => {
+    const options = deliveryOptions;
+    if (!options?.serviceable) return undefined;
+    const bookable = (slot: DeliverySlotOption) =>
+      slot.available && !failedSlotIdsRef.current.has(slot.slotId);
+    if (type === 'TODAY') return options.today.slots.find(bookable);
+    if (type === 'TOMORROW') return options.tomorrow.slots.find(bookable);
+    if (type === 'SCHEDULED') {
+      const day = options.scheduled.find((d) => d.date === (date ?? options.scheduled[0]?.date));
+      return day && !day.isHoliday ? day.slots.find(bookable) : undefined;
+    }
+    return undefined;
+  };
+
   const handleSelectSlot = async (slot: DeliverySlotOption) => {
     setSelectedSlotId(slot.slotId);
     setSelectedSlot(slot);
     setScheduleDate(slot.date);
     try {
       await holdDeliverySlot(slot.slotId);
+      logCheckoutEvent('slot_held', { slotId: slot.slotId, date: slot.date });
     } catch (error) {
-      const message = getApiErrorMessage(error);
-      Alert.alert(t('slotNoLongerAvailable'), message || t('chooseAnotherSlot'));
-      setSelectedSlotId(null);
-      setSelectedSlot(null);
-      void refreshCheckoutPreview(useLoyalty);
+      failedSlotIdsRef.current.add(slot.slotId);
+      logCheckoutEvent('slot_hold_failed', {
+        slotId: slot.slotId,
+        status: getApiErrorStatus(error) ?? null,
+        code: (error as { code?: string })?.code ?? null,
+      });
+      setSelectedSlotId((current) => (current === slot.slotId ? null : current));
+      setSelectedSlot((current) => (current?.slotId === slot.slotId ? null : current));
+      Alert.alert(
+        t('slotNoLongerAvailable'),
+        readApiErrorMessage(error, t('chooseAnotherSlot')),
+      );
+      void deliveryOptionsQuery.refetch();
     }
   };
 
   useEffect(() => {
     if (preferenceType === 'ASAP' || selectedSlotId) return;
-    const options = checkoutPreview?.deliveryOptions;
-    if (!options?.serviceable) return;
-    const firstSlot =
-      preferenceType === 'TODAY'
-        ? options.today.slots.find((slot) => slot.available)
-        : preferenceType === 'TOMORROW'
-          ? options.tomorrow.slots.find((slot) => slot.available)
-          : options.scheduled
-              .find((day) => day.date === (scheduleDate ?? options.scheduled[0]?.date))
-              ?.slots.find((slot) => slot.available);
+    const firstSlot = findBookableSlot(preferenceType, scheduleDate);
     if (firstSlot) {
       void handleSelectSlot(firstSlot);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hold only when preference/options change
-  }, [preferenceType, selectedSlotId, checkoutPreview?.deliveryOptions, scheduleDate]);
+  }, [preferenceType, selectedSlotId, deliveryOptions, scheduleDate]);
 
   const handlePaymentMethodPress = (method: (typeof PAYMENT_METHODS)[number]) => {
     // UPI / Cards both open Razorpay Standard Checkout after Place Order.
@@ -691,7 +760,7 @@ export default function CheckoutScreen() {
         ? `${preference.scheduledDateLabel}, ${preference.scheduledSlotLabel}`
         : selectedSlot
           ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
-          : checkoutPreview?.deliveryOptions?.asap.etaLabel ||
+          : deliveryOptions?.asap.etaLabel ||
             apiOrder.expectedDelivery ||
             displayPreview?.deliveryMessage ||
             displayPreview?.deliveringBy ||
@@ -883,6 +952,12 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (!deliveryTermsAccepted) {
+      setShowTermsHint(true);
+      Alert.alert(t('deliveryTermsTitle'), t('deliveryTermsRequired'));
+      return;
+    }
+
     const latest = await refreshServiceability();
     if (!latest) {
       Alert.alert(
@@ -914,7 +989,14 @@ export default function CheckoutScreen() {
         deliveryHeavyVehicleAccess: instructionFlags.heavyVehicleAccess,
         openAreaConfirmed:
           openAreaConfirmed === null ? undefined : openAreaConfirmed,
+        deliveryTermsAccepted: true,
+        deliveryTermsVersion: DELIVERY_TERMS_VERSION,
       };
+      logCheckoutEvent('order_submit', {
+        paymentMethod,
+        preferenceType,
+        hasSlot: Boolean(selectedSlotId),
+      });
 
       if (isOnline) {
         const session = await createRazorpayOrder({
@@ -985,21 +1067,30 @@ export default function CheckoutScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 }}>
         <DeliveryDestinationCard site={selectedSite} onChange={openAddressPicker} />
 
-        <DeliveryPreferenceSection
-          options={checkoutPreview?.deliveryOptions ?? null}
-          loading={quoteLoading || deliveryQuoteStatus === 'loading'}
-          selectedType={preferenceType}
-          selectedSlotId={selectedSlotId}
-          selectedDate={scheduleDate}
-          onSelectType={handleSelectPreference}
-          onSelectSlot={(slot) => void handleSelectSlot(slot)}
-          onSelectScheduleDate={(date) => {
-            setScheduleDate(date);
-            const next = checkoutPreview?.deliveryOptions?.scheduled.find((d) => d.date === date)
-              ?.slots[0];
-            if (next) void handleSelectSlot(next);
-          }}
-        />
+        {selectedSite && hasDestinationCoords ? (
+          <DeliveryPreferenceSection
+            options={deliveryOptions}
+            loading={deliveryOptionsLoading}
+            errorMessage={deliveryOptionsError}
+            selectedType={preferenceType}
+            selectedSlotId={selectedSlotId}
+            selectedDate={scheduleDate}
+            onSelectType={handleSelectPreference}
+            onSelectSlot={(slot) => void handleSelectSlot(slot)}
+            onSelectScheduleDate={(date) => {
+              setScheduleDate(date);
+              setSelectedSlotId(null);
+              setSelectedSlot(null);
+              const next = findBookableSlot('SCHEDULED', date);
+              if (next) void handleSelectSlot(next);
+            }}
+            onRetry={() => {
+              failedSlotIdsRef.current.clear();
+              void deliveryOptionsQuery.refetch();
+            }}
+            onChangeAddress={openAddressPicker}
+          />
+        ) : null}
 
         <View className="mb-3 rounded-card border border-border bg-surface p-4">
           <Text className="mb-2 font-bold text-text">{t('deliveryInstructions')}</Text>
@@ -1077,22 +1168,28 @@ export default function CheckoutScreen() {
             {selectedSlot
               ? `${selectedSlot.dateLabel} · ${selectedSlot.label}`
               : preferenceType === 'ASAP'
-                ? checkoutPreview?.deliveryOptions?.asap.etaLabel ||
-                  'Deliver as soon as possible'
+                ? deliveryOptions?.asap.etaLabel || 'Deliver as soon as possible'
                 : 'Choose a delivery time'}
           </Text>
-          {checkoutPreview?.deliveryOptions?.operatingWindow ? (
+          {displayPreview?.deliveryVehicleDisplayName || deliveryOptions?.hubName ? (
             <Text className="mt-1 text-xs text-text-secondary">
-              Delivery Hours:{' '}
-              {checkoutPreview.deliveryOptions.operatingWindow.start} –{' '}
-              {checkoutPreview.deliveryOptions.operatingWindow.end} · Sunday: No
-              Delivery
+              {[
+                displayPreview?.deliveryVehicleDisplayName,
+                (checkoutPreview?.fulfillmentHubName ?? deliveryOptions?.hubName)
+                  ? `${t('deliveringFrom')} ${checkoutPreview?.fulfillmentHubName ?? deliveryOptions?.hubName}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
-          ) : (
+          ) : null}
+          {deliveryOptions?.operatingWindow ? (
             <Text className="mt-1 text-xs text-text-secondary">
-              Delivery Hours: 11:00 AM – 4:30 PM · Sunday: No Delivery
+              {t('deliveryHoursLabel')}: {deliveryOptions.operatingWindow.start} –{' '}
+              {deliveryOptions.operatingWindow.end}
+              {closedDaysLabel ? ` · ${t('noDeliveryOn')} ${closedDaysLabel}` : ''}
             </Text>
-          )}
+          ) : null}
         </View>
 
         <CheckoutDeliveryQuote
@@ -1107,6 +1204,11 @@ export default function CheckoutScreen() {
             void refreshEta();
             void refreshCheckoutPreview(useLoyalty);
           }}
+          onRetryEta={() => {
+            void refreshEta();
+            void refreshCheckoutPreview(useLoyalty);
+          }}
+          etaRefreshing={etaLoading || quoteLoading}
           onChangeAddress={openAddressPicker}
           onAddAddress={openAddressPicker}
           onClearCart={() => {
@@ -1117,9 +1219,20 @@ export default function CheckoutScreen() {
             selectedSlot
               ? `${selectedSlot.dateLabel}, ${selectedSlot.label}`
               : preferenceType === 'ASAP'
-                ? checkoutPreview?.deliveryOptions?.asap.etaLabel
+                ? deliveryOptions?.asap.etaLabel
                 : null
           }
+        />
+
+        <DeliveryTermsSection
+          accepted={deliveryTermsAccepted}
+          onToggle={(accepted) => {
+            setDeliveryTermsAccepted(accepted);
+            if (accepted) setShowTermsHint(false);
+          }}
+          operatingWindow={deliveryOptions?.operatingWindow}
+          closedDaysLabel={closedDaysLabel}
+          showRequiredHint={showTermsHint}
         />
 
         <View className="mb-3 rounded-card border border-border bg-surface p-4">
@@ -1275,6 +1388,15 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
+        {!deliveryTermsAccepted && !paying && !paySuccess ? (
+          <Text className="mt-3 text-center text-xs text-text-secondary">
+            {t('deliveryTermsRequired')}
+          </Text>
+        ) : !slotRequirementMet && !paying && !paySuccess ? (
+          <Text className="mt-3 text-center text-xs text-text-secondary">
+            {t('chooseAnotherSlot')}
+          </Text>
+        ) : null}
         <ScaledPressable
           onPress={handlePay}
           disabled={!canPlaceOrder}

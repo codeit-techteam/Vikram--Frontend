@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,39 +21,92 @@ type PreferenceCard = {
 interface DeliveryPreferenceSectionProps {
   options: DeliveryOptions | null;
   loading?: boolean;
+  errorMessage?: string | null;
   selectedType: DeliveryPreferenceType;
   selectedSlotId: string | null;
   selectedDate: string | null;
   onSelectType: (type: DeliveryPreferenceType) => void;
   onSelectSlot: (slot: DeliverySlotOption) => void;
   onSelectScheduleDate: (date: string) => void;
+  onRetry?: () => void;
+  onChangeAddress?: () => void;
+}
+
+function SectionShell({ children }: { children: ReactNode }) {
+  return <View className="mb-3 rounded-card border border-border bg-surface p-4">{children}</View>;
 }
 
 export function DeliveryPreferenceSection({
   options,
   loading,
+  errorMessage,
   selectedType,
   selectedSlotId,
   selectedDate,
   onSelectType,
   onSelectSlot,
   onSelectScheduleDate,
+  onRetry,
+  onChangeAddress,
 }: DeliveryPreferenceSectionProps) {
   const { t } = useTranslation();
 
-  if (loading && !options) {
+  if (!options) {
+    if (loading) {
+      return (
+        <SectionShell>
+          <View className="flex-row items-center gap-2">
+            <ActivityIndicator size="small" color="#FEB623" />
+            <Text className="font-bold text-text">{t('loadingDeliveryOptions')}</Text>
+          </View>
+        </SectionShell>
+      );
+    }
     return (
-      <View className="mb-3 rounded-card border border-border bg-surface p-4">
+      <SectionShell>
         <View className="flex-row items-center gap-2">
-          <ActivityIndicator size="small" color="#FEB623" />
-          <Text className="font-bold text-text">{t('calculatingDelivery')}</Text>
+          <Ionicons name="cloud-offline-outline" size={18} color="#FF3B30" />
+          <Text className="flex-1 font-bold text-text">{t('unableToLoadDeliverySlots')}</Text>
         </View>
-      </View>
+        {errorMessage ? (
+          <Text className="mt-1 text-xs text-text-secondary">{errorMessage}</Text>
+        ) : null}
+        <View className="mt-3 flex-row flex-wrap gap-2">
+          {onRetry ? (
+            <ScaledPressable onPress={onRetry} className="rounded-xl bg-primary px-4 py-2">
+              <Text className="text-sm font-bold text-onPrimary">{t('retry')}</Text>
+            </ScaledPressable>
+          ) : null}
+          <ScaledPressable
+            onPress={() => onSelectType('ASAP')}
+            className={`rounded-xl border px-4 py-2 ${
+              selectedType === 'ASAP' ? 'border-primary bg-primary/10' : 'border-border'
+            }`}>
+            <Text className="text-sm font-bold text-text">{t('continueWithAsap')}</Text>
+          </ScaledPressable>
+        </View>
+      </SectionShell>
     );
   }
 
-  if (!options || !options.serviceable) {
-    return null;
+  if (!options.serviceable) {
+    return (
+      <SectionShell>
+        <View className="flex-row items-center gap-2">
+          <Ionicons name="alert-circle-outline" size={18} color="#FF3B30" />
+          <Text className="flex-1 font-bold text-text">
+            {options.unavailableReason || t('deliveryUnavailableAtLocation')}
+          </Text>
+        </View>
+        {onChangeAddress ? (
+          <ScaledPressable
+            onPress={onChangeAddress}
+            className="mt-3 self-start rounded-xl bg-primary px-4 py-2">
+            <Text className="text-sm font-bold text-onPrimary">{t('changeAddress')}</Text>
+          </ScaledPressable>
+        ) : null}
+      </SectionShell>
+    );
   }
 
   const cards: PreferenceCard[] = [
@@ -92,16 +146,23 @@ export function DeliveryPreferenceSection({
     },
   ];
 
+  const activeScheduleDate = selectedDate ?? options.scheduled[0]?.date ?? null;
   const slots =
     selectedType === 'TODAY'
       ? options.today.slots
       : selectedType === 'TOMORROW'
         ? options.tomorrow.slots
         : selectedType === 'SCHEDULED'
-          ? options.scheduled.find((day) => day.date === selectedDate)?.slots ??
-            options.scheduled[0]?.slots ??
-            []
+          ? options.scheduled.find((day) => day.date === activeScheduleDate)?.slots ?? []
           : [];
+  const availableSlots = slots.filter((slot) => slot.available);
+  const nextBookableDate = options.scheduled.find(
+    (day) =>
+      day.date !== activeScheduleDate &&
+      !day.isHoliday &&
+      day.available &&
+      day.slots.some((slot) => slot.available),
+  )?.date;
 
   return (
     <View className="mb-3 rounded-card border border-border bg-surface p-4">
@@ -163,7 +224,7 @@ export function DeliveryPreferenceSection({
           className="mt-3"
           contentContainerStyle={{ gap: 8 }}>
           {options.scheduled.map((day) => {
-            const active = (selectedDate ?? options.scheduled[0]?.date) === day.date;
+            const active = activeScheduleDate === day.date;
             const holiday = Boolean(day.isHoliday) || !day.available;
             return (
               <ScaledPressable
@@ -196,7 +257,20 @@ export function DeliveryPreferenceSection({
         </ScrollView>
       ) : null}
 
-      {selectedType !== 'ASAP' && slots.length > 0 ? (
+      {selectedType !== 'ASAP' && availableSlots.length === 0 ? (
+        <View className="mt-3 rounded-xl border border-border bg-background px-3 py-3">
+          <Text className="text-sm font-semibold text-text">{t('noSlotsForDate')}</Text>
+          {selectedType === 'SCHEDULED' && nextBookableDate ? (
+            <ScaledPressable
+              onPress={() => onSelectScheduleDate(nextBookableDate)}
+              className="mt-2 self-start">
+              <Text className="text-sm font-bold text-primary">{t('chooseAnotherDate')}</Text>
+            </ScaledPressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      {selectedType !== 'ASAP' && availableSlots.length > 0 ? (
         <View className="mt-3 gap-2">
           <Text className="text-xs font-bold uppercase tracking-wider text-text-secondary">
             {t('chooseATime')}

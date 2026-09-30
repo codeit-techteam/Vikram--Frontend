@@ -89,6 +89,8 @@ type CreateRazorpayOrderPayload = {
   deliveryLeaveAtSecurity?: boolean;
   deliveryHeavyVehicleAccess?: boolean;
   openAreaConfirmed?: boolean;
+  deliveryTermsAccepted?: boolean;
+  deliveryTermsVersion?: string;
   internalOrderId?: string;
   checkoutMethod?: RazorpayCheckoutMethod;
   idempotencyKey?: string;

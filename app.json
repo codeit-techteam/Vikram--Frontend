@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bajriwala",
     "slug": "bajriwala",
-    "owner": "vikramsahrawat09s-team",
+    "owner": "sumit.codeit1",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -94,7 +94,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "0350eea9-fe5d-4623-b7bd-3d3ddf1ad568"
+        "projectId": "d5fbb9da-1048-4133-86b3-258efb665369"
       }
     }
   }

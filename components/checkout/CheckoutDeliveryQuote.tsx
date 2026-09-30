@@ -22,6 +22,8 @@ interface CheckoutDeliveryQuoteProps {
   preferenceLabel?: string | null;
   errorMessage?: string | null;
   onRetry?: () => void;
+  onRetryEta?: () => void;
+  etaRefreshing?: boolean;
   onChangeAddress?: () => void;
   onAddAddress?: () => void;
   onClearCart?: () => void;
@@ -37,6 +39,8 @@ export function CheckoutDeliveryQuote({
   preferenceLabel,
   errorMessage,
   onRetry,
+  onRetryEta,
+  etaRefreshing,
   onChangeAddress,
   onAddAddress,
   onClearCart,
@@ -213,10 +217,25 @@ export function CheckoutDeliveryQuote({
       <View style={styles.divider} />
 
       <Text style={styles.sectionLabel}>{t('estimatedDelivery')}</Text>
-      <Text style={styles.eta}>{etaLabel || preview?.deliveringBy || '—'}</Text>
-      {preview?.deliveringBy && etaLabel !== preview.deliveringBy ? (
-        <Text style={styles.body}>{preview.deliveringBy}</Text>
-      ) : null}
+      {etaLabel || preview?.deliveringBy ? (
+        <>
+          <Text style={styles.eta}>{etaLabel || preview?.deliveringBy}</Text>
+          {preview?.deliveringBy && etaLabel !== preview.deliveringBy ? (
+            <Text style={styles.body}>{preview.deliveringBy}</Text>
+          ) : null}
+        </>
+      ) : (
+        <View style={styles.row}>
+          <Text style={[styles.body, styles.etaUnavailable]}>{t('estimateUnavailable')}</Text>
+          {etaRefreshing ? (
+            <ActivityIndicator size="small" color="#FEB623" />
+          ) : onRetryEta ? (
+            <ScaledPressable onPress={onRetryEta} hitSlop={8}>
+              <Text style={styles.linkText}>{t('retry')}</Text>
+            </ScaledPressable>
+          ) : null}
+        </View>
+      )}
 
       <View style={styles.metaBlock}>
         <View style={styles.metaRow}>
@@ -330,6 +349,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#1A1A1A',
+  },
+  etaUnavailable: {
+    flex: 1,
+    marginTop: 0,
   },
   metaBlock: {
     marginTop: 12,

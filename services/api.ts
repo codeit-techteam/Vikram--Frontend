@@ -77,7 +77,7 @@ async function performTokenRefresh(): Promise<string | null> {
     const response = await axios.post(
       `${API_BASE_URL}/auth/customer/refresh`,
       { refreshToken },
-      { headers: { 'Content-Type': 'application/json' } },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 15000 },
     );
 
     const data = response.data?.data ?? response.data;
@@ -194,14 +194,47 @@ api.interceptors.response.use(
       await clearSessionAndEnterGuest();
     }
 
+    const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+    const isCancelled = axios.isCancel(error) || error.code === 'ERR_CANCELED';
+    const isNetwork = !error.response && !isTimeout && !isCancelled;
     const apiError: ApiError = {
-      message: error.response?.data?.message ?? error.message ?? 'An unexpected error occurred',
-      statusCode: error.response?.status ?? 500,
+      message: isTimeout
+        ? 'The server is taking too long to respond. Please try again.'
+        : isNetwork
+          ? 'Unable to reach Bajriwala. Check your internet connection and try again.'
+          : (error.response?.data?.message ?? error.message ?? 'An unexpected error occurred'),
+      statusCode: error.response?.status ?? (isTimeout ? 408 : isCancelled ? 499 : 0),
       errors: error.response?.data?.errors,
+      code: isTimeout
+        ? 'TIMEOUT'
+        : isCancelled
+          ? 'CANCELLED'
+          : isNetwork
+            ? 'NETWORK'
+            : error.response?.data?.code,
     };
 
     return Promise.reject(apiError);
   },
 );
+
+/** Reads a customer-safe message from either the normalized ApiError or a raw Error. */
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (!error) return fallback;
+  const raw = (error as { message?: unknown }).message;
+  const message = Array.isArray(raw) ? raw.join(', ') : typeof raw === 'string' ? raw : '';
+  return message.trim() || fallback;
+}
+
+export function getApiErrorStatus(error: unknown): number | undefined {
+  const status =
+    (error as { statusCode?: number }).statusCode ??
+    (error as { response?: { status?: number } }).response?.status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+export function isCancelledApiError(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === 'CANCELLED';
+}
 
 export { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY };
