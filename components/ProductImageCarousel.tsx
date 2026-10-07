@@ -337,7 +337,7 @@ export function ProductImageCarousel({
             <Ionicons name="menu" size={22} color="#FFFFFF" />
           </ScaledPressable>
           <View className="rounded-full bg-black/30 px-3 py-1.5">
-            <BrandLogo size="sm" />
+            <BrandLogo size="sm" variant="onDark" />
           </View>
           <View className="w-10" />
         </View>

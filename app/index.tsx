@@ -1,15 +1,18 @@
 import { useEffect } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Logo, theme } from '@constants/theme';
+import { BrandLogo } from '@components/BrandLogo';
+import { BRAND_CHARCOAL, theme } from '@constants/theme';
 import { useLanguageStore, useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
 
 const MIN_SPLASH_MS = 1200;
+const SPLASH_TEXT = '#F6EFE5';
 
 export default function SplashScreen() {
   const language = useLanguageStore((s) => s.language);
@@ -47,37 +50,23 @@ export default function SplashScreen() {
   }, [hydrateSession]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.primary }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BRAND_CHARCOAL }} edges={['top', 'bottom']}>
+      <StatusBar style="light" />
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.primary,
+          backgroundColor: BRAND_CHARCOAL,
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-        <Image
-          source={Logo}
-          style={{ width: 180, height: 180, marginBottom: 24 }}
-          resizeMode="contain"
-        />
-
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '900',
-            color: theme.black,
-            letterSpacing: 3,
-            textTransform: 'uppercase',
-          }}>
-          {theme.appName.toUpperCase()}
-        </Text>
+        <BrandLogo size="lg" variant="onDark" />
 
         <Text
           style={{
             fontSize: 14,
-            color: theme.black,
+            color: SPLASH_TEXT,
             fontWeight: '600',
-            marginTop: 8,
+            marginTop: 16,
             opacity: 0.7,
             letterSpacing: 0.5,
           }}>
@@ -92,11 +81,11 @@ export default function SplashScreen() {
             alignItems: 'center',
             gap: 6,
           }}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={theme.black} />
+          <Ionicons name="shield-checkmark-outline" size={14} color={SPLASH_TEXT} />
           <Text
             style={{
               fontSize: 12,
-              color: theme.black,
+              color: SPLASH_TEXT,
               fontWeight: '600',
               opacity: 0.6,
             }}>

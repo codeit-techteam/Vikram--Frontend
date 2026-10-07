@@ -1,6 +1,5 @@
 import { memo, useEffect, type ReactNode } from 'react';
 import {
-  Image,
   Platform,
   StyleSheet,
   Text,
@@ -18,14 +17,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@components/BrandLogo';
 import { AppIcon } from '@components/ui/AppIcon';
 import { IconButton } from '@components/ui/IconButton';
 import { CountBadge } from '@components/ui/CountBadge';
 import { openVoiceAssistant } from '@components/VoiceAssistantSheet';
 import { ICON_SIZE } from '@constants/icons';
 import { layout } from '@constants/spacing';
-import { typography } from '@constants/typography';
-import { Logo, theme } from '@constants/theme';
+import { theme } from '@constants/theme';
 import { useCartStore } from '@store/cartStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { safeGoBack } from '@utils/navigation';
@@ -50,7 +49,7 @@ export interface AppHeaderProps {
 
 /**
  * Canonical app header for every main screen.
- * Layout: ☰ · Logo · Bajriwala  |  Mic · Bell · Cart
+ * Layout: ☰ · Wordmark  |  Mic · Bell · Cart
  */
 function AppHeaderComponent({
   showBack = false,
@@ -126,12 +125,7 @@ function AppHeaderComponent({
                 {title}
               </Text>
             ) : showLogo ? (
-              <>
-                <Image source={Logo} style={styles.logoImage} resizeMode="contain" />
-                <Text style={styles.logoText} numberOfLines={1}>
-                  {theme.appName}
-                </Text>
-              </>
+              <BrandLogo height={30} />
             ) : null}
           </View>
         </View>
@@ -215,15 +209,6 @@ const styles = StyleSheet.create({
     gap: 6,
     minWidth: 0,
     marginLeft: 2,
-  },
-  logoImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-  },
-  logoText: {
-    ...typography.headerBrand,
-    color: theme.textPrimary,
   },
   titleText: {
     fontSize: 17,

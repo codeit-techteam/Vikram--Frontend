@@ -11,6 +11,7 @@ import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@components/BrandLogo';
 import { MobileInput, isValidMobileNumber } from '@components/MobileInput';
 import { images } from '@constants/images';
 import { sendOtp } from '@services/auth.api';
@@ -87,12 +88,7 @@ export default function LoginScreen() {
             backgroundColor: GOLD,
             gap: 8,
           }}>
-          <Image
-            source={require('../assets/images/logo.png')}
-            style={{ width: 30, height: 30, borderRadius: 6 }}
-            resizeMode="contain"
-          />
-          <Text style={{ fontSize: 17, fontWeight: '800', color: DARK }}>Bajriwala</Text>
+          <BrandLogo height={32} variant="monoDark" />
         </View>
 
         {/* Hero image */}

@@ -100,7 +100,7 @@ function BajriProPointsBanner({
     <View style={[styles.pointsBanner, disabled && { opacity: 0.85 }]}>
       <View style={styles.pointsRow}>
         <View style={styles.pointsLeft}>
-          <BrandLogo size="sm" />
+          <BrandLogo size="sm" variant="monoDark" />
           <View>
             <Text style={styles.pointsTitle}>BajriPro Points</Text>
             <Text style={styles.pointsBalance}>

@@ -13,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { YellowBackHeader } from '@components/BackHeader';
+import { BrandLogo } from '@components/BrandLogo';
 import { sendOtp } from '@services/auth.api';
 import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
@@ -141,27 +142,8 @@ export default function OTPScreen() {
             shadowRadius: 20,
             elevation: 10,
           }}>
-          {/* Logo */}
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 18,
-              backgroundColor: GOLD,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 20,
-              shadowColor: WARM_SHADOW,
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6,
-            }}>
-            <Image
-              source={require('../assets/images/logo.png')}
-              style={{ width: 50, height: 50 }}
-              resizeMode="contain"
-            />
+          <View style={{ marginBottom: 20 }}>
+            <BrandLogo height={44} />
           </View>
 
           <Text

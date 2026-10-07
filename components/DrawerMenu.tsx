@@ -212,7 +212,7 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           label: t('drawerWhatsAppSupport'),
           onPress: () => {
             onClose();
-            Linking.openURL('whatsapp://send?phone=919999999999');
+            Linking.openURL('whatsapp://send?phone=919211899956');
           },
         },
         {

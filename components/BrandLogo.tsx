@@ -1,56 +1,32 @@
-import { Image, Text, View } from 'react-native';
+import { Image } from 'react-native';
 
-import { Logo, theme } from '@constants/theme';
+import { BRAND_WORDMARK_ASPECT, BrandWordmark, theme } from '@constants/theme';
+
+export type BrandLogoVariant = keyof typeof BrandWordmark;
 
 interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg';
-  showText?: boolean;
+  /** Overrides the preset height from `size`. */
+  height?: number;
+  variant?: BrandLogoVariant;
 }
 
-const SIZES = {
-  sm: { icon: 28, text: 'text-base' },
-  md: { icon: 36, text: 'text-lg' },
-  lg: { icon: 180, text: 'text-2xl' },
+const HEIGHTS = {
+  sm: 26,
+  md: 32,
+  lg: 80,
 };
 
-export function LogoIcon({ size }: { size: number }) {
+export function BrandLogo({ size = 'md', height, variant = 'onLight' }: BrandLogoProps) {
+  const h = height ?? HEIGHTS[size];
+
   return (
     <Image
-      source={Logo}
-      style={{ width: size, height: size, borderRadius: size > 40 ? 0 : 6 }}
+      source={BrandWordmark[variant]}
+      style={{ height: h, width: h * BRAND_WORDMARK_ASPECT }}
       resizeMode="contain"
+      accessibilityRole="image"
+      accessibilityLabel={theme.appName}
     />
-  );
-}
-
-export function BrandLogo({ size = 'md', showText = true }: BrandLogoProps) {
-  const config = SIZES[size];
-
-  if (size === 'lg') {
-    return (
-      <View className="items-center">
-        <LogoIcon size={config.icon} />
-        {showText && (
-          <>
-            <Text
-              className="mt-6 text-[28px] font-black tracking-[3px] text-text"
-              style={{ textTransform: 'uppercase' }}>
-              {theme.appName.toUpperCase()}
-            </Text>
-          </>
-        )}
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-row items-center gap-2">
-      <LogoIcon size={config.icon} />
-      {showText && (
-        <Text className={`${config.text} font-extrabold text-text`} style={{ letterSpacing: -0.3 }}>
-          {theme.appName}
-        </Text>
-      )}
-    </View>
   );
 }

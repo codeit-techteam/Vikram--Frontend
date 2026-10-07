@@ -25,8 +25,8 @@ export const TERMS_META = {
   intro:
     'Please read these Terms & Conditions carefully before using Bajriwala. By placing an order, creating an account, or using any service, you agree to these terms.',
   supportEmail: 'support@bajriwala.com',
-  supportPhone: '+91 99999 99999',
-  supportPhoneTel: '+919999999999',
+  supportPhone: '+91 92118 99956',
+  supportPhoneTel: '+919211899956',
   workingHours: '9 AM – 8 PM',
 } as const;
 

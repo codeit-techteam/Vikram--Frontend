@@ -69,8 +69,18 @@ export const theme = {
   trustBadge: 'Trusted by 500+ Contractors across Delhi',
 } as const;
 
-export const Logo = require('../assets/images/logo.png');
-export const LogoSmall = require('../assets/images/logo.png');
+/** Bajriwala wordmark. Use `monoDark` on brand-yellow surfaces, where the yellow dot would vanish. */
+export const BrandWordmark = {
+  onLight: require('../assets/images/bajriwala-logo-on-light.png'),
+  onDark: require('../assets/images/bajriwala-logo-on-dark.png'),
+  monoDark: require('../assets/images/bajriwala-logo-mono-dark.png'),
+} as const;
+
+/** Width / height of the wordmark artwork. */
+export const BRAND_WORDMARK_ASPECT = 536 / 201;
+
+/** Charcoal background of the master logo artwork. */
+export const BRAND_CHARCOAL = '#32312F';
 
 export type Theme = typeof theme;
 

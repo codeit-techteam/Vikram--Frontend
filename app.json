@@ -81,9 +81,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
+          "image": "./assets/images/bajriwala-logo-on-dark.png",
+          "imageWidth": 170,
           "resizeMode": "contain",
-          "backgroundColor": "#FEB623"
+          "backgroundColor": "#32312F"
         }
       ],
       "expo-status-bar"

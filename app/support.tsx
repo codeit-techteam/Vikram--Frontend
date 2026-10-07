@@ -225,7 +225,7 @@ export default function SupportScreen() {
             <Ionicons name="chevron-forward" size={18} color="#999" />
           </ScaledPressable>
           <ScaledPressable
-            onPress={() => Linking.openURL('tel:+919999999999')}
+            onPress={() => Linking.openURL('tel:+919211899956')}
             className="flex-row items-center justify-between rounded-card border border-border bg-surface p-4">
             <View className="flex-row items-center gap-3">
               <View className="h-10 w-10 items-center justify-center rounded-lg bg-trust">
