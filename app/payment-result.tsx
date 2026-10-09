@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -204,6 +204,19 @@ export default function PaymentResultScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
+  // Returning from a UPI app or browser is the moment a payment usually settles.
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      if (viewRef.current === 'timeout' || viewRef.current === 'network') {
+        void refreshOnce();
+      }
+    });
+    return () => sub.remove();
+  }, [refreshOnce]);
+
   const goToCheckoutRetry = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.replace({
@@ -230,7 +243,12 @@ export default function PaymentResultScreen() {
             <Ionicons name={copy.icon} size={40} color="#FFFFFF" />
           )}
         </View>
-        <Text className="mt-6 text-center text-2xl font-bold text-text">{copy.title}</Text>
+        <Text
+          accessibilityRole="header"
+          accessibilityLiveRegion="polite"
+          className="mt-6 text-center text-2xl font-bold text-text">
+          {copy.title}
+        </Text>
         <Text className="mt-3 text-center text-sm leading-5 text-text-secondary">{copy.body}</Text>
 
         {view === 'checking' || view === 'timeout' || view === 'network' ? (

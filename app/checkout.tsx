@@ -85,6 +85,8 @@ import {
 import { isValidDeliveryCoordinates } from '@utils/geo';
 import {
   buildRazorpayOptions,
+  INCOMPLETE_RESPONSE_CODE,
+  isNativeRazorpayAvailable,
   openNativeRazorpayCheckout,
   RazorpayCheckoutError,
   type NativeRazorpayOptions,
@@ -917,14 +919,23 @@ export default function CheckoutScreen() {
       checkoutMethod: paymentMethod === 'upi' ? 'upi' : 'cards',
     });
 
+    let checkoutResult: RazorpayCheckoutSuccess;
     try {
-      const checkoutResult = await openNativeRazorpayCheckout(options);
-      await verifyOnlinePayment(session, checkoutResult);
+      logCheckoutEvent('payment_checkout_open', {
+        mode: isNativeRazorpayAvailable() ? 'native' : 'web',
+        razorpayOrderId: session.razorpayOrderId,
+        internalOrderId: session.internalOrderId,
+      });
+      checkoutResult = await openNativeRazorpayCheckout(options);
     } catch (error) {
       if (error instanceof RazorpayCheckoutError && error.nativeUnavailable) {
         setWebCheckoutOptions(options);
         return;
       }
+      logCheckoutEvent('payment_checkout_closed', {
+        cancelled: error instanceof RazorpayCheckoutError && error.cancelled,
+        code: error instanceof RazorpayCheckoutError ? String(error.code ?? '') : 'UNKNOWN',
+      });
       if (error instanceof RazorpayCheckoutError && error.cancelled) {
         try {
           await cancelRazorpayPayment(session.internalOrderId);
@@ -942,15 +953,20 @@ export default function CheckoutScreen() {
         return;
       }
       setPaying(false);
+      const unknownOutcome =
+        error instanceof RazorpayCheckoutError && error.code === INCOMPLETE_RESPONSE_CODE;
       router.replace({
         pathname: '/payment-result',
         params: {
-          status: 'failed',
+          status: unknownOutcome ? 'checking' : 'failed',
           orderId: session.internalOrderId,
-          message: error instanceof Error ? error.message : undefined,
+          fromCallback: unknownOutcome ? '1' : undefined,
+          message: !unknownOutcome && error instanceof Error ? error.message : undefined,
         },
       });
+      return;
     }
+    await verifyOnlinePayment(session, checkoutResult);
   };
 
   const handlePay = async () => {

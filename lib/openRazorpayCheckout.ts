@@ -1,3 +1,5 @@
+import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
+
 export type RazorpayCheckoutSuccess = {
   razorpay_payment_id: string;
   razorpay_order_id: string;
@@ -47,60 +49,110 @@ export type NativeRazorpayOptions = {
   };
 };
 
-function isCancelledError(error: unknown): boolean {
-  const value = error as {
-    code?: number | string;
-    description?: string;
-    error?: { code?: string; description?: string };
-  };
-  const code = value?.code ?? value?.error?.code;
-  const description = String(
-    value?.description ?? value?.error?.description ?? '',
-  ).toLowerCase();
+export const INCOMPLETE_RESPONSE_CODE = 'INCOMPLETE_RESPONSE';
+
+/** Razorpay SDK cancel codes differ per platform: Android PAYMENT_CANCELED=0, iOS=2. */
+const NATIVE_CANCEL_CODE = Platform.OS === 'ios' ? 2 : 0;
+
+type NativeErrorPayload = {
+  code?: number | string;
+  description?: string;
+  error?: { code?: string; description?: string; reason?: string };
+};
+
+/** Android sends `description` as a JSON string wrapping `{ error: {...} }`. */
+function readNativeError(raw: unknown): { code?: number | string; message: string; reason: string } {
+  const value = (raw ?? {}) as NativeErrorPayload;
+  let inner = value.error;
+  if (!inner && typeof value.description === 'string' && value.description.trim().startsWith('{')) {
+    try {
+      inner = (JSON.parse(value.description) as NativeErrorPayload).error;
+    } catch {
+      inner = undefined;
+    }
+  }
+  const message =
+    inner?.description ||
+    (typeof value.description === 'string' && !value.description.trim().startsWith('{')
+      ? value.description
+      : '') ||
+    (raw instanceof Error ? raw.message : '') ||
+    'Payment was not completed.';
+  return { code: value.code, message, reason: String(inner?.reason ?? '') };
+}
+
+export function isCancelledNativeError(raw: unknown): boolean {
+  const { code, message, reason } = readNativeError(raw);
+  const text = `${message} ${reason}`.toLowerCase();
   return (
-    code === 0 ||
-    code === 2 ||
-    code === '2' ||
-    description.includes('cancelled') ||
-    description.includes('canceled')
+    Number(code) === NATIVE_CANCEL_CODE ||
+    text.includes('cancelled') ||
+    text.includes('canceled') ||
+    text.includes('payment_cancelled')
   );
+}
+
+/**
+ * The JS wrapper exports `open` even when the native module is missing (Expo Go,
+ * or a binary built before the SDK was added); calling it then throws inside a
+ * Promise. Check the native side directly so we can fall back to Checkout.js.
+ */
+export function isNativeRazorpayAvailable(): boolean {
+  try {
+    const turbo = TurboModuleRegistry.get('RNRazorpayCheckout');
+    return Boolean(turbo ?? NativeModules.RNRazorpayCheckout);
+  } catch {
+    return Boolean(NativeModules.RNRazorpayCheckout);
+  }
 }
 
 export async function openNativeRazorpayCheckout(
   options: NativeRazorpayOptions,
 ): Promise<RazorpayCheckoutSuccess> {
+  const unavailable = () =>
+    new RazorpayCheckoutError({
+      cancelled: false,
+      nativeUnavailable: true,
+      description: 'Native Razorpay checkout is unavailable in this build.',
+    });
+
+  if (!isNativeRazorpayAvailable()) throw unavailable();
+
   let RazorpayCheckout: {
     open: (opts: NativeRazorpayOptions) => Promise<RazorpayCheckoutSuccess>;
   };
   try {
     RazorpayCheckout = require('react-native-razorpay').default;
   } catch {
-    throw new RazorpayCheckoutError({
-      cancelled: false,
-      nativeUnavailable: true,
-      description: 'Native Razorpay checkout is unavailable in this build.',
-    });
+    throw unavailable();
   }
+  if (typeof RazorpayCheckout?.open !== 'function') throw unavailable();
 
-  if (!RazorpayCheckout?.open) {
-    throw new RazorpayCheckoutError({
-      cancelled: false,
-      nativeUnavailable: true,
-      description: 'Native Razorpay checkout is unavailable in this build.',
-    });
-  }
-
+  let result: RazorpayCheckoutSuccess;
   try {
-    return await RazorpayCheckout.open(options);
+    result = await RazorpayCheckout.open(options);
   } catch (error) {
+    const { code, message } = readNativeError(error);
     throw new RazorpayCheckoutError({
-      code: (error as { code?: number | string }).code,
-      description:
-        (error as { description?: string }).description ||
-        (error instanceof Error ? error.message : 'Payment was not completed.'),
-      cancelled: isCancelledError(error),
+      code,
+      description: message,
+      cancelled: isCancelledNativeError(error),
     });
   }
+
+  if (
+    !result?.razorpay_payment_id ||
+    !result.razorpay_order_id ||
+    !result.razorpay_signature
+  ) {
+    // Missing fields cannot be verified; the backend status check decides the outcome.
+    throw new RazorpayCheckoutError({
+      code: INCOMPLETE_RESPONSE_CODE,
+      cancelled: false,
+      description: 'Razorpay returned an incomplete response.',
+    });
+  }
+  return result;
 }
 
 export function buildRazorpayOptions(input: {
