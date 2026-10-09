@@ -7,6 +7,17 @@ export class DeadlineExceededError extends Error {
   }
 }
 
+/** A controller that aborts when `parent` aborts, but can also be aborted on its own. */
+export function childAbortController(parent: AbortController): AbortController {
+  const child = new AbortController();
+  if (parent.signal.aborted) {
+    child.abort();
+  } else {
+    parent.signal.addEventListener('abort', () => child.abort(), { once: true });
+  }
+  return child;
+}
+
 /**
  * Rejects when `task` has not settled within `ms`, so a stalled request chain
  * can never hold a loading flag forever. The underlying work is aborted via `controller`.

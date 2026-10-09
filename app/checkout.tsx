@@ -65,7 +65,13 @@ import { formatEtaLabel, holdDeliverySlot, type DeliveryEtaResult } from '@servi
 import { safeGoBack } from '@utils/navigation';
 import { logCheckoutEvent } from '@utils/checkoutLogger';
 import { describeClosedDays } from '@utils/deliverySchedule';
-import { withDeadline } from '@utils/withDeadline';
+import { childAbortController, withDeadline } from '@utils/withDeadline';
+import {
+  isRetryableQuoteError,
+  QUOTE_MAX_ATTEMPTS,
+  QUOTE_RETRY_DELAY_MS,
+  quoteMatchesCart,
+} from '@utils/checkoutQuote';
 import { DELIVERY_TERMS_VERSION } from '@constants/terms';
 import { requireAuth } from '@utils/requireAuth';
 import { formatINR } from '@utils/formatCurrency';
@@ -73,7 +79,6 @@ import {
   calculateLoyaltyDiscountPreview,
 } from '@utils/loyaltyPricing';
 import {
-  computeGstBusinessDiscount,
   formatGstDiscountPercent,
   DEFAULT_GST_DISCOUNT_CONFIG,
 } from '@utils/gstPricing';
@@ -113,6 +118,7 @@ type ActiveSheet =
 
 /** Whole quote chain (cart sync + preview + optional loyalty preview) must settle within this. */
 const QUOTE_DEADLINE_MS = 25000;
+const CART_SYNC_DEADLINE_MS = 8000;
 
 function getApiErrorMessage(error: unknown): string {
   return readApiErrorMessage(error, 'Unable to calculate delivery right now.');
@@ -362,15 +368,44 @@ export default function CheckoutScreen() {
       const startedAt = Date.now();
       logCheckoutEvent('quote_started', { requestId, items: items.length, applyLoyalty });
 
-      const runQuote = async () => {
-        await syncLocalCartToServer(items);
+      const runQuote = async (attempt: number, attemptController: AbortController) => {
+        const syncController = childAbortController(attemptController);
+        const syncStartedAt = Date.now();
+        try {
+          await withDeadline(
+            syncLocalCartToServer(items, { signal: syncController.signal }),
+            CART_SYNC_DEADLINE_MS,
+            t('deliveryEstimateSlow'),
+            syncController,
+          );
+          logCheckoutEvent('quote_cart_synced', { requestId, attempt, ms: Date.now() - syncStartedAt });
+        } catch (syncError) {
+          if (attemptController.signal.aborted || !isRetryableQuoteError(syncError)) throw syncError;
+          // The server cart may already match; the line check below decides.
+          logCheckoutEvent('quote_cart_sync_slow', {
+            requestId,
+            attempt,
+            ms: Date.now() - syncStartedAt,
+            code: (syncError as { code?: string })?.code ?? null,
+          });
+        }
         if (requestId !== quoteRequestSeq.current) return;
+
+        const previewStartedAt = Date.now();
         const base = await fetchCheckoutPreview({
           addressId,
           loyaltyPointsToRedeem: 0,
-          signal: controller.signal,
+          signal: attemptController.signal,
         });
+        logCheckoutEvent('quote_priced', { requestId, attempt, ms: Date.now() - previewStartedAt });
         if (requestId !== quoteRequestSeq.current) return;
+        if (!quoteMatchesCart(base.items, items)) {
+          throw {
+            code: 'CART_OUT_OF_SYNC',
+            statusCode: 409,
+            message: 'Your cart is still updating. Please retry in a moment.',
+          };
+        }
 
         if (!applyLoyalty || !base.redemptionEligible || base.maxRedeemablePoints <= 0) {
           setCheckoutPreview(base);
@@ -381,7 +416,7 @@ export default function CheckoutScreen() {
           const withLoyalty = await fetchCheckoutPreview({
             addressId,
             loyaltyPointsToRedeem: base.maxRedeemablePoints,
-            signal: controller.signal,
+            signal: attemptController.signal,
           });
           if (requestId !== quoteRequestSeq.current) return;
           setCheckoutPreview(withLoyalty);
@@ -398,7 +433,30 @@ export default function CheckoutScreen() {
       };
 
       try {
-        await withDeadline(runQuote(), QUOTE_DEADLINE_MS, t('deliveryEstimateSlow'), controller);
+        for (let attempt = 1; ; attempt += 1) {
+          const attemptController = childAbortController(controller);
+          try {
+            await withDeadline(
+              runQuote(attempt, attemptController),
+              QUOTE_DEADLINE_MS,
+              t('deliveryEstimateSlow'),
+              attemptController,
+            );
+            break;
+          } catch (attemptError) {
+            if (requestId !== quoteRequestSeq.current || controller.signal.aborted) throw attemptError;
+            if (attempt >= QUOTE_MAX_ATTEMPTS || !isRetryableQuoteError(attemptError)) {
+              throw attemptError;
+            }
+            logCheckoutEvent('quote_retry', {
+              requestId,
+              attempt,
+              code: (attemptError as { code?: string })?.code ?? null,
+            });
+            await new Promise((resolve) => setTimeout(resolve, QUOTE_RETRY_DELAY_MS * attempt));
+            if (requestId !== quoteRequestSeq.current) return;
+          }
+        }
         if (requestId === quoteRequestSeq.current) {
           logCheckoutEvent('quote_loaded', { requestId, ms: Date.now() - startedAt });
         }
@@ -559,8 +617,10 @@ export default function CheckoutScreen() {
   })();
 
   const slotRequirementMet = preferenceType === 'ASAP' || Boolean(selectedSlotId);
+  const hasServerQuote = Boolean(checkoutPreview) && !quoteIsStale;
   const canPlaceOrder =
     items.length > 0 &&
+    hasServerQuote &&
     Boolean(selectedSite) &&
     hasDestinationCoords &&
     deliveryQuoteStatus === 'available' &&
@@ -594,16 +654,15 @@ export default function CheckoutScreen() {
     ],
   );
 
-  const gstBusinessDiscount = useMemo(
-    () => (hasGstApplied ? computeGstBusinessDiscount(subtotal) : 0),
-    [hasGstApplied, subtotal],
-  );
+  // The backend applies no GST business discount; showing one would make the
+  // on-screen total differ from the amount Razorpay charges.
+  const gstBusinessDiscount = 0;
 
   const gstDiscountPercent = formatGstDiscountPercent(DEFAULT_GST_DISCOUNT_CONFIG.rate);
 
   const checkoutTotal = displayPreview
-    ? Math.max(0, displayPreview.grandTotal - (hasGstApplied ? gstBusinessDiscount : 0))
-    : Math.max(0, preDiscountTotal - gstBusinessDiscount);
+    ? Math.max(0, displayPreview.grandTotal)
+    : Math.max(0, preDiscountTotal);
 
   const corporateSavings = useMemo(
     () =>
@@ -1439,7 +1498,11 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        {!deliveryTermsAccepted && !paying && !paySuccess ? (
+        {!hasServerQuote && !quoteLoading && selectedSite && !paying && !paySuccess ? (
+          <Text className="mt-3 text-center text-xs text-text-secondary">
+            {t('confirmPricingToPay')}
+          </Text>
+        ) : !deliveryTermsAccepted && !paying && !paySuccess ? (
           <Text className="mt-3 text-center text-xs text-text-secondary">
             {t('deliveryTermsRequired')}
           </Text>

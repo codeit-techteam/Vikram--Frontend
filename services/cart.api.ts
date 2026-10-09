@@ -71,16 +71,40 @@ function sameServerLine(
  * Never wipe the server cart first — a failed re-add used to empty checkout.
  * Never DELETE the whole cart just because local is empty (rehydrate / host-switch races).
  */
-export async function syncLocalCartToServer(items: CartItem[]): Promise<void> {
+let syncChain: Promise<void> = Promise.resolve();
+
+/**
+ * Serialized: POST /cart adds to an existing line's quantity, so two overlapping
+ * syncs (background flush + checkout quote) would both POST and double the line.
+ */
+export function syncLocalCartToServer(
+  items: CartItem[],
+  options?: { signal?: AbortSignal },
+): Promise<void> {
+  const run = syncChain.then(() => syncOnce(items, options?.signal));
+  syncChain = run.catch(() => undefined);
+  return run;
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw { message: 'Request cancelled', statusCode: 499, code: 'CANCELLED' };
+  }
+}
+
+async function syncOnce(items: CartItem[], signal?: AbortSignal): Promise<void> {
   if (items.length === 0) {
     return;
   }
+  throwIfAborted(signal);
 
   let serverItems: ServerCartLine[] = [];
   try {
-    const serverCart = (await getServerCart()) as ServerCart | null;
+    const { data } = await api.get<ApiResponse<unknown>>(CART_BASE, { signal });
+    const serverCart = data.data as ServerCart | null;
     serverItems = Array.isArray(serverCart?.items) ? [...serverCart.items] : [];
-  } catch {
+  } catch (error) {
+    if ((error as { code?: string })?.code === 'CANCELLED') throw error;
     serverItems = [];
   }
 
@@ -97,26 +121,32 @@ export async function syncLocalCartToServer(items: CartItem[]): Promise<void> {
     const variantId = item.variantId && isUuid(item.variantId) ? item.variantId : undefined;
     const existing = serverItems.find((s) => sameServerLine(s, item) && !matchedServerIds.has(s.id));
 
+    throwIfAborted(signal);
     if (existing) {
       matchedServerIds.add(existing.id);
       if (existing.quantity !== item.quantity) {
-        await updateCartItemApi(existing.id, item.quantity);
+        await api.patch(`${CART_BASE}/item/${existing.id}`, { quantity: item.quantity }, { signal });
       }
       continue;
     }
 
-    await api.post(`${CART_BASE}`, {
-      productId,
-      quantity: item.quantity,
-      variantId,
-      hubId: item.hubId && isUuid(item.hubId) ? item.hubId : undefined,
-      etaMinutes: sanitizeEtaMinutes(item.etaMinutes),
-    });
+    await api.post(
+      `${CART_BASE}`,
+      {
+        productId,
+        quantity: item.quantity,
+        variantId,
+        hubId: item.hubId && isUuid(item.hubId) ? item.hubId : undefined,
+        etaMinutes: sanitizeEtaMinutes(item.etaMinutes),
+      },
+      { signal },
+    );
   }
 
   for (const serverItem of serverItems) {
     if (!matchedServerIds.has(serverItem.id)) {
-      await removeCartItemApi(serverItem.id);
+      throwIfAborted(signal);
+      await api.delete(`${CART_BASE}/item/${serverItem.id}`, { signal });
     }
   }
 }

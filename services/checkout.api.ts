@@ -3,7 +3,15 @@ import type { ApiResponse } from '@/types';
 import type { DeliveryVehicleType } from '@constants/deliveryVehicles';
 import type { DeliveryOptions } from '@/types/deliveryPreference';
 
+export interface CheckoutPreviewLine {
+  productId: string;
+  variantId?: string | null;
+  quantity: number;
+}
+
 export interface CheckoutPreview {
+  /** Server cart lines that were priced; absent on locally derived estimates. */
+  items?: CheckoutPreviewLine[];
   subtotal: number;
   gstAmount: number;
   deliveryCharge: number;
