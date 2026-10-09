@@ -1149,6 +1149,15 @@ export default function CheckoutScreen() {
       setPaying(false);
       setPaySuccess(false);
       const message = getApiErrorMessage(error) || 'Unable to place order';
+      if ((error as { code?: string } | null)?.code === 'DELIVERY_SLOT_UNAVAILABLE') {
+        if (selectedSlotId) failedSlotIdsRef.current.add(selectedSlotId);
+        setSelectedSlotId(null);
+        setSelectedSlot(null);
+        void deliveryOptionsQuery.refetch();
+        void refreshCheckoutPreview(useLoyalty);
+        Alert.alert(t('slotNoLongerAvailable'), message);
+        return;
+      }
       Alert.alert('Order failed', message);
     }
   };
