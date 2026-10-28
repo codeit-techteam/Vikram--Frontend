@@ -106,9 +106,10 @@ export function useProductDetail(slugOrId?: string) {
     queryFn: () => fetchProductBySlug(slugOrId!),
     enabled: Boolean(slugOrId),
     staleTime: PRODUCTS_STALE_TIME,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     placeholderData: cached,
+    retry: 1,
   });
 
   useEffect(() => {

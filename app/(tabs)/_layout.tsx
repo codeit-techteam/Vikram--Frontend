@@ -50,10 +50,9 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      detachInactiveScreens={false}
       screenOptions={{
         headerShown: false,
-        freezeOnBlur: false,
+        freezeOnBlur: true,
         animation: 'fade',
         tabBarActiveTintColor: TAB_BAR_THEME.active,
         tabBarInactiveTintColor: TAB_BAR_THEME.inactive,

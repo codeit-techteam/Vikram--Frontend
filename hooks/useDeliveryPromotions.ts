@@ -6,7 +6,7 @@ import { useAuthStore } from '@store/useAuthStore';
 import type { CmsDeliveryPromotion } from '@/types/cms';
 
 export const DELIVERY_PROMOTIONS_QUERY_KEY = 'cms-delivery-promotions';
-export const DELIVERY_PROMOTIONS_STALE_TIME = 1000 * 30;
+export const DELIVERY_PROMOTIONS_STALE_TIME = 1000 * 60 * 2;
 
 export function useDeliveryPromotions(options?: { enabled?: boolean }) {
   const customerId = useAuthStore((s) => s.customer?.id ?? 'guest');
@@ -15,10 +15,10 @@ export function useDeliveryPromotions(options?: { enabled?: boolean }) {
     queryKey: [DELIVERY_PROMOTIONS_QUERY_KEY, customerId],
     queryFn: fetchDeliveryPromotions,
     staleTime: DELIVERY_PROMOTIONS_STALE_TIME,
-    refetchOnWindowFocus: true,
-    refetchInterval: 1000 * 60,
+    refetchOnWindowFocus: false,
     enabled: options?.enabled !== false,
     retry: 1,
+    placeholderData: (previous) => previous,
   });
 
   const refetch = query.refetch;

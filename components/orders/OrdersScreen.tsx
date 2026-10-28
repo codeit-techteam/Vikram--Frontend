@@ -10,6 +10,7 @@ import { AppHeader } from '@components/AppHeader';
 import { AppIcon } from '@components/ui/AppIcon';
 import { IconButton } from '@components/ui/IconButton';
 import { DrawerShell } from '@components/DrawerShell';
+import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { EmptyOrdersState } from '@components/orders/EmptyOrdersState';
 import { OrderCard } from '@components/orders/OrderCard';
 import { OrderCardSkeleton, OrdersListSkeleton } from '@components/orders/OrderSkeleton';
@@ -101,6 +102,7 @@ export const OrdersScreen = memo(function OrdersScreen() {
     isRefreshing,
     isFetchingNextPage,
     hasNextPage,
+    error,
     refresh,
     loadMore,
     cancelOrder,
@@ -241,8 +243,15 @@ export const OrdersScreen = memo(function OrdersScreen() {
         </Animated.View>
       ) : null}
 
-      {isLoading ? (
+      {isLoading && orders.length === 0 ? (
         <OrdersListSkeleton count={3} />
+      ) : error && orders.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 16 }}>
+          <CatalogErrorState
+            message="Unable to load orders. Check your connection and try again."
+            onRetry={() => void refresh()}
+          />
+        </View>
       ) : (
         <>
           <FilterChips activeFilter={activeFilter} onChange={setActiveFilter} />

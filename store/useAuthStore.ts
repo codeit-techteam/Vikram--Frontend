@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 
-import { AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@services/api';
+import {
+  AUTH_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  setMemoryAccessToken,
+} from '@services/api';
 import * as authApi from '@services/auth.api';
 import type { AuthCustomer } from '@services/auth.api';
 import { getProfile, type CustomerProfile } from '@services/customer.api';
@@ -11,6 +15,7 @@ import { useGstStore } from '@store/gstStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
 import { useUserStore } from '@store/userStore';
 import type { GstDetails } from '@/types/gst';
+import { markStartup } from '@utils/startupPerf';
 
 export type UserRole =
   | 'individual'
@@ -249,6 +254,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setSession: async ({ accessToken, refreshToken, customer, isNewCustomer }) => {
     const sessionCustomer = toSessionCustomer(customer, isNewCustomer);
+    setMemoryAccessToken(accessToken);
     await Promise.all([
       storage.setItem(AUTH_TOKEN_KEY, accessToken),
       storage.setItem(REFRESH_TOKEN_KEY, refreshToken),
@@ -282,6 +288,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         ]);
 
         if (!token) {
+          setMemoryAccessToken(null);
           set({
             isLoggedIn: false,
             isGuest: guestFlag === 'true',
@@ -291,6 +298,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             loading: false,
             isHydrated: true,
           });
+          markStartup('session_local');
           return;
         }
 
@@ -298,6 +306,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           applySessionToUserStore(cachedCustomer);
         }
 
+        setMemoryAccessToken(token);
         set({
           token,
           refreshToken: refreshTokenValue,
@@ -307,9 +316,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           loading: false,
           isHydrated: true,
         });
-        await storage.removeItem(GUEST_MODE_KEY);
+        markStartup('session_local');
+        void storage.removeItem(GUEST_MODE_KEY);
 
-        await Promise.all([
+        // Network session refresh must not block first navigation.
+        void Promise.all([
           authApi
             .getMe()
             .then(async (me) => {
@@ -339,7 +350,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           get()
             .refreshProfile()
             .catch(() => undefined),
-        ]);
+        ]).finally(() => {
+          markStartup('session_network');
+        });
       } finally {
         set({ loading: false, isHydrated: true });
       }
@@ -385,6 +398,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await authApi.logout(refreshToken).catch(() => undefined);
       }
     } finally {
+      setMemoryAccessToken(null);
       await Promise.all([
         storage.removeItem(AUTH_TOKEN_KEY),
         storage.removeItem(REFRESH_TOKEN_KEY),
@@ -438,6 +452,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   handleSessionExpired: async () => {
+    setMemoryAccessToken(null);
     useUserStore.getState().reset();
     useDeliveryStore.getState().reset();
     useLoyaltyStore.getState().reset();

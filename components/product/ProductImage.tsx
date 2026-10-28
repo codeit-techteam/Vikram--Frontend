@@ -176,13 +176,14 @@ function ProductImageComponent({
             source={resolved}
             style={styles.image}
             contentFit={contentFit}
-            recyclingKey={recyclingKey}
+            recyclingKey={recyclingKey ?? sourceKey}
             cachePolicy="memory-disk"
             placeholder={{ blurhash: DEFAULT_BLURHASH }}
             transition={0}
             onLoad={onLoad}
             onError={onError}
             accessibilityLabel={accessibilityLabel}
+            allowDownscaling
           />
         </Animated.View>
       </View>

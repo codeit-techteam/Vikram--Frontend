@@ -44,17 +44,16 @@ import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
 import { useCategories } from '@hooks/useCategories';
 import { useCmsHome } from '@hooks/useCmsHome';
 import { useDeliveryPromotions } from '@hooks/useDeliveryPromotions';
-import { useHomeCatalog } from '@hooks/useHome';
 import { useHomeProducts } from '@hooks/useHomeProducts';
 import { useSites } from '@hooks/useSites';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
 import { drawerPanelStyle, useDrawerAnimation } from '@hooks/useDrawerAnimation';
-import { useSafeIsFocused } from '@hooks/useSafeIsFocused';
 import { useSearch } from '@hooks/useSearch';
 import { requireAuth } from '@utils/requireAuth';
 import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
+import { markStartup } from '@utils/startupPerf';
 import type { CatalogCategory } from '@/types/catalog';
 import {
   filterMarketplaceCategories,
@@ -127,9 +126,7 @@ export default function HomeScreen() {
   const [drawerSwipeEnabled, setDrawerSwipeEnabled] = useState(true);
   const screenOpacity = useSharedValue(1);
   const prevLang = useRef(language);
-
-  const { isRefreshing: catalogRefreshing, refresh: refreshCatalog } =
-    useHomeCatalog();
+  const markedHomeContent = useRef(false);
 
   const {
     categories: rawHomeCategories,
@@ -158,18 +155,11 @@ export default function HomeScreen() {
     refresh: refreshCms,
   } = useCmsHome();
 
-  const isFocused = useSafeIsFocused();
   const {
     featured: deliveryPromotion,
     isLoading: deliveryPromoLoading,
     refresh: refreshDeliveryPromotions,
   } = useDeliveryPromotions();
-
-  useEffect(() => {
-    if (!isFocused) return;
-    void refreshCms();
-    void refreshDeliveryPromotions();
-  }, [isFocused, refreshCms, refreshDeliveryPromotions]);
 
   const {
     featured: featuredProducts,
@@ -179,6 +169,13 @@ export default function HomeScreen() {
     isRefreshing: productsRefreshing,
     refresh: refreshHomeProducts,
   } = useHomeProducts();
+
+  useEffect(() => {
+    if (markedHomeContent.current) return;
+    if (cmsLoading && homeProductsLoading && categoriesLoading) return;
+    markedHomeContent.current = true;
+    markStartup('first_home_content');
+  }, [cmsLoading, homeProductsLoading, categoriesLoading]);
 
   const heroSlides = useMemo(
     () => adaptHeroSlides(heroBanners.length > 0 ? heroBanners : banners),
@@ -306,14 +303,12 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     await Promise.all([
-      refreshCatalog(),
       refreshCategories(),
       refreshCms(),
       refreshHomeProducts(),
       refreshDeliveryPromotions(),
     ]);
   }, [
-    refreshCatalog,
     refreshCategories,
     refreshCms,
     refreshHomeProducts,
@@ -653,10 +648,7 @@ export default function HomeScreen() {
               refreshControl={
                 <RefreshControl
                   refreshing={
-                    catalogRefreshing ||
-                    categoriesRefreshing ||
-                    cmsRefreshing ||
-                    productsRefreshing
+                    categoriesRefreshing || cmsRefreshing || productsRefreshing
                   }
                   onRefresh={() => void onRefresh()}
                 />

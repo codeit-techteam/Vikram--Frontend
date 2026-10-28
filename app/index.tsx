@@ -1,51 +1,91 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '@components/BrandLogo';
 import { BRAND_CHARCOAL, theme } from '@constants/theme';
-import { useLanguageStore, useTranslation } from '@store/languageStore';
+import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
-import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
+import { resolveDeliverySitesForBoot } from '@utils/ensureDeliverySite';
+import { markStartup } from '@utils/startupPerf';
+import { withDeadline } from '@utils/withDeadline';
 
-const MIN_SPLASH_MS = 1200;
+/** Brief brand beat — do not pad past essential init. */
+const MIN_SPLASH_MS = 400;
+const HYDRATE_DEADLINE_MS = 6000;
 const SPLASH_TEXT = '#F6EFE5';
 
 export default function SplashScreen() {
-  const language = useLanguageStore((s) => s.language);
   const { t } = useTranslation();
   const hydrateSession = useAuthStore((s) => s.hydrateSession);
+  const routed = useRef(false);
 
   useEffect(() => {
+    markStartup('first_shell');
     const start = Date.now();
 
     (async () => {
-      await hydrateSession();
+      try {
+        await withDeadline(
+          hydrateSession(),
+          HYDRATE_DEADLINE_MS,
+          'Session restore timed out',
+        ).catch((error) => {
+          console.warn(
+            '[startup] hydrate deadline/error',
+            error instanceof Error ? error.message : 'unknown',
+          );
+        });
+        markStartup('session_local');
 
-      const elapsed = Date.now() - start;
-      const remaining = Math.max(MIN_SPLASH_MS - elapsed, 0);
+        const elapsed = Date.now() - start;
+        const remaining = Math.max(MIN_SPLASH_MS - elapsed, 0);
+        if (remaining > 0) {
+          await new Promise((resolve) => setTimeout(resolve, remaining));
+        }
 
-      setTimeout(() => {
-        void (async () => {
-          const { isLoggedIn, isGuest } = useAuthStore.getState();
+        if (routed.current) return;
+        routed.current = true;
 
-          if (isLoggedIn) {
-            const hasSites = await customerHasDeliverySites();
-            if (!hasSites) {
-              router.replace('/delivery-location');
-              return;
-            }
-            router.replace('/(tabs)');
-          } else if (isGuest) {
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/login');
+        const { isLoggedIn, isGuest } = useAuthStore.getState();
+
+        if (isLoggedIn) {
+          const sites = await resolveDeliverySitesForBoot();
+          await ExpoSplashScreen.hideAsync().catch(() => undefined);
+          markStartup('splash_hide');
+          markStartup('nav_ready');
+          if (sites === 'no') {
+            router.replace('/delivery-location');
+            return;
           }
-        })();
-      }, remaining);
+          router.replace('/(tabs)');
+          return;
+        }
+
+        await ExpoSplashScreen.hideAsync().catch(() => undefined);
+        markStartup('splash_hide');
+        markStartup('nav_ready');
+
+        if (isGuest) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/login');
+        }
+      } catch (error) {
+        console.error(
+          '[startup] splash routing failed',
+          error instanceof Error ? error.message : 'unknown',
+        );
+        await ExpoSplashScreen.hideAsync().catch(() => undefined);
+        if (!routed.current) {
+          routed.current = true;
+          router.replace('/login');
+        }
+      }
     })();
   }, [hydrateSession]);
 

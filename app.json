@@ -30,7 +30,7 @@
         }
       },
       "adaptiveIcon": {
-        "backgroundColor": "#FEB623",
+        "backgroundColor": "#32312F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -54,7 +54,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/android-icon-monochrome.png",
           "color": "#FEB623",
           "defaultChannel": "bajriwala-default"
         }

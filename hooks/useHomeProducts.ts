@@ -8,7 +8,7 @@ import {
 import { useDeliveryStore } from '@store/deliveryStore';
 
 export const HOME_PRODUCTS_QUERY_KEY = 'home-products';
-export const HOME_PRODUCTS_STALE_TIME = 1000 * 60;
+export const HOME_PRODUCTS_STALE_TIME = 1000 * 60 * 2;
 
 const EMPTY: HomeProductsData = {
   featured: [],
@@ -37,10 +37,11 @@ export function useHomeProducts(options?: { enabled?: boolean }) {
         limit: 10,
       }),
     staleTime: HOME_PRODUCTS_STALE_TIME,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     enabled: options?.enabled !== false,
     placeholderData: (previous) => previous,
+    retry: 1,
   });
 
   const refresh = useCallback(async () => {

@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ErrorBoundary } from '@components/ErrorBoundary';
 import { VoiceAssistantSheet } from '@components/VoiceAssistantSheet';
 import { LoginRequiredSheet } from '@components/auth/LoginRequiredSheet';
 import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
@@ -20,94 +21,117 @@ import { PushNotificationProvider } from '@providers/PushNotificationProvider';
 import { startCartServerSync } from '@services/cart.api';
 import { reconcileCartWithApiHost } from '@lib/reconcileCartWithApiHost';
 import { useAuthStore } from '@store/useAuthStore';
+import { markStartup } from '@utils/startupPerf';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+/** Hard ceiling so a hung hydrate can never leave the native splash forever. */
+const NATIVE_SPLASH_FAILSAFE_MS = 8000;
 
 export default function RootLayout() {
   const hydrateSession = useAuthStore((s) => s.hydrateSession);
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    markStartup('root_mount');
+
+    const failsafe = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => undefined);
+      markStartup('splash_hide');
+    }, NATIVE_SPLASH_FAILSAFE_MS);
+
     void reconcileCartWithApiHost().finally(() => {
       startCartServerSync();
     });
-    void hydrateSession();
+
+    void hydrateSession()
+      .catch((error) => {
+        console.warn(
+          '[startup] hydrateSession failed',
+          error instanceof Error ? error.message : 'unknown',
+        );
+      })
+      .finally(() => {
+        markStartup('session_local');
+      });
+
+    return () => clearTimeout(failsafe);
   }, [hydrateSession]);
 
   return (
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
-        <QueryProvider>
-          <RealtimeProvider>
-          <PushNotificationProvider>
-          <BottomSheetModalProvider>
-            <StatusBar style="auto" />
-            <Stack
-              detachInactiveScreens={false}
-              screenOptions={{
-                headerShown: false,
-                animation: 'slide_from_right',
-                contentStyle: { backgroundColor: '#FFFFFF' },
-                freezeOnBlur: false,
-              }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="login" options={{ headerShown: false }} />
-              <Stack.Screen name="otp" options={{ headerShown: false }} />
-              <Stack.Screen name="role-selection" options={{ headerShown: false }} />
-              <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
-              <Stack.Screen name="delivery-location" options={{ headerShown: false }} />
-              <Stack.Screen name="confirm-location" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="search"
-                options={{ headerShown: false, animation: 'fade' }}
-              />
-              <Stack.Screen name="cart" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="checkout"
-                options={{ headerShown: false, gestureEnabled: false }}
-              />
-              <Stack.Screen
-                name="order-success"
-                options={{ headerShown: false, gestureEnabled: false }}
-              />
-              <Stack.Screen
-                name="payment-result"
-                options={{ headerShown: false, gestureEnabled: false }}
-              />
-              <Stack.Screen name="emergency-order" options={{ headerShown: false }} />
-              <Stack.Screen name="notifications" options={{ headerShown: false }} />
-              <Stack.Screen name="support" options={{ headerShown: false }} />
-              <Stack.Screen name="products" options={{ headerShown: false }} />
-              <Stack.Screen name="orders/view/[orderId]" options={{ headerShown: false }} />
-              <Stack.Screen name="orders/details/[orderId]" options={{ headerShown: false }} />
-              <Stack.Screen name="orders/history" options={{ headerShown: false }} />
-              <Stack.Screen name="invoice/[invoiceId]" options={{ headerShown: false }} />
-              <Stack.Screen name="account/edit-profile" options={{ headerShown: false }} />
-              <Stack.Screen name="account/loyalty" options={{ headerShown: false }} />
-              <Stack.Screen name="account/invoices" options={{ headerShown: false }} />
-              <Stack.Screen name="account/add-sites" options={{ headerShown: false }} />
-              <Stack.Screen name="account/gst-compliance" options={{ headerShown: false }} />
-              <Stack.Screen name="account/terms" options={{ headerShown: false }} />
-              <Stack.Screen name="bulk-procurement/index" options={{ headerShown: false }} />
-              <Stack.Screen name="bulk-procurement/enquiry" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="bulk-procurement/enquiry-success"
-                options={{ headerShown: false, gestureEnabled: false }}
-              />
-              <Stack.Screen name="bulk-procurement/my-enquiries" options={{ headerShown: false }} />
-              <Stack.Screen name="bulk-procurement/enquiry-detail" options={{ headerShown: false }} />
-              <Stack.Screen name="offers" options={{ headerShown: false }} />
-            </Stack>
-            <VoiceAssistantSheet />
-            <VariantBottomSheet />
-            <AddToCartSuccessToast />
-            <ReorderToast />
-            <ReorderUnavailableSheet />
-            <LoginRequiredSheet />
-          </BottomSheetModalProvider>
-          </PushNotificationProvider>
-          </RealtimeProvider>
-        </QueryProvider>
+        <ErrorBoundary>
+          <QueryProvider>
+            <RealtimeProvider>
+              <PushNotificationProvider>
+                <BottomSheetModalProvider>
+                  <StatusBar style="auto" />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      animation: 'slide_from_right',
+                      contentStyle: { backgroundColor: '#FFFFFF' },
+                      freezeOnBlur: true,
+                    }}>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="login" options={{ headerShown: false }} />
+                    <Stack.Screen name="otp" options={{ headerShown: false }} />
+                    <Stack.Screen name="role-selection" options={{ headerShown: false }} />
+                    <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
+                    <Stack.Screen name="delivery-location" options={{ headerShown: false }} />
+                    <Stack.Screen name="confirm-location" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="search"
+                      options={{ headerShown: false, animation: 'fade' }}
+                    />
+                    <Stack.Screen name="cart" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="checkout"
+                      options={{ headerShown: false, gestureEnabled: false }}
+                    />
+                    <Stack.Screen
+                      name="order-success"
+                      options={{ headerShown: false, gestureEnabled: false }}
+                    />
+                    <Stack.Screen
+                      name="payment-result"
+                      options={{ headerShown: false, gestureEnabled: false }}
+                    />
+                    <Stack.Screen name="emergency-order" options={{ headerShown: false }} />
+                    <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                    <Stack.Screen name="support" options={{ headerShown: false }} />
+                    <Stack.Screen name="products" options={{ headerShown: false }} />
+                    <Stack.Screen name="orders/view/[orderId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="orders/details/[orderId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="orders/history" options={{ headerShown: false }} />
+                    <Stack.Screen name="invoice/[invoiceId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/edit-profile" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/loyalty" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/invoices" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/add-sites" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/gst-compliance" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/terms" options={{ headerShown: false }} />
+                    <Stack.Screen name="bulk-procurement/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="bulk-procurement/enquiry" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="bulk-procurement/enquiry-success"
+                      options={{ headerShown: false, gestureEnabled: false }}
+                    />
+                    <Stack.Screen name="bulk-procurement/my-enquiries" options={{ headerShown: false }} />
+                    <Stack.Screen name="bulk-procurement/enquiry-detail" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers" options={{ headerShown: false }} />
+                  </Stack>
+                  <VoiceAssistantSheet />
+                  <VariantBottomSheet />
+                  <AddToCartSuccessToast />
+                  <ReorderToast />
+                  <ReorderUnavailableSheet />
+                  <LoginRequiredSheet />
+                </BottomSheetModalProvider>
+              </PushNotificationProvider>
+            </RealtimeProvider>
+          </QueryProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

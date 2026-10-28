@@ -5,18 +5,19 @@ import { fetchCmsHome } from '@services/cmsService';
 import type { CmsHomeResponse } from '@/types/cms';
 
 export const CMS_HOME_QUERY_KEY = 'cms-home';
-/** Short stale window so Super Admin → R2 → DB edits appear without rebuild. */
-export const CMS_HOME_STALE_TIME = 1000 * 10;
+/** Admin CMS edits still surface via pull-to-refresh / focus without 30s polling. */
+export const CMS_HOME_STALE_TIME = 1000 * 60 * 2;
 
 export function useCmsHome(options?: { enabled?: boolean }) {
   const query = useQuery({
     queryKey: [CMS_HOME_QUERY_KEY],
     queryFn: fetchCmsHome,
     staleTime: CMS_HOME_STALE_TIME,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 1000 * 30,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     enabled: options?.enabled !== false,
+    placeholderData: (previous) => previous,
+    retry: 1,
   });
 
   const refetch = query.refetch;

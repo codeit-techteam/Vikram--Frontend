@@ -18,6 +18,20 @@ function requestHadAuthorization(config?: InternalAxiosRequestConfig): boolean {
 const AUTH_TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
+/** In-memory access token avoids AsyncStorage on every request after hydrate. */
+let memoryAccessToken: string | null | undefined;
+
+export function setMemoryAccessToken(token: string | null): void {
+  memoryAccessToken = token;
+}
+
+async function resolveAccessToken(): Promise<string | null> {
+  if (memoryAccessToken !== undefined) return memoryAccessToken;
+  const token = await storage.getItem(AUTH_TOKEN_KEY);
+  memoryAccessToken = token;
+  return token;
+}
+
 export const API_BASE_URL = resolveApiBaseUrl();
 
 if (__DEV__) {
@@ -27,7 +41,8 @@ if (__DEV__) {
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  /** Catalog/CMS should fail fast enough that screens can show Retry. */
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -36,7 +51,7 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await storage.getItem(AUTH_TOKEN_KEY);
+    const token = await resolveAccessToken();
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -55,6 +70,7 @@ api.interceptors.request.use(
 
 /** Clears stored tokens and drops the app back into guest mode (best-effort, no circular import at module scope). */
 async function clearSessionAndEnterGuest(): Promise<void> {
+  memoryAccessToken = null;
   await Promise.all([storage.removeItem(AUTH_TOKEN_KEY), storage.removeItem(REFRESH_TOKEN_KEY)]);
 
   try {
@@ -85,6 +101,7 @@ async function performTokenRefresh(): Promise<string | null> {
     const newRefreshToken: string | undefined = data?.refreshToken;
 
     if (newAccessToken) {
+      memoryAccessToken = newAccessToken;
       await storage.setItem(AUTH_TOKEN_KEY, newAccessToken);
       if (newRefreshToken) {
         await storage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);

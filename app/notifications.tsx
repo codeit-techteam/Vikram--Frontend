@@ -76,6 +76,8 @@ export default function NotificationsScreen() {
     queryKey: [...NOTIFICATIONS_QUERY_KEY, searchQuery],
     enabled: isLoggedIn,
     initialPageParam: 1,
+    staleTime: 1000 * 60,
+    retry: 1,
     queryFn: ({ pageParam }) =>
       listNotifications({
         page: pageParam,
@@ -204,6 +206,15 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           query.isLoading ? (
             <ActivityIndicator color="#FEB623" style={{ marginTop: 48 }} />
+          ) : query.isError ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="cloud-offline-outline" size={52} color="#DDD" />
+              <Text style={styles.emptyTitle}>Unable to load notifications</Text>
+              <Text style={styles.emptySubtitle}>Check your connection and try again.</Text>
+              <Pressable style={styles.loginBtn} onPress={onRefresh}>
+                <Text style={styles.loginBtnText}>Retry</Text>
+              </Pressable>
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="checkmark-circle-outline" size={52} color="#DDD" />

@@ -42,9 +42,14 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
   useEffect(() => {
     if (!isHydrated || !isLoggedIn) return;
     if (isNativePushAvailable()) {
-      void registerCustomerPushToken();
+      void registerCustomerPushToken().catch((error) => {
+        console.warn(
+          '[push] register failed',
+          error instanceof Error ? error.message : 'unknown',
+        );
+      });
     }
-    void refreshUnreadCount();
+    void refreshUnreadCount().catch(() => undefined);
   }, [isHydrated, isLoggedIn, refreshUnreadCount]);
 
   useEffect(() => {

@@ -67,7 +67,8 @@ const PAGE_SIZE = 24;
  * pull its entire catalog on open. Auto-fill a few pages, then hand over to
  * regular infinite scroll.
  */
-const MAX_AUTO_PREFETCH_PAGES = 4;
+/** First page only on open — further pages load via FlatList onEndReached. */
+const MAX_AUTO_PREFETCH_PAGES = 1;
 
 export default function ProductListingScreen() {
   const { t } = useTranslation();
