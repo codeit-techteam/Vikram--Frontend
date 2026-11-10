@@ -12,8 +12,6 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withDelay,
-  withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -24,18 +22,22 @@ import {
   theme,
 } from '@constants/theme';
 
-const HERO_IMAGE = require('../../assets/images/bajriwala-splash-hero.jpg');
+/** Construction materials scene only — logo is rendered separately for crispness. */
+const CONSTRUCTION_IMAGE = require('../../assets/images/bajriwala-splash-construction.jpg');
 
-/** Bottom scene ~52–58% — matches the reference composition. */
-function sceneHeight(windowHeight: number, topInset: number): number {
-  const usable = windowHeight - topInset;
-  return Math.round(Math.min(Math.max(usable * 0.55, 280), usable * 0.6));
+/**
+ * Bottom photograph occupies ~45–50% of usable height across common phone
+ * aspect ratios, matching the brand reference composition.
+ */
+function sceneHeight(windowHeight: number, topInset: number, bottomInset: number): number {
+  const usable = windowHeight - topInset - bottomInset;
+  return Math.round(Math.min(Math.max(usable * 0.47, 250), usable * 0.5));
 }
 
 function logoHeight(windowWidth: number): number {
-  if (windowWidth < 360) return 52;
-  if (windowWidth > 430) return 72;
-  return 62;
+  if (windowWidth < 360) return 48;
+  if (windowWidth > 430) return 68;
+  return 58;
 }
 
 interface BrandedSplashProps {
@@ -43,66 +45,40 @@ interface BrandedSplashProps {
 }
 
 /**
- * Brand intro splash — ivory wordmark over a construction hero scene.
- * Choreography: scene rise + Ken Burns → logo → tagline → soft accent pulse.
+ * Premium Bajriwala brand introduction.
+ * Ivory wordmark + tagline over a photorealistic construction scene.
+ * Animations are short and restrained; first paint is a complete composition
+ * so native→JS splash handoff never flashes blank.
  */
 export function BrandedSplash({ onReady }: BrandedSplashProps) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
 
-  // Crash-safe defaults: first paint is a finished-looking frame.
   const sceneProgress = useSharedValue(1);
   const sceneScale = useSharedValue(1);
   const logoProgress = useSharedValue(1);
   const taglineProgress = useSharedValue(1);
-  const glowPulse = useSharedValue(0.35);
-  const barProgress = useSharedValue(0.35);
 
   useEffect(() => {
-    if (reduceMotion) {
-      barProgress.value = 1;
-      glowPulse.value = 0.45;
-      return;
-    }
+    if (reduceMotion) return;
 
     const easeOut = Easing.out(Easing.cubic);
-    const easeInOut = Easing.inOut(Easing.cubic);
 
-    sceneProgress.value = 0;
-    sceneScale.value = 1.08;
+    sceneProgress.value = 0.72;
+    sceneScale.value = 1.04;
     logoProgress.value = 0;
     taglineProgress.value = 0;
-    glowPulse.value = 0.2;
-    barProgress.value = 0;
 
-    sceneProgress.value = withTiming(1, { duration: 780, easing: easeOut });
-    sceneScale.value = withTiming(1, { duration: 2400, easing: easeInOut });
-
+    sceneProgress.value = withTiming(1, { duration: 520, easing: easeOut });
+    sceneScale.value = withTiming(1, { duration: 1400, easing: easeOut });
     logoProgress.value = withDelay(
-      180,
-      withTiming(1, { duration: 560, easing: easeOut }),
+      80,
+      withTiming(1, { duration: 420, easing: easeOut }),
     );
     taglineProgress.value = withDelay(
-      420,
-      withTiming(1, { duration: 480, easing: easeOut }),
-    );
-
-    glowPulse.value = withDelay(
-      500,
-      withRepeat(
-        withSequence(
-          withTiming(0.55, { duration: 1000, easing: easeInOut }),
-          withTiming(0.25, { duration: 1000, easing: easeInOut }),
-        ),
-        -1,
-        true,
-      ),
-    );
-
-    barProgress.value = withDelay(
-      300,
-      withTiming(1, { duration: 1600, easing: easeInOut }),
+      220,
+      withTiming(1, { duration: 380, easing: easeOut }),
     );
   }, [
     reduceMotion,
@@ -110,28 +86,16 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
     sceneScale,
     logoProgress,
     taglineProgress,
-    glowPulse,
-    barProgress,
   ]);
 
   const sceneStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       sceneProgress.value,
-      [0, 1],
-      [0.55, 1],
+      [0.72, 1],
+      [0.85, 1],
       Extrapolation.CLAMP,
     ),
-    transform: [
-      {
-        translateY: interpolate(
-          sceneProgress.value,
-          [0, 1],
-          [36, 0],
-          Extrapolation.CLAMP,
-        ),
-      },
-      { scale: sceneScale.value },
-    ],
+    transform: [{ scale: sceneScale.value }],
   }));
 
   const logoStyle = useAnimatedStyle(() => ({
@@ -141,15 +105,7 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
         translateY: interpolate(
           logoProgress.value,
           [0, 1],
-          [18, 0],
-          Extrapolation.CLAMP,
-        ),
-      },
-      {
-        scale: interpolate(
-          logoProgress.value,
-          [0, 1],
-          [0.96, 1],
+          [12, 0],
           Extrapolation.CLAMP,
         ),
       },
@@ -163,43 +119,25 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
         translateY: interpolate(
           taglineProgress.value,
           [0, 1],
-          [10, 0],
+          [8, 0],
           Extrapolation.CLAMP,
         ),
       },
     ],
   }));
 
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowPulse.value * logoProgress.value,
-    transform: [
-      {
-        scale: interpolate(
-          glowPulse.value,
-          [0.2, 0.55],
-          [0.92, 1.08],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
-
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${Math.max(barProgress.value * 100, 8)}%`,
-    opacity: interpolate(
-      taglineProgress.value,
-      [0, 1],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
-  }));
-
-  const bandHeight = sceneHeight(height, insets.top);
+  const bandHeight = sceneHeight(height, insets.top, insets.bottom);
   const markHeight = logoHeight(width);
 
   return (
     <View
-      style={[styles.root, { paddingTop: insets.top }]}
+      style={[
+        styles.root,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        },
+      ]}
       onLayout={() => onReady?.()}
       accessibilityRole="image"
       accessibilityLabel={`${theme.appName}. ${BRAND_SPLASH_TAGLINE}`}>
@@ -207,31 +145,26 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
 
       <View style={styles.brandSection}>
         <Animated.View style={[styles.brandCluster, logoStyle]}>
-          <Animated.View pointerEvents="none" style={[styles.logoGlow, glowStyle]} />
           <BrandLogo height={markHeight} variant="onLight" />
         </Animated.View>
-
         <Animated.View style={taglineStyle}>
           <Text style={styles.tagline}>{BRAND_SPLASH_TAGLINE}</Text>
         </Animated.View>
-
-        <View style={styles.progressTrack} accessibilityElementsHidden>
-          <Animated.View style={[styles.progressFill, barStyle]} />
-        </View>
       </View>
 
       <View style={[styles.imageBand, { height: bandHeight }]}>
         <Animated.View style={[StyleSheet.absoluteFill, sceneStyle]}>
           <Image
-            source={HERO_IMAGE}
-            style={styles.heroImage}
+            source={CONSTRUCTION_IMAGE}
+            style={StyleSheet.absoluteFill}
             contentFit="cover"
-            contentPosition="bottom center"
+            contentPosition="center"
             transition={0}
             priority="high"
+            recyclingKey="bajriwala-splash-construction"
             accessible={false}
             onError={() => {
-              // Keep splash alive even if the hero asset fails to decode.
+              // Never crash the brand intro if the local asset fails to decode.
             }}
           />
         </Animated.View>
@@ -239,11 +172,11 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
         <LinearGradient
           colors={[
             BRAND_IVORY,
-            'rgba(252,247,228,0.88)',
-            'rgba(252,247,228,0.35)',
+            'rgba(252,247,228,0.82)',
+            'rgba(252,247,228,0.28)',
             'rgba(252,247,228,0)',
           ]}
-          locations={[0, 0.22, 0.55, 1]}
+          locations={[0, 0.28, 0.62, 1]}
           style={styles.skyFade}
           pointerEvents="none"
         />
@@ -256,50 +189,26 @@ const styles = StyleSheet.create({
   brandCluster: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoGlow: {
-    backgroundColor: 'rgba(254,182,35,0.28)',
-    borderRadius: 80,
-    height: 120,
-    position: 'absolute',
-    width: 220,
+    maxWidth: '86%',
   },
   brandSection: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 8,
+    paddingBottom: 12,
     paddingHorizontal: 28,
-  },
-  heroImage: {
-    ...StyleSheet.absoluteFillObject,
-    // Slight overscan so Ken Burns scale never shows edges.
-    transform: [{ scale: 1.02 }],
   },
   imageBand: {
     backgroundColor: BRAND_IVORY,
     overflow: 'hidden',
     width: '100%',
   },
-  progressFill: {
-    backgroundColor: theme.primary,
-    borderRadius: 2,
-    height: '100%',
-  },
-  progressTrack: {
-    backgroundColor: 'rgba(26,26,26,0.08)',
-    borderRadius: 2,
-    height: 3,
-    marginTop: 28,
-    overflow: 'hidden',
-    width: 88,
-  },
   root: {
     backgroundColor: BRAND_IVORY,
     flex: 1,
   },
   skyFade: {
-    height: 110,
+    height: 96,
     left: 0,
     position: 'absolute',
     right: 0,
@@ -309,9 +218,9 @@ const styles = StyleSheet.create({
     color: theme.black,
     fontSize: 15,
     fontWeight: '500',
-    letterSpacing: 1.35,
-    lineHeight: 20,
-    marginTop: 16,
+    letterSpacing: 1.4,
+    lineHeight: 22,
+    marginTop: 14,
     textAlign: 'center',
   },
 });

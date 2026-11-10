@@ -8,9 +8,13 @@ import { resolveDeliverySitesForBoot } from '@utils/ensureDeliverySite';
 import { markStartup } from '@utils/startupPerf';
 import { withDeadline } from '@utils/withDeadline';
 
-/** Brand intro beat — long enough for the splash entrance choreography. */
-const MIN_BRAND_MS = 2100;
+/**
+ * Short brand beat after the in-app splash first paints.
+ * Navigation is gated on session readiness — not an arbitrary long timer.
+ */
+const MIN_BRAND_MS = 1100;
 const HYDRATE_DEADLINE_MS = 6000;
+const SITES_DEADLINE_MS = 2500;
 
 export default function SplashScreen() {
   const hydrateSession = useAuthStore((s) => s.hydrateSession);
@@ -33,6 +37,7 @@ export default function SplashScreen() {
     if (brandReadyAt.current == null) {
       brandReadyAt.current = Date.now();
     }
+    // Handoff as soon as the branded shell has laid out — avoids ivory flash.
     void hideNativeSplash();
   }, [hideNativeSplash]);
 
@@ -58,8 +63,14 @@ export default function SplashScreen() {
 
         const { isLoggedIn, isGuest } = useAuthStore.getState();
 
-        // Overlap sites resolution with the brand beat — never gate native splash on it.
-        const sitesPromise = isLoggedIn ? resolveDeliverySitesForBoot() : null;
+        // Sites lookup is best-effort and deadline-bounded — never blocks forever.
+        const sitesPromise = isLoggedIn
+          ? withDeadline(
+              resolveDeliverySitesForBoot(),
+              SITES_DEADLINE_MS,
+              'Delivery sites boot timed out',
+            ).catch(() => 'unknown' as const)
+          : null;
 
         const brandStart = brandReadyAt.current ?? start;
         const remaining = Math.max(MIN_BRAND_MS - (Date.now() - brandStart), 0);
