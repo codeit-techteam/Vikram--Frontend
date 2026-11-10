@@ -8,8 +8,8 @@ import { resolveDeliverySitesForBoot } from '@utils/ensureDeliverySite';
 import { markStartup } from '@utils/startupPerf';
 import { withDeadline } from '@utils/withDeadline';
 
-/** Short brand beat once the in-app splash is visible — not a loading timer. */
-const MIN_BRAND_MS = 900;
+/** Brand intro beat — long enough for the splash entrance choreography. */
+const MIN_BRAND_MS = 2100;
 const HYDRATE_DEADLINE_MS = 6000;
 
 export default function SplashScreen() {
