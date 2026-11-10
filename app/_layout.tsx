@@ -29,7 +29,13 @@ import { markStartup } from '@utils/startupPerf';
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 try {
-  SplashScreen.setOptions({ duration: 280, fade: true });
+  // `fade` is iOS-only in Expo SplashScreen; enabling it on Android has caused
+  // splash handover / SurfaceControl crashes on API 31–33.
+  SplashScreen.setOptions(
+    Platform.OS === 'ios'
+      ? { duration: 280, fade: true }
+      : { duration: 200, fade: false },
+  );
 } catch {
   // Older native binaries may not support setOptions.
 }

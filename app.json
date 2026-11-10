@@ -42,6 +42,11 @@
         "backgroundImage": "./assets/android-icon-background-ivory.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FCF7E4"
+      },
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",

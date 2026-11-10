@@ -43,6 +43,8 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
 
+  // Start fully visible so the first frame never depends on Reanimated worklets
+  // finishing — a blank/hung first paint was contributing to splash crashes.
   const brandOpacity = useSharedValue(1);
   const brandScale = useSharedValue(1);
   const taglineOpacity = useSharedValue(1);
@@ -50,23 +52,19 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
 
   useEffect(() => {
     if (reduceMotion) {
-      brandOpacity.value = 1;
-      brandScale.value = 1;
-      taglineOpacity.value = 1;
-      imageOpacity.value = 1;
       return;
     }
 
-    brandOpacity.value = 0;
-    brandScale.value = 0.97;
-    taglineOpacity.value = 0;
-    imageOpacity.value = 0;
+    brandOpacity.value = 0.92;
+    brandScale.value = 0.985;
+    taglineOpacity.value = 0.9;
+    imageOpacity.value = 0.92;
 
     const ease = Easing.out(Easing.cubic);
-    brandOpacity.value = withTiming(1, { duration: 420, easing: ease });
-    brandScale.value = withTiming(1, { duration: 520, easing: ease });
-    taglineOpacity.value = withDelay(140, withTiming(1, { duration: 380, easing: ease }));
-    imageOpacity.value = withDelay(80, withTiming(1, { duration: 520, easing: ease }));
+    brandOpacity.value = withTiming(1, { duration: 320, easing: ease });
+    brandScale.value = withTiming(1, { duration: 420, easing: ease });
+    taglineOpacity.value = withDelay(100, withTiming(1, { duration: 300, easing: ease }));
+    imageOpacity.value = withDelay(60, withTiming(1, { duration: 420, easing: ease }));
   }, [reduceMotion, brandOpacity, brandScale, taglineOpacity, imageOpacity]);
 
   const brandStyle = useAnimatedStyle(() => ({
@@ -111,6 +109,9 @@ export function BrandedSplash({ onReady }: BrandedSplashProps) {
           transition={0}
           priority="high"
           accessible={false}
+          onError={() => {
+            // Never crash splash if the construction asset fails to decode.
+          }}
         />
         <LinearGradient
           colors={[BRAND_IVORY, 'rgba(252,247,228,0.72)', 'rgba(252,247,228,0)']}

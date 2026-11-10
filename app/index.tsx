@@ -39,12 +39,6 @@ export default function SplashScreen() {
   useEffect(() => {
     markStartup('first_shell');
 
-    try {
-      ExpoSplashScreen.setOptions({ duration: 280, fade: true });
-    } catch {
-      // setOptions is unavailable on some older native binaries.
-    }
-
     const start = Date.now();
     let cancelled = false;
 
