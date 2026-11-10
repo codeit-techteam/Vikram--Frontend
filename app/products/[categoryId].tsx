@@ -62,6 +62,12 @@ import { normalizeCategoryDisplayName } from '@utils/categoryDisplay';
 
 const PAGE_SIZE = 24;
 
+function optionalQueryNumber(value?: string): number | undefined {
+  if (!value?.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 /**
  * Client-side filters need the full scoped list, but a huge category must not
  * pull its entire catalog on open. Auto-fill a few pages, then hand over to
@@ -72,13 +78,16 @@ const MAX_AUTO_PREFETCH_PAGES = 1;
 
 export default function ProductListingScreen() {
   const { t } = useTranslation();
-  const { categoryId, categorySlug, categoryName, brand, subcategory } =
+  const { categoryId, categorySlug, categoryName, brand, subcategory, search: searchParam, maxPrice: maxPriceParam, minPrice: minPriceParam } =
     useLocalSearchParams<{
       categoryId: string;
       categorySlug?: string;
       categoryName: string;
       brand?: string;
       subcategory?: string;
+      search?: string;
+      maxPrice?: string;
+      minPrice?: string;
     }>();
 
   const filterSheetRef = useRef<FilterBottomSheetRef>(null);
@@ -94,6 +103,9 @@ export default function ProductListingScreen() {
   const slug = first(categorySlug) || first(categoryId) || '';
   const rawTitle = first(categoryName) ?? t('catalogLabel');
   const title = normalizeCategoryDisplayName(rawTitle);
+  const voiceSearch = first(searchParam)?.trim() ?? '';
+  const voiceMaxPrice = optionalQueryNumber(first(maxPriceParam));
+  const voiceMinPrice = optionalQueryNumber(first(minPriceParam));
 
   // Deep links may land directly on a brand / subcategory within the category.
   const [selection, setSelection] = useState<CategoryRailSelection>(() => {
@@ -109,20 +121,51 @@ export default function ProductListingScreen() {
   const longitude = useEtaStore((s) => s.longitude);
   const pincode = useEtaStore((s) => s.pincode);
 
+  // Facets query runs immediately; `hasServerFacets` gates brand/type API filters.
+  const facetsBootstrap = useCategoryFacets(slug, [], { enabled: Boolean(slug) });
+  const hasServerFacets = facetsBootstrap.hasServerFacets;
+  const facetsSettled = facetsBootstrap.facetsSettled;
+
   /**
-   * Always load the parent category catalog. Sidebar brand/type taps filter
-   * this list in-memory so the rail never collapses when a brand is selected,
-   * and the screen works against production backends without `/facets`.
+   * When `/facets` is available, scope brand/type/subcategory on the server so
+   * Fevicol opens on real first-page hits. Without facets, keep the parent
+   * catalog fetch and filter in memory so the left rail does not collapse.
    */
-  const productQuery = useMemo(
-    () => ({
-      category: slug || undefined,
+  const productQuery = useMemo(() => {
+    const base = {
       latitude: latitude ?? undefined,
       longitude: longitude ?? undefined,
       pincode: pincode ?? undefined,
-    }),
-    [slug, latitude, longitude, pincode],
-  );
+      search: voiceSearch || undefined,
+      minPrice: voiceMinPrice,
+      maxPrice: voiceMaxPrice,
+    };
+    if (selection.kind === 'subcategory' && selection.value && hasServerFacets) {
+      return { ...base, category: selection.value };
+    }
+    if (selection.kind === 'brand' && selection.value && hasServerFacets) {
+      return { ...base, category: slug || undefined, brand: selection.value };
+    }
+    if (selection.kind === 'productType' && selection.value && hasServerFacets) {
+      return {
+        ...base,
+        category: slug || undefined,
+        productType: selection.value,
+      };
+    }
+    return { ...base, category: slug || undefined };
+  }, [
+    slug,
+    latitude,
+    longitude,
+    pincode,
+    voiceSearch,
+    voiceMinPrice,
+    voiceMaxPrice,
+    selection.kind,
+    selection.value,
+    hasServerFacets,
+  ]);
 
   const {
     products,
@@ -135,20 +178,24 @@ export default function ProductListingScreen() {
     refresh,
     loadMore,
   } = useProducts(productQuery, {
-    enabled: Boolean(slug),
+    enabled: Boolean(slug) && facetsSettled,
     pageSize: PAGE_SIZE,
   });
 
   const {
-    rail,
+    rail: displayRail,
     refresh: refreshRail,
-  } = useCategoryFacets(slug, products, {
+  } = useCategoryFacets(slug, hasServerFacets ? [] : products, {
     totalProducts: total,
+    enabled: Boolean(slug),
   });
 
   const scopedProducts = useMemo(
-    () => products.filter((product) => matchesRailSelection(product, selection)),
-    [products, selection],
+    () =>
+      hasServerFacets
+        ? products
+        : products.filter((product) => matchesRailSelection(product, selection)),
+    [products, selection, hasServerFacets],
   );
 
   const {
@@ -173,9 +220,34 @@ export default function ProductListingScreen() {
     isLoadingProducts: isLoading,
   });
 
-  const hasBrandRail = rail.some((item) => item.kind === 'brand');
-  const hasTypeRail = rail.some((item) => item.kind === 'productType');
-  const showSidebar = rail.length > 1;
+  const appliedVoiceSearch = useRef<string | null>(null);
+  useEffect(() => {
+    if (!voiceSearch || appliedVoiceSearch.current === voiceSearch) return;
+    appliedVoiceSearch.current = voiceSearch;
+    setSearch(voiceSearch);
+  }, [setSearch, voiceSearch]);
+
+  const voiceBrand = first(brand) ?? '';
+  const voiceSubcategory = first(subcategory) ?? '';
+  const appliedRail = useRef(`${slug}|${voiceBrand}|${voiceSubcategory}`);
+  useEffect(() => {
+    const key = `${slug}|${voiceBrand}|${voiceSubcategory}`;
+    if (appliedRail.current === key) return;
+    appliedRail.current = key;
+    if (voiceBrand) {
+      setSelection({ kind: 'brand', value: voiceBrand });
+      return;
+    }
+    if (voiceSubcategory) {
+      setSelection({ kind: 'subcategory', value: voiceSubcategory });
+      return;
+    }
+    setSelection(ALL_RAIL_SELECTION);
+  }, [slug, voiceBrand, voiceSubcategory]);
+
+  const hasBrandRail = displayRail.some((item) => item.kind === 'brand');
+  const hasTypeRail = displayRail.some((item) => item.kind === 'productType');
+  const showSidebar = displayRail.length > 1;
 
   // The rail owns brand / type selection, so drop duplicate filter chips.
   const config = useMemo(() => {
@@ -292,11 +364,12 @@ export default function ProductListingScreen() {
   const showActiveSummary = filtersReady && activeCount > 0;
 
   /**
-   * `total` is the server count for the current scope. Once client-side filters
-   * narrow the loaded pages we can only speak for what we have.
+   * `total` is the server count for the current API scope (incl. brand/type).
+   * Chip filters still run client-side on loaded pages.
    */
-  const hasClientFilters = activeCount > 0 || selection.kind !== 'all';
-  const displayCount = hasClientFilters ? filteredProducts.length : total;
+  const hasClientChipFilters = activeCount > 0;
+  const displayCount = hasClientChipFilters ? filteredProducts.length : total;
+  const hasClientFilters = hasClientChipFilters || selection.kind !== 'all';
 
   const gridHeader = useMemo(
     () => (
@@ -504,7 +577,7 @@ export default function ProductListingScreen() {
       <View style={{ flex: 1, flexDirection: 'row', marginTop: 8 }}>
         {showSidebar ? (
           <CategorySidebar
-            items={rail}
+            items={displayRail}
             selection={selection}
             onSelect={handleSelectRail}
             width={sidebarWidth}

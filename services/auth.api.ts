@@ -30,6 +30,8 @@ export interface AuthSession {
 export interface SendOtpResponse {
   message?: string;
   expiresIn?: number;
+  resendAvailableIn?: number;
+  mobile?: string;
 }
 
 /** POST /auth/customer/send-otp — request an OTP for a mobile number. */

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { Alert, InteractionManager, Linking, ScrollView, Text, View } from 'react-native';
+import { Linking, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, type Href } from 'expo-router';
 import Animated, {
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawerHeader } from '@components/DrawerHeader';
 import { DrawerMenuItem, DrawerSectionLabel } from '@components/DrawerMenuItem';
 import { ScaledPressable } from '@components/ScaledPressable';
+import { ConfirmDialog } from '@components/ui/ConfirmDialog';
 import { useTranslation } from '@store/languageStore';
 import { useNotificationStore } from '@store/notificationStore';
 import { requireAuth } from '@utils/requireAuth';
@@ -100,11 +101,13 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
   const { t } = useTranslation();
   const orderBadge = useNotificationStore((st) => st.orderNotifications);
   const [contentReady, setContentReady] = useState(false);
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      const task = InteractionManager.runAfterInteractions(() => setContentReady(true));
-      return () => task.cancel();
+      const id = setTimeout(() => setContentReady(true), 0);
+      return () => clearTimeout(id);
     }
     setContentReady(false);
     return undefined;
@@ -120,19 +123,27 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
   );
 
   const handleLogout = () => {
-    Alert.alert(t('logout'), t('logoutConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('logout'),
-        style: 'destructive',
-        onPress: () => {
-          onClose();
-          setTimeout(() => {
-            void resetAppStores().then(() => router.replace('/(tabs)'));
-          }, 260);
-        },
-      },
-    ]);
+    setLogoutVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      onClose();
+      await resetAppStores();
+      setLogoutVisible(false);
+      router.replace('/login');
+    } catch (error) {
+      console.error(
+        '[drawer] logout failed',
+        error instanceof Error ? error.message : 'unknown',
+      );
+      setLogoutVisible(false);
+      router.replace('/login');
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -313,6 +324,23 @@ export function DrawerMenu({ isOpen, onClose }: DrawerMenuProps) {
           </>
         )}
       </ScrollView>
+
+      <ConfirmDialog
+        visible={logoutVisible}
+        title={t('logout')}
+        message={t('logoutConfirm')}
+        cancelLabel={t('cancel')}
+        confirmLabel={t('logout')}
+        tone="destructive"
+        icon="log-out-outline"
+        confirming={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutVisible(false);
+        }}
+        onConfirm={() => {
+          void confirmLogout();
+        }}
+      />
     </View>
   );
 }

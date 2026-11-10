@@ -699,7 +699,9 @@ export function matchesSearch(product: Product, query: string): boolean {
     .join(' ')
     .toLowerCase();
 
-  return haystack.includes(q);
+  const tokens = q.split(/\s+/).filter((token) => token.length > 1);
+  if (tokens.length === 0) return haystack.includes(q);
+  return tokens.every((token) => haystack.includes(token));
 }
 
 function productMatchesPrice(

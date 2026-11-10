@@ -212,14 +212,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   imageLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   image: {
     width: '100%',
     height: '100%',
   },
   skeleton: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 6,
   },
   placeholder: {

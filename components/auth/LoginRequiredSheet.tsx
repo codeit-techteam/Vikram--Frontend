@@ -43,6 +43,7 @@ export function LoginRequiredSheet() {
   const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const visible = useAuthStore((s) => s.loginSheetVisible);
+  const requestId = useAuthStore((s) => s.loginSheetRequestId);
   const reason = useAuthStore((s) => s.loginSheetReason);
   const hideLoginSheet = useAuthStore((s) => s.hideLoginSheet);
   const setPhoneNumber = useAuthStore((s) => s.setPhoneNumber);
@@ -64,11 +65,14 @@ export function LoginRequiredSheet() {
   useEffect(() => {
     if (visible) {
       resetForm();
-      sheetRef.current?.present();
+      // requestId ensures a second requireAuth while still "visible" re-presents.
+      requestAnimationFrame(() => {
+        sheetRef.current?.present();
+      });
     } else {
       sheetRef.current?.dismiss();
     }
-  }, [visible, resetForm]);
+  }, [visible, requestId, resetForm]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -88,8 +92,8 @@ export function LoginRequiredSheet() {
   }, [hideLoginSheet]);
 
   const handleLogin = useCallback(async () => {
-    if (!isPhoneValid) {
-      setShowPhoneError(true);
+    if (!isPhoneValid || loading) {
+      setShowPhoneError(!isPhoneValid);
       return;
     }
 
@@ -109,7 +113,14 @@ export function LoginRequiredSheet() {
     } finally {
       setLoading(false);
     }
-  }, [clearGuestMode, hideLoginSheet, isPhoneValid, phone, setPhoneNumber]);
+  }, [
+    clearGuestMode,
+    hideLoginSheet,
+    isPhoneValid,
+    loading,
+    phone,
+    setPhoneNumber,
+  ]);
 
   return (
     <BottomSheetModal
@@ -191,7 +202,7 @@ export function LoginRequiredSheet() {
           onPress={() => {
             void handleLogin();
           }}
-          disabled={loading}
+          disabled={loading || !isPhoneValid}
           accessibilityRole="button"
           accessibilityLabel="Continue with mobile"
           style={[

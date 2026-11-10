@@ -5,9 +5,14 @@
     "owner": "vikramsahrawat09s-team",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-ivory.png",
     "scheme": "bajriwala",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FCF7E4"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bajriwala.app",
@@ -17,7 +22,9 @@
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow Bajriwala to use speech recognition for voice search.",
         "NSMicrophoneUsageDescription": "Allow Bajriwala to use your microphone for voice search.",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -30,9 +37,9 @@
         }
       },
       "adaptiveIcon": {
-        "backgroundColor": "#32312F",
+        "backgroundColor": "#FCF7E4",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "backgroundImage": "./assets/android-icon-background-ivory.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -81,13 +88,26 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/bajriwala-logo-on-dark.png",
-          "imageWidth": 170,
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#32312F"
+          "backgroundColor": "#FCF7E4",
+          "dark": {
+            "image": "./assets/images/splash-icon.png",
+            "backgroundColor": "#FCF7E4"
+          }
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Bajriwala to use your microphone for voice search.",
+          "recordAudioAndroid": true,
+          "enableBackgroundRecording": false,
+          "enableBackgroundPlayback": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

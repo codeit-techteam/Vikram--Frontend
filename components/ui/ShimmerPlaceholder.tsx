@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   band: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   gradient: {
     width: BAND_WIDTH,

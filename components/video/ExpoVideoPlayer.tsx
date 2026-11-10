@@ -256,7 +256,7 @@ export function ExpoVideoPlayer({
           {posterUrl ? (
             <Image
               source={{ uri: posterUrl }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
           ) : null}
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   skeleton: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
     alignItems: 'center',
     justifyContent: 'center',

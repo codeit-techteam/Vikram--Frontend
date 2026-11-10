@@ -53,9 +53,11 @@ export async function fetchOrders(params: OrdersQueryParams = {}): Promise<Order
   const page = cursor ? Number(cursor) || 1 : 1;
 
   const query = new URLSearchParams();
-  if (status !== 'all') {
+  if (status === 'active') {
+    // Server-side active group — avoids fetching delivered/cancelled pages then filtering.
+    query.set('statusGroup', 'active');
+  } else if (status !== 'all') {
     const statusMap: Record<string, string> = {
-      active: '',
       delivered: 'DELIVERED',
       cancelled: 'CANCELLED',
     };
@@ -70,20 +72,7 @@ export async function fetchOrders(params: OrdersQueryParams = {}): Promise<Order
     `${ORDERS_BASE}?${query.toString()}`,
   );
 
-  const pageResult = parseOrdersPage(data.data, limit);
-
-  if (status === 'active') {
-    const activeItems = pageResult.items.filter(
-      (o) =>
-        o.status !== 'delivered' &&
-        o.status !== 'cancelled' &&
-        o.status !== 'payment_failed' &&
-        o.status !== 'refunded',
-    );
-    return { ...pageResult, items: activeItems, total: activeItems.length };
-  }
-
-  return pageResult;
+  return parseOrdersPage(data.data, limit);
 }
 
 export async function fetchOrderById(orderId: string): Promise<Order> {
@@ -162,7 +151,8 @@ export async function fetchOrderInvoicePdf(
     file.delete();
   }
   file.create();
-  file.write(new Uint8Array(response.data));
+  // SDK 58: File.write is async.
+  await file.write(new Uint8Array(response.data));
   return { uri: file.uri, filename };
 }
 

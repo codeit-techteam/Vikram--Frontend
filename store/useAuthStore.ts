@@ -103,6 +103,8 @@ interface AuthState {
   loginSheetVisible: boolean;
   /** Contextual copy for the login sheet, e.g. "Log in to view your orders." */
   loginSheetReason: string | null;
+  /** Bumps on every requireLogin/showLoginSheet so the modal re-presents. */
+  loginSheetRequestId: number;
 
   setPhoneNumber: (phone: string) => void;
   setSelectedRole: (role: UserRole) => void;
@@ -147,6 +149,7 @@ const initialState = {
   pendingAction: null as (() => void) | null,
   loginSheetVisible: false,
   loginSheetReason: null as string | null,
+  loginSheetRequestId: 0,
 };
 
 const AUTH_CUSTOMER_KEY = 'auth_customer';
@@ -409,13 +412,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useDeliveryStore.getState().reset();
       useLoyaltyStore.getState().reset();
 
+      // Explicit logout returns to the login screen — do not re-enter guest mode.
+      await storage.removeItem(GUEST_MODE_KEY);
       set({
         ...initialState,
         isHydrated: true,
+        isGuest: false,
+        isLoggedIn: false,
+        loading: false,
       });
-
-      // "Return to Guest Mode" after logout, per product requirement.
-      await get().enterGuestMode();
     }
   },
 
@@ -465,19 +470,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   requireLogin: (pendingAction, reason) => {
-    const { isLoggedIn } = get();
-    if (isLoggedIn) return true;
+    const { isLoggedIn, isGuest } = get();
+    if (isLoggedIn && !isGuest) return true;
 
-    set({
+    set((state) => ({
       pendingAction: pendingAction ?? null,
       loginSheetReason: reason?.trim() || null,
       loginSheetVisible: true,
-    });
+      loginSheetRequestId: state.loginSheetRequestId + 1,
+    }));
     return false;
   },
 
   showLoginSheet: (reason) =>
-    set({ loginSheetReason: reason?.trim() || null, loginSheetVisible: true }),
+    set((state) => ({
+      loginSheetReason: reason?.trim() || null,
+      loginSheetVisible: true,
+      loginSheetRequestId: state.loginSheetRequestId + 1,
+    })),
   hideLoginSheet: () => set({ loginSheetVisible: false, loginSheetReason: null }),
 
   consumePendingAction: () => {

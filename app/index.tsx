@@ -1,32 +1,52 @@
-import { useEffect, useRef } from 'react';
-import { Text, View } from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import * as ExpoSplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandLogo } from '@components/BrandLogo';
-import { BRAND_CHARCOAL, theme } from '@constants/theme';
-import { useTranslation } from '@store/languageStore';
+import { BrandedSplash } from '@components/splash/BrandedSplash';
 import { useAuthStore } from '@store/useAuthStore';
 import { resolveDeliverySitesForBoot } from '@utils/ensureDeliverySite';
 import { markStartup } from '@utils/startupPerf';
 import { withDeadline } from '@utils/withDeadline';
 
-/** Brief brand beat — do not pad past essential init. */
-const MIN_SPLASH_MS = 400;
+/** Short brand beat once the in-app splash is visible — not a loading timer. */
+const MIN_BRAND_MS = 900;
 const HYDRATE_DEADLINE_MS = 6000;
-const SPLASH_TEXT = '#F6EFE5';
 
 export default function SplashScreen() {
-  const { t } = useTranslation();
   const hydrateSession = useAuthStore((s) => s.hydrateSession);
   const routed = useRef(false);
+  const nativeHidden = useRef(false);
+  const brandReadyAt = useRef<number | null>(null);
+
+  const hideNativeSplash = useCallback(async () => {
+    if (nativeHidden.current) return;
+    nativeHidden.current = true;
+    try {
+      await ExpoSplashScreen.hideAsync();
+      markStartup('splash_hide');
+    } catch {
+      // Native splash may already be gone (failsafe / remount).
+    }
+  }, []);
+
+  const onBrandedReady = useCallback(() => {
+    if (brandReadyAt.current == null) {
+      brandReadyAt.current = Date.now();
+    }
+    void hideNativeSplash();
+  }, [hideNativeSplash]);
 
   useEffect(() => {
     markStartup('first_shell');
+
+    try {
+      ExpoSplashScreen.setOptions({ duration: 280, fade: true });
+    } catch {
+      // setOptions is unavailable on some older native binaries.
+    }
+
     const start = Date.now();
+    let cancelled = false;
 
     (async () => {
       try {
@@ -42,22 +62,26 @@ export default function SplashScreen() {
         });
         markStartup('session_local');
 
-        const elapsed = Date.now() - start;
-        const remaining = Math.max(MIN_SPLASH_MS - elapsed, 0);
+        const { isLoggedIn, isGuest } = useAuthStore.getState();
+
+        // Overlap sites resolution with the brand beat — never gate native splash on it.
+        const sitesPromise = isLoggedIn ? resolveDeliverySitesForBoot() : null;
+
+        const brandStart = brandReadyAt.current ?? start;
+        const remaining = Math.max(MIN_BRAND_MS - (Date.now() - brandStart), 0);
         if (remaining > 0) {
           await new Promise((resolve) => setTimeout(resolve, remaining));
         }
 
-        if (routed.current) return;
+        if (cancelled || routed.current) return;
         routed.current = true;
 
-        const { isLoggedIn, isGuest } = useAuthStore.getState();
+        await hideNativeSplash();
+        markStartup('nav_ready');
 
         if (isLoggedIn) {
-          const sites = await resolveDeliverySitesForBoot();
-          await ExpoSplashScreen.hideAsync().catch(() => undefined);
-          markStartup('splash_hide');
-          markStartup('nav_ready');
+          const sites = (await sitesPromise) ?? 'unknown';
+          if (cancelled) return;
           if (sites === 'no') {
             router.replace('/delivery-location');
             return;
@@ -65,10 +89,6 @@ export default function SplashScreen() {
           router.replace('/(tabs)');
           return;
         }
-
-        await ExpoSplashScreen.hideAsync().catch(() => undefined);
-        markStartup('splash_hide');
-        markStartup('nav_ready');
 
         if (isGuest) {
           router.replace('/(tabs)');
@@ -80,59 +100,18 @@ export default function SplashScreen() {
           '[startup] splash routing failed',
           error instanceof Error ? error.message : 'unknown',
         );
-        await ExpoSplashScreen.hideAsync().catch(() => undefined);
+        await hideNativeSplash();
         if (!routed.current) {
           routed.current = true;
           router.replace('/login');
         }
       }
     })();
-  }, [hydrateSession]);
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: BRAND_CHARCOAL }} edges={['top', 'bottom']}>
-      <StatusBar style="light" />
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: BRAND_CHARCOAL,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <BrandLogo size="lg" variant="onDark" />
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateSession, hideNativeSplash]);
 
-        <Text
-          style={{
-            fontSize: 14,
-            color: SPLASH_TEXT,
-            fontWeight: '600',
-            marginTop: 16,
-            opacity: 0.7,
-            letterSpacing: 0.5,
-          }}>
-          {theme.appTagline}
-        </Text>
-
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 40,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={SPLASH_TEXT} />
-          <Text
-            style={{
-              fontSize: 12,
-              color: SPLASH_TEXT,
-              fontWeight: '600',
-              opacity: 0.6,
-            }}>
-            {t('enterpriseSecureNetwork')}
-          </Text>
-        </View>
-      </View>
-    </SafeAreaView>
-  );
+  return <BrandedSplash onReady={onBrandedReady} />;
 }

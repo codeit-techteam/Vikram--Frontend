@@ -42,10 +42,12 @@ import { VideoBanner } from '@components/home/VideoBanner';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
 import { useCategories } from '@hooks/useCategories';
+import { prefetchBulkFormConfig } from '@hooks/useBulkFormConfig';
 import { useCmsHome } from '@hooks/useCmsHome';
 import { useDeliveryPromotions } from '@hooks/useDeliveryPromotions';
 import { useHomeProducts } from '@hooks/useHomeProducts';
 import { useSites } from '@hooks/useSites';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '@store/languageStore';
 import { useAuthStore } from '@store/useAuthStore';
 import { useLoyaltyStore } from '@store/loyaltyStore';
@@ -84,6 +86,7 @@ const H_PAD = 16;
 
 export default function HomeScreen() {
   const { t, language } = useTranslation();
+  const queryClient = useQueryClient();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const freeBikeRemaining = useLoyaltyStore((s) => s.freeBikeDeliveriesRemaining);
   const freeBikeUsed = useLoyaltyStore((s) => s.freeBikeDeliveriesUsed);
@@ -114,6 +117,11 @@ export default function HomeScreen() {
     void refreshLoyalty();
   }, [isLoggedIn, refreshLoyalty]);
 
+  // Warm bulk enquiry form config so opening the form is instant.
+  useEffect(() => {
+    void prefetchBulkFormConfig(queryClient);
+  }, [queryClient]);
+
   useEffect(() => {
     if (!isLoggedIn) return;
     void customerHasDeliverySites().then((hasSites) => {
@@ -141,6 +149,7 @@ export default function HomeScreen() {
     banners,
     heroBanners,
     promoBanners,
+    deliveryPromotions: cmsDeliveryPromotions,
     videoBanners,
     heroVideo,
     ads,
@@ -155,11 +164,14 @@ export default function HomeScreen() {
     refresh: refreshCms,
   } = useCmsHome();
 
+  const cmsHasDeliveryPromo = (cmsDeliveryPromotions?.length ?? 0) > 0;
   const {
-    featured: deliveryPromotion,
+    featured: fetchedDeliveryPromotion,
     isLoading: deliveryPromoLoading,
     refresh: refreshDeliveryPromotions,
-  } = useDeliveryPromotions();
+  } = useDeliveryPromotions({ enabled: !cmsLoading && !cmsHasDeliveryPromo });
+  const deliveryPromotion =
+    cmsDeliveryPromotions?.[0] ?? fetchedDeliveryPromotion ?? null;
 
   const {
     featured: featuredProducts,
@@ -290,8 +302,9 @@ export default function HomeScreen() {
   const onBulkProcurement = useCallback(async () => {
     await Haptics.selectionAsync();
     if (!requireAuth('Please log in for bulk procurement.')) return;
+    void prefetchBulkFormConfig(queryClient);
     router.push('/bulk-procurement/enquiry' as Href);
-  }, []);
+  }, [queryClient]);
 
   const onVideoShopNow = useCallback(() => {
     if (videoBanner) {

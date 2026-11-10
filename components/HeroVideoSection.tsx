@@ -72,7 +72,7 @@ export function VideoBanner({ banner, onShopNow }: VideoBannerProps) {
           'rgba(0,0,0,0.75)',
         ]}
         locations={[0, 0.18, 0.55, 1]}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
 

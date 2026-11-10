@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
@@ -18,11 +18,12 @@ import { sendOtp } from '@services/auth.api';
 import { storage } from '@lib/storage';
 import { useAuthStore } from '@store/useAuthStore';
 import { customerHasDeliverySites } from '@utils/ensureDeliverySite';
+import { maskMobile } from '@utils/maskMobile';
 import { navigateToHomeAfterAuth } from '@utils/navigation';
 import type { ApiError } from '@/types';
 
 const RETURNING_USER_KEY = '@bajriwala/returning_user';
-const DEV_OTP = '123456';
+const DEFAULT_RESEND_SECONDS = 30;
 
 const GOLD = '#FEB623';
 const CREAM = '#FFF4D1';
@@ -31,22 +32,27 @@ const WARM_SHADOW = '#C8900A';
 const WARM_BORDER = '#D4C89A';
 const BUTTON_INACTIVE = '#E8DFB8';
 
+function formatCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function OTPScreen() {
   const phoneNumber = useAuthStore((s) => s.phoneNumber);
   const loginWithOtp = useAuthStore((s) => s.loginWithOtp);
-  const [otp, setOtp] = useState(
-    __DEV__ ? DEV_OTP.split('') : ['', '', '', '', '', ''],
-  );
-  const [timer, setTimer] = useState(60);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [timer, setTimer] = useState(DEFAULT_RESEND_SECONDS);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const inputRefs = Array(6)
-    .fill(null)
-    .map(() => useRef<TextInput>(null));
+  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const verifyingRef = useRef(false);
+
+  const maskedPhone = useMemo(() => maskMobile(phoneNumber), [phoneNumber]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => inputRefs[0].current?.focus(), 300);
+    const timeout = setTimeout(() => inputRefs.current[0]?.focus(), 300);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -58,16 +64,31 @@ export default function OTPScreen() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  const resendOtp = async () => {
-    setOtp(__DEV__ ? DEV_OTP.split('') : ['', '', '', '', '', '']);
-    setTimer(60);
+  const applyOtpDigits = (digits: string) => {
+    const next = Array.from({ length: 6 }, (_, index) => digits[index] ?? '');
+    setOtp(next);
     setErrorMessage(null);
-    inputRefs[0].current?.focus();
+
+    const focusIndex = Math.min(digits.length, 5);
+    if (digits.length >= 6) {
+      inputRefs.current[5]?.blur();
+    } else {
+      inputRefs.current[focusIndex]?.focus();
+    }
+  };
+
+  const resendOtp = async () => {
+    if (timer > 0 || resending || loading) return;
+
+    setErrorMessage(null);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     setResending(true);
     try {
-      await sendOtp(phoneNumber);
+      const result = await sendOtp(phoneNumber);
+      setOtp(['', '', '', '', '', '']);
+      setTimer(result.resendAvailableIn ?? DEFAULT_RESEND_SECONDS);
+      inputRefs.current[0]?.focus();
     } catch (error) {
       const apiErr = error as ApiError;
       setErrorMessage(apiErr?.message ?? 'Unable to resend OTP. Please try again.');
@@ -77,22 +98,18 @@ export default function OTPScreen() {
   };
 
   const handleVerify = async () => {
-    if (otp.join('').length < 6 || loading) return;
+    const code = otp.join('');
+    if (code.length < 6 || loading || verifyingRef.current) return;
 
+    verifyingRef.current = true;
     setErrorMessage(null);
     setLoading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const customer = await loginWithOtp(phoneNumber, otp.join(''));
+      const customer = await loginWithOtp(phoneNumber, code);
       await storage.setItem(RETURNING_USER_KEY, 'true');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      if (__DEV__ && otp.join('') === DEV_OTP) {
-        navigateToHomeAfterAuth();
-        queueMicrotask(() => useAuthStore.getState().consumePendingAction());
-        return;
-      }
 
       if (customer.isNewCustomer || !customer.roleSelected) {
         router.replace('/role-selection');
@@ -111,8 +128,11 @@ export default function OTPScreen() {
       const apiErr = error as ApiError;
       setErrorMessage(apiErr?.message ?? 'Invalid OTP. Please try again.');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
+      verifyingRef.current = false;
     }
   };
 
@@ -122,14 +142,12 @@ export default function OTPScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: GOLD }} edges={['top', 'bottom']}>
       <YellowBackHeader />
 
-      {/* Center content */}
       <View
         style={{
           flex: 1,
           justifyContent: 'center',
           paddingHorizontal: 20,
         }}>
-        {/* Cream card */}
         <View
           style={{
             backgroundColor: CREAM,
@@ -166,26 +184,15 @@ export default function OTPScreen() {
               marginBottom: 4,
             }}>
             We&apos;ve sent a 6-digit code to{' '}
-            <Text style={{ fontWeight: '800', color: DARK }}>+91 {phoneNumber}</Text>
-          </Text>
-          {__DEV__ ? (
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: '700',
-                color: DARK,
-                textAlign: 'center',
-                marginBottom: 8,
-              }}>
-              Dev OTP: {DEV_OTP}
+            <Text style={{ fontWeight: '800', color: DARK }}>
+              +91 {maskedPhone}
             </Text>
-          ) : null}
+          </Text>
 
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 28 }}>
             <Text style={{ color: GOLD, fontSize: 14, fontWeight: '700' }}>Change Number</Text>
           </TouchableOpacity>
 
-          {/* OTP inputs */}
           <View
             style={{
               flexDirection: 'row',
@@ -195,7 +202,9 @@ export default function OTPScreen() {
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <TextInput
                 key={i}
-                ref={inputRefs[i]}
+                ref={(ref) => {
+                  inputRefs.current[i] = ref;
+                }}
                 style={{
                   width: 46,
                   height: 54,
@@ -208,29 +217,45 @@ export default function OTPScreen() {
                   color: DARK,
                   backgroundColor: otp[i] ? 'rgba(254,182,35,0.15)' : '#FFFFFF',
                 }}
-                maxLength={1}
+                maxLength={i === 0 ? 6 : 1}
                 keyboardType="number-pad"
+                textContentType={i === 0 ? 'oneTimeCode' : 'none'}
+                autoComplete={i === 0 ? 'sms-otp' : 'off'}
+                importantForAutofill={i === 0 ? 'yes' : 'no'}
                 value={otp[i]}
+                editable={!loading}
                 onChangeText={(val) => {
-                  const digit = val.replace(/\D/g, '').slice(-1);
+                  const digits = val.replace(/\D/g, '');
+
+                  if (digits.length > 1) {
+                    applyOtpDigits(digits.slice(0, 6));
+                    return;
+                  }
+
+                  const digit = digits.slice(-1);
                   const newOtp = [...otp];
                   newOtp[i] = digit;
                   setOtp(newOtp);
+                  setErrorMessage(null);
+
                   if (digit && i < 5) {
-                    inputRefs[i + 1].current?.focus();
+                    inputRefs.current[i + 1]?.focus();
                   }
-                  Haptics.selectionAsync();
+
+                  void Haptics.selectionAsync();
                 }}
                 onKeyPress={({ nativeEvent }) => {
                   if (nativeEvent.key === 'Backspace' && !otp[i] && i > 0) {
-                    inputRefs[i - 1].current?.focus();
+                    const newOtp = [...otp];
+                    newOtp[i - 1] = '';
+                    setOtp(newOtp);
+                    inputRefs.current[i - 1]?.focus();
                   }
                 }}
               />
             ))}
           </View>
 
-          {/* Resend timer */}
           <View
             style={{
               flexDirection: 'row',
@@ -245,14 +270,13 @@ export default function OTPScreen() {
             <Ionicons name="time-outline" size={14} color={GOLD} />
             {timer > 0 ? (
               <Text style={{ fontSize: 13, color: '#666' }}>
-                Resend code in{' '}
+                Resend OTP in{' '}
                 <Text style={{ color: GOLD, fontWeight: '700' }}>
-                  {String(Math.floor(timer / 60)).padStart(2, '0')}:
-                  {String(timer % 60).padStart(2, '0')}
+                  {formatCountdown(timer)}
                 </Text>
               </Text>
             ) : (
-              <TouchableOpacity onPress={resendOtp} disabled={resending}>
+              <TouchableOpacity onPress={resendOtp} disabled={resending || loading}>
                 <Text style={{ color: GOLD, fontWeight: '700', fontSize: 13 }}>
                   {resending ? 'Resending…' : 'Resend OTP'}
                 </Text>
@@ -278,7 +302,6 @@ export default function OTPScreen() {
             </View>
           ) : null}
 
-          {/* Verify button */}
           <TouchableOpacity
             onPress={handleVerify}
             disabled={!isComplete || loading}
@@ -322,12 +345,13 @@ export default function OTPScreen() {
               fontWeight: '600',
               textAlign: 'center',
             }}>
-            SECURE 256-BIT AES ENCRYPTION
+            {Platform.OS === 'android'
+              ? 'SMS AUTOFILL ENABLED WHEN AVAILABLE'
+              : 'SECURE OTP VERIFICATION'}
           </Text>
         </View>
       </View>
 
-      {/* Bottom spacer */}
       <View style={{ height: 40, backgroundColor: GOLD }} />
     </SafeAreaView>
   );

@@ -1,10 +1,12 @@
 import '../global.css';
 
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -15,6 +17,7 @@ import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
 import { VariantBottomSheet } from '@components/product/VariantBottomSheet';
 import { ReorderToast } from '@components/orders/ReorderToast';
 import { ReorderUnavailableSheet } from '@components/orders/ReorderUnavailableSheet';
+import { BRAND_IVORY } from '@constants/theme';
 import { QueryProvider } from '@providers/QueryProvider';
 import { RealtimeProvider } from '@providers/RealtimeProvider';
 import { PushNotificationProvider } from '@providers/PushNotificationProvider';
@@ -25,6 +28,12 @@ import { markStartup } from '@utils/startupPerf';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
+try {
+  SplashScreen.setOptions({ duration: 280, fade: true });
+} catch {
+  // Older native binaries may not support setOptions.
+}
+
 /** Hard ceiling so a hung hydrate can never leave the native splash forever. */
 const NATIVE_SPLASH_FAILSAFE_MS = 8000;
 
@@ -34,11 +43,17 @@ export default function RootLayout() {
   useEffect(() => {
     markStartup('root_mount');
 
+    // Native only — on web this can fight NativeWind's color-scheme observer.
+    if (Platform.OS !== 'web') {
+      void SystemUI.setBackgroundColorAsync(BRAND_IVORY).catch(() => undefined);
+    }
+
     const failsafe = setTimeout(() => {
       void SplashScreen.hideAsync().catch(() => undefined);
       markStartup('splash_hide');
     }, NATIVE_SPLASH_FAILSAFE_MS);
 
+    // Nonessential — must never gate splash / first navigation.
     void reconcileCartWithApiHost().finally(() => {
       startCartServerSync();
     });
@@ -73,6 +88,14 @@ export default function RootLayout() {
                       contentStyle: { backgroundColor: '#FFFFFF' },
                       freezeOnBlur: true,
                     }}>
+                    <Stack.Screen
+                      name="index"
+                      options={{
+                        headerShown: false,
+                        animation: 'fade',
+                        contentStyle: { backgroundColor: BRAND_IVORY },
+                      }}
+                    />
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                     <Stack.Screen name="login" options={{ headerShown: false }} />
                     <Stack.Screen name="otp" options={{ headerShown: false }} />

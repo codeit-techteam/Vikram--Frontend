@@ -58,10 +58,11 @@ export interface UseSearchReturn {
   cancelVoiceSearch: () => void;
 }
 
-export function useSearch(options?: { alwaysActive?: boolean }): UseSearchReturn {
+export function useSearch(options?: { alwaysActive?: boolean; initialQuery?: string }): UseSearchReturn {
   const alwaysActive = options?.alwaysActive === true;
-  const [query, setQueryState] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const initialQuery = options?.initialQuery?.trim() ?? '';
+  const [query, setQueryState] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [isActive, setIsActive] = useState(alwaysActive);
   const [sortOption, setSortOption] = useState<SearchSortOption>('relevance');
   const [filters, setFilters] = useState<SearchFilters>(EMPTY_SEARCH_FILTERS);
@@ -78,6 +79,7 @@ export function useSearch(options?: { alwaysActive?: boolean }): UseSearchReturn
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRecordedQuery = useRef('');
+  const appliedInitialQuery = useRef('');
 
   const trimmedDebounced = debouncedQuery.trim();
   const searchEnabled = (alwaysActive || isActive) && trimmedDebounced.length > 0;
@@ -171,6 +173,13 @@ export function useSearch(options?: { alwaysActive?: boolean }): UseSearchReturn
     },
     [addRecentSearch, query],
   );
+
+  useEffect(() => {
+    const next = options?.initialQuery?.trim() ?? '';
+    if (!next || appliedInitialQuery.current === next) return;
+    appliedInitialQuery.current = next;
+    submitSearch(next);
+  }, [options?.initialQuery, submitSearch]);
 
   const clearQuery = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

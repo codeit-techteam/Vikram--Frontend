@@ -14,12 +14,14 @@ import {
 } from '@services/orders.api';
 import { realtimeSocket } from '@services/realtime.socket';
 import { isActiveStatus } from '@constants/orderStatus';
+import { useAuthStore } from '@store/useAuthStore';
 import { useOrdersSyncStore } from '@store/ordersSyncStore';
 import type { Order, OrderFilterStatus, OrdersPage } from '@/types/order';
 import { mergeOrderState, preferFresherOrder } from '@utils/orderMerge';
 
 export const ORDERS_QUERY_KEY = 'orders';
-export const ORDERS_STALE_TIME = 1000 * 60 * 10;
+/** Short enough to pick up payment/delivery changes; sockets still patch live. */
+export const ORDERS_STALE_TIME = 1000 * 60 * 2;
 const ACTIVE_POLL_MS = 10_000;
 
 function ordersKey(status: OrderFilterStatus, search: string) {
@@ -39,6 +41,7 @@ function mergePageWithStore(page: OrdersPage): OrdersPage {
 
 export function useOrders(status: OrderFilterStatus = 'all', search = '') {
   const queryClient = useQueryClient();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn && !s.isGuest);
   const [socketConnected, setSocketConnected] = useState(
     realtimeSocket.isConnected(),
   );
@@ -59,9 +62,11 @@ export function useOrders(status: OrderFilterStatus = 'all', search = '') {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    enabled: isLoggedIn,
     staleTime: socketConnected ? ORDERS_STALE_TIME : ACTIVE_POLL_MS,
     gcTime: ORDERS_STALE_TIME,
     refetchInterval: (q) => {
+      if (!isLoggedIn) return false;
       const items = q.state.data?.pages.flatMap((page) => page.items) ?? [];
       const hasActive = items.some((order) => isActiveStatus(order.status));
       if (!hasActive) return false;
@@ -81,15 +86,20 @@ export function useOrders(status: OrderFilterStatus = 'all', search = '') {
 
   const activeCount = useMemo(() => getActiveOrderCount(orders), [orders]);
 
+  const refetch = query.refetch;
+  const fetchNextPage = query.fetchNextPage;
+  const hasNextPage = query.hasNextPage;
+  const isFetchingNextPage = query.isFetchingNextPage;
+
   const refresh = useCallback(async () => {
-    await query.refetch();
-  }, [query]);
+    await refetch();
+  }, [refetch]);
 
   const loadMore = useCallback(() => {
-    if (query.hasNextPage && !query.isFetchingNextPage) {
-      query.fetchNextPage();
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
     }
-  }, [query]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const cancelMutation = useMutation({
     mutationFn: ({ orderId, reason }: { orderId: string; reason?: string }) =>
@@ -180,7 +190,7 @@ export function useOrders(status: OrderFilterStatus = 'all', search = '') {
   return {
     orders,
     activeCount,
-    isLoading: query.isLoading,
+    isLoading: query.isLoading && orders.length === 0,
     isRefreshing: query.isRefetching && !query.isFetchingNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,

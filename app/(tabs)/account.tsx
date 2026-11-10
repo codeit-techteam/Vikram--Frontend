@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   LayoutAnimation,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -25,6 +25,7 @@ import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
 import { InitialsAvatar } from '@components/InitialsAvatar';
 import { ScaledPressable } from '@components/ScaledPressable';
+import { ConfirmDialog } from '@components/ui/ConfirmDialog';
 import type { ProfileSite } from '@store/deliveryStore';
 import { VerifiedBadge } from '@components/gst/VerifiedBadge';
 import { useDeliveryStore } from '@store/deliveryStore';
@@ -67,6 +68,7 @@ export default function AccountScreen() {
   const updateProfileSite = useDeliveryStore((st) => st.updateProfileSite);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isGuest = useAuthStore((s) => s.isGuest);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
   const sessionCustomer = useAuthStore((s) => s.customer);
   const showGuestState = !isLoggedIn || isGuest;
   useCustomerProfile(!showGuestState);
@@ -140,17 +142,30 @@ export default function AccountScreen() {
     sheetRef.current?.expand();
   };
 
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const handleLogout = () => {
-    Alert.alert(t('logout'), t('logoutConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('logout'),
-        style: 'destructive',
-        onPress: () => {
-          void resetAppStores().then(() => router.replace('/(tabs)'));
-        },
-      },
-    ]);
+    setLogoutVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await resetAppStores();
+      setLogoutVisible(false);
+      router.replace('/login');
+    } catch (error) {
+      console.error(
+        '[account] logout failed',
+        error instanceof Error ? error.message : 'unknown',
+      );
+      setLogoutVisible(false);
+      router.replace('/login');
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const handleLoginOrRegister = () => {
@@ -187,9 +202,15 @@ export default function AccountScreen() {
             {t('personalInformation').toUpperCase()}
           </Text>
 
-          {showGuestState ? (
-            <View className="mb-4 items-center rounded-card border border-border bg-surface p-6">
-              <View className="mb-3 h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+          {!isHydrated ? (
+            <View className="mb-4 h-36 rounded-card border border-border bg-surface" />
+          ) : showGuestState ? (
+            <View
+              key="account-guest"
+              className="mb-4 items-center rounded-card border border-border bg-surface p-6">
+              <View
+                className="mb-3 h-16 w-16 items-center justify-center rounded-full"
+                style={styles.primaryTint15}>
                 <Ionicons name="person" size={32} color="#FEB623" />
               </View>
               <Text className="text-xl font-bold text-text">Guest User</Text>
@@ -205,7 +226,9 @@ export default function AccountScreen() {
               </View>
             </View>
           ) : (
-            <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
+            <View
+              key="account-user"
+              className="mb-4 rounded-card border border-border bg-surface p-4">
               <View className="flex-row items-start gap-4">
                 <ScaledPressable onPress={handleAvatarPress}>
                   <Animated.View style={avatarStyle}>
@@ -244,14 +267,16 @@ export default function AccountScreen() {
             </View>
           )}
 
-          {!showGuestState && (
+          {isHydrated && !showGuestState && (
             <>
               {/* Business Details */}
               {gstDetails?.gstNumber ? (
-                <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
+                <View className="mb-4 rounded-card border border-border bg-surface p-4">
                   <View className="mb-3 flex-row items-center justify-between">
                     <View className="flex-row items-center gap-2">
-                      <View className="h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+                      <View
+                        className="h-10 w-10 items-center justify-center rounded-xl"
+                        style={styles.infoTint10}>
                         <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
                       </View>
                       <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
@@ -315,9 +340,11 @@ export default function AccountScreen() {
                   </View>
                 </View>
               ) : (
-                <View className="mb-4 rounded-card border border-border bg-surface p-4 shadow-sm">
+                <View className="mb-4 rounded-card border border-border bg-surface p-4">
                   <View className="mb-2 flex-row items-center gap-2">
-                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-info/10">
+                    <View
+                      className="h-10 w-10 items-center justify-center rounded-xl"
+                      style={styles.infoTint10}>
                       <Ionicons name="receipt-outline" size={20} color="#1A73E8" />
                     </View>
                     <Text className="text-base font-bold text-text">{t('businessDetails')}</Text>
@@ -380,7 +407,7 @@ export default function AccountScreen() {
                           <Text className="text-sm font-bold text-text">{site.name}</Text>
                         </View>
                         {site.isPrimary && (
-                          <View className="rounded bg-primary/10 px-2 py-0.5">
+                          <View className="rounded px-2 py-0.5" style={styles.primaryTint10}>
                             <Text className="text-[10px] font-bold text-primary">PRIMARY</Text>
                           </View>
                         )}
@@ -428,7 +455,9 @@ export default function AccountScreen() {
               onPress={() => handleLanguage('hi')}
             />
 
-            <View className="mt-3 flex-row items-start gap-2 rounded-lg bg-info/10 p-3">
+            <View
+              className="mt-3 flex-row items-start gap-2 rounded-lg p-3"
+              style={styles.infoTint10}>
               <Ionicons name="information-circle" size={18} color="#2196F3" />
               <Text className="flex-1 text-xs text-text-secondary">{t('languageNote')}</Text>
             </View>
@@ -513,6 +542,23 @@ export default function AccountScreen() {
         />
       ) : null}
       </Animated.View>
+
+      <ConfirmDialog
+        visible={logoutVisible}
+        title={t('logout')}
+        message={t('logoutConfirm')}
+        cancelLabel={t('cancel')}
+        confirmLabel={t('logout')}
+        tone="destructive"
+        icon="log-out-outline"
+        confirming={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) setLogoutVisible(false);
+        }}
+        onConfirm={() => {
+          void confirmLogout();
+        }}
+      />
     </DrawerShell>
   );
 }
@@ -541,8 +587,9 @@ function LanguageCard({
     <ScaledPressable
       onPress={onPress}
       className={`mb-2 flex-row items-center rounded-lg border p-3 ${
-        selected ? 'border-primary bg-primary/5' : 'border-border bg-background'
-      }`}>
+        selected ? 'border-primary' : 'border-border bg-background'
+      }`}
+      style={selected ? styles.primaryTint5 : undefined}>
       <View className="flex-1">
         <Text className="text-sm font-bold text-text">{title}</Text>
         <Text className="text-xs text-text-secondary">{subtitle}</Text>
@@ -551,8 +598,15 @@ function LanguageCard({
         className={`h-5 w-5 items-center justify-center rounded-full border-2 ${
           selected ? 'border-primary bg-primary' : 'border-border'
         }`}>
-        {selected && <View className="h-2 w-2 rounded-full bg-white" />}
+        {selected ? <View className="h-2 w-2 rounded-full bg-white" /> : null}
       </View>
     </ScaledPressable>
   );
 }
+
+const styles = StyleSheet.create({
+  primaryTint5: { backgroundColor: 'rgba(254, 182, 35, 0.05)' },
+  primaryTint10: { backgroundColor: 'rgba(254, 182, 35, 0.1)' },
+  primaryTint15: { backgroundColor: 'rgba(254, 182, 35, 0.15)' },
+  infoTint10: { backgroundColor: 'rgba(33, 150, 243, 0.1)' },
+});

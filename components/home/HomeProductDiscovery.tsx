@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react';
-import { InteractionManager, View } from 'react-native';
+import { View } from 'react-native';
 
 import { HomeProductSection } from '@components/home/HomeProductSection';
 import { useHomeProducts } from '@hooks/useHomeProducts';
@@ -8,6 +8,15 @@ import { useTranslation } from '@store/languageStore';
 interface HomeProductDiscoveryProps {
   /** When true, only Featured mounts immediately; secondary rails wait for idle. */
   deferSecondary?: boolean;
+}
+
+function runAfterIdle(callback: () => void): { cancel: () => void } {
+  if (typeof requestIdleCallback === 'function') {
+    const id = requestIdleCallback(() => callback());
+    return { cancel: () => cancelIdleCallback(id) };
+  }
+  const id = setTimeout(callback, 0);
+  return { cancel: () => clearTimeout(id) };
 }
 
 function HomeProductDiscoveryComponent({
@@ -28,7 +37,7 @@ function HomeProductDiscoveryComponent({
       setShowSecondary(true);
       return;
     }
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runAfterIdle(() => {
       setShowSecondary(true);
     });
     return () => task.cancel();

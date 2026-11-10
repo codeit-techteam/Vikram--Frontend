@@ -82,6 +82,12 @@ export const BRAND_WORDMARK_ASPECT = 536 / 201;
 /** Charcoal background of the master logo artwork. */
 export const BRAND_CHARCOAL = '#32312F';
 
+/** Warm ivory used by the Bajriwala splash / brand introduction. */
+export const BRAND_IVORY = '#FCF7E4';
+
+/** Splash tagline — keep exact brand copy. */
+export const BRAND_SPLASH_TAGLINE = 'On site, on time.';
+
 export type Theme = typeof theme;
 
 /** Design-system re-exports for a single import surface. */

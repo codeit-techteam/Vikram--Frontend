@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import type { ColorValue } from 'react-native';
 
 import { AppIcon } from '@components/ui/AppIcon';
 import { ICON_SIZE, type AppIconName } from '@constants/icons';
@@ -17,7 +18,7 @@ export const TabIcons = {
 
 interface BottomTabIconProps {
   name: AppIconName;
-  color: string;
+  color: ColorValue;
   focused?: boolean;
   size?: number;
 }
@@ -27,7 +28,7 @@ function BottomTabIconComponent({
   color,
   size = ICON_SIZE.tab,
 }: BottomTabIconProps) {
-  return <AppIcon name={name} size={size} color={color} />;
+  return <AppIcon name={name} size={size} color={color as string} />;
 }
 
 export const BottomTabIcon = memo(BottomTabIconComponent);

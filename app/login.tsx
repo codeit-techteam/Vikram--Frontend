@@ -159,7 +159,7 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || !isPhoneValid}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={t('loginBtn')}

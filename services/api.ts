@@ -2,7 +2,12 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { storage } from '@lib/storage';
 import type { ApiError } from '@/types';
+import { markRequestEnd, markRequestStart } from '@utils/apiPerf';
 import { resolveApiBaseUrl } from '@utils/resolveApiBaseUrl';
+
+type TimedRequestConfig = InternalAxiosRequestConfig & {
+  metadata?: { requestId: string; startedAt: number };
+};
 
 function requestHadAuthorization(config?: InternalAxiosRequestConfig): boolean {
   if (!config?.headers) return false;
@@ -51,19 +56,26 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    const timed = config as TimedRequestConfig;
     const token = await resolveAccessToken();
 
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (token && timed.headers) {
+      timed.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const method = (timed.method ?? 'get').toUpperCase();
+    const url = `${timed.baseURL ?? ''}${timed.url ?? ''}`;
+    const requestId = markRequestStart(method, url);
+    timed.metadata = { requestId, startedAt: Date.now() };
+    if (timed.headers) {
+      timed.headers['X-Request-Id'] = requestId;
     }
 
     if (__DEV__) {
-      const method = (config.method ?? 'get').toUpperCase();
-      const url = `${config.baseURL ?? ''}${config.url ?? ''}`;
-      console.log(`[api] → ${method} ${url}`);
+      console.log(`[api] → ${requestId} ${method} ${url}`);
     }
 
-    return config;
+    return timed;
   },
   (error: AxiosError) => Promise.reject(error),
 );
@@ -130,25 +142,56 @@ async function performTokenRefresh(): Promise<string | null> {
 
 api.interceptors.response.use(
   (response) => {
+    const timed = response.config as TimedRequestConfig;
+    const method = (timed.method ?? 'get').toUpperCase();
+    const url = `${timed.baseURL ?? ''}${timed.url ?? ''}`;
+    if (timed.metadata) {
+      markRequestEnd({
+        requestId: timed.metadata.requestId,
+        method,
+        url,
+        startedAt: timed.metadata.startedAt,
+        status: response.status,
+      });
+    }
     if (__DEV__) {
-      const method = (response.config.method ?? 'get').toUpperCase();
-      const url = `${response.config.baseURL ?? ''}${response.config.url ?? ''}`;
       const count = Array.isArray(response.data?.data)
         ? response.data.data.length
         : response.data?.data?.items?.length ??
           (response.data?.data ? 1 : 0);
-      console.log(`[api] ← ${response.status} ${method} ${url} items≈${count}`);
+      console.log(
+        `[api] ← ${timed.metadata?.requestId ?? ''} ${response.status} ${method} ${url} items≈${count}`,
+      );
     }
     return response;
   },
   async (error: AxiosError<ApiError>) => {
     const originalConfig = error.config as
-      | (InternalAxiosRequestConfig & { _retried?: boolean })
+      | (TimedRequestConfig & { _retried?: boolean })
       | undefined;
 
     const isAuthEndpoint = originalConfig?.url?.includes('/auth/customer/');
     const isUnauthorized = error.response?.status === 401;
     const sentAuth = requestHadAuthorization(originalConfig);
+    const isTimeout =
+      error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+    const isCancelled = axios.isCancel(error) || error.code === 'ERR_CANCELED';
+
+    if (originalConfig?.metadata) {
+      const method = (originalConfig.method ?? 'get').toUpperCase();
+      const url = `${originalConfig.baseURL ?? ''}${originalConfig.url ?? ''}`;
+      markRequestEnd({
+        requestId: originalConfig.metadata.requestId,
+        method,
+        url,
+        startedAt: originalConfig.metadata.startedAt,
+        status: isCancelled
+          ? 'CANCELLED'
+          : isTimeout
+            ? 'TIMEOUT'
+            : (error.response?.status ?? 'NETWORK'),
+      });
+    }
 
     if (__DEV__) {
       const status = error.response?.status;
@@ -211,8 +254,6 @@ api.interceptors.response.use(
       await clearSessionAndEnterGuest();
     }
 
-    const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
-    const isCancelled = axios.isCancel(error) || error.code === 'ERR_CANCELED';
     const isNetwork = !error.response && !isTimeout && !isCancelled;
     const apiError: ApiError = {
       message: isTimeout

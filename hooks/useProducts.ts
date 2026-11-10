@@ -60,8 +60,9 @@ export function useProducts(
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
     staleTime: PRODUCTS_STALE_TIME,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    // Rely on staleTime + pull-to-refresh; avoid refetch storms on every revisit.
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     enabled: options?.enabled !== false,
   });
 
@@ -72,15 +73,20 @@ export function useProducts(
 
   const total = query.data?.pages[0]?.meta.total ?? products.length;
 
+  const refetch = query.refetch;
+  const fetchNextPage = query.fetchNextPage;
+  const hasNextPage = query.hasNextPage;
+  const isFetchingNextPage = query.isFetchingNextPage;
+
   const refresh = useCallback(async () => {
-    await query.refetch();
-  }, [query]);
+    await refetch();
+  }, [refetch]);
 
   const loadMore = useCallback(() => {
-    if (query.hasNextPage && !query.isFetchingNextPage) {
-      void query.fetchNextPage();
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
     }
-  }, [query]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return {
     products,

@@ -214,7 +214,8 @@ export function useCategoryFacets(
     enabled,
     staleTime: FACETS_STALE_TIME,
     retry: false,
-    refetchOnMount: 'always',
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const facets = facetsQuery.data ?? undefined;
@@ -295,6 +296,9 @@ export function useCategoryFacets(
 
   return {
     facets,
+    /** True when GET /facets succeeded — safe to server-scope brand/type filters. */
+    hasServerFacets: Boolean(facets),
+    facetsSettled: facetsQuery.isFetched || !enabled,
     category,
     rail,
     isLoading:

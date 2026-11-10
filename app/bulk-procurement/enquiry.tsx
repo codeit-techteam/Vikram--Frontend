@@ -30,10 +30,9 @@ import {
 } from '@constants/bulkEnquiry';
 import { normalizeUnitLabel } from '@utils/units';
 import { useSites } from '@hooks/useSites';
+import { useBulkFormConfig } from '@hooks/useBulkFormConfig';
 import {
-  bulkApi,
   type BulkDeliveryRequirement,
-  type BulkFormConfig,
   type BulkPreferredContact,
   type CreateBulkEnquiryPayload,
 } from '@services/bulk.api';
@@ -232,9 +231,12 @@ export default function BulkEnquiryScreen() {
   const storeSubmitting = useBulkEnquiryStore((s) => s.isSubmitting);
 
   const { data: sites = [] } = useSites(isLoggedIn && !isGuest);
+  const {
+    formConfig,
+    isLoading: configLoading,
+    error: configError,
+  } = useBulkFormConfig({ enabled: isLoggedIn && !isGuest });
 
-  const [formConfig, setFormConfig] = useState<BulkFormConfig | null>(null);
-  const [configLoading, setConfigLoading] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -304,28 +306,12 @@ export default function BulkEnquiryScreen() {
   }, [refreshProfile]);
 
   useEffect(() => {
-    if (!isLoggedIn || isGuest) return;
-
-    let cancelled = false;
-    setConfigLoading(true);
-    void bulkApi
-      .getFormConfig()
-      .then((config) => {
-        if (!cancelled) setFormConfig(config);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          showToast('Could not load enquiry form. Please try again.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setConfigLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn, isGuest]);
+    if (!configError) return;
+    const hasMaterials = categories.some((c) => c.slug !== MIXED_LOAD_SLUG);
+    // Catalog/local fallback already powers the form — don't block the user.
+    if (hasMaterials) return;
+    showToast('Could not load enquiry form. Please try again.');
+  }, [configError, categories]);
 
   useEffect(() => {
     if (!isLoggedIn || isGuest || draftChecked) return;
@@ -377,7 +363,9 @@ export default function BulkEnquiryScreen() {
                     ]),
                   );
                 }
-                if (parsedForm.preferredContact === 'BOTH') {
+                if (
+                  (parsedForm.preferredContact as string | undefined) === 'BOTH'
+                ) {
                   restored.preferredContact = 'CALL';
                 }
                 setForm((prev) => ({ ...prev, ...restored }));

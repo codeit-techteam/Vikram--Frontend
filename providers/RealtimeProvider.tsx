@@ -82,8 +82,11 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
           realtimeSocket.updateToken(accessToken);
           realtimeSocket.connect(accessToken);
         }
-        void queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
-        void queryClient.invalidateQueries({ queryKey: ['order'] });
+        // Prefer socket patches; only force HTTP refresh when the socket is down.
+        if (!realtimeSocket.isConnected()) {
+          void queryClient.invalidateQueries({ queryKey: [ORDERS_QUERY_KEY] });
+          void queryClient.invalidateQueries({ queryKey: ['order'] });
+        }
       }
     };
 

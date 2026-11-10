@@ -246,7 +246,7 @@ export function FullscreenVideoPlayer({ item, visible, onClose }: FullscreenVide
             </Pressable>
           </View>
         ) : (
-          <Animated.View style={[StyleSheet.absoluteFillObject, controlsStyle]} pointerEvents="box-none">
+          <Animated.View style={[StyleSheet.absoluteFill, controlsStyle]} pointerEvents="box-none">
             <VideoControls
               isPlaying={isPlaying}
               isMuted={isMuted}
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   errorOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.88)',

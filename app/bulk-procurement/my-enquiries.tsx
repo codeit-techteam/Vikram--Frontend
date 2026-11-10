@@ -19,7 +19,9 @@ import {
   formatMaterialLabel,
   formatQuantityLabel,
 } from '@constants/bulkEnquiry';
+import { prefetchBulkFormConfig } from '@hooks/useBulkFormConfig';
 import { useBulkEnquiryStore } from '@store/bulkEnquiryStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@store/useAuthStore';
 import { requireAuth } from '@utils/requireAuth';
 import { showToast } from '@utils/toast';
@@ -35,6 +37,7 @@ function formatDate(iso: string) {
 }
 
 export default function MyEnquiriesScreen() {
+  const queryClient = useQueryClient();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isGuest = useAuthStore((s) => s.isGuest);
   const enquiries = useBulkEnquiryStore((s) => s.enquiries);
@@ -46,11 +49,12 @@ export default function MyEnquiriesScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!requireAuth('Please log in to view your enquiries.')) return;
+      void prefetchBulkFormConfig(queryClient);
       void loadEnquiries({ page: 1, limit: 50 }).then(() => {
         const err = useBulkEnquiryStore.getState().error;
         if (err) showToast(err);
       });
-    }, [loadEnquiries]),
+    }, [loadEnquiries, queryClient]),
   );
 
   const onRefresh = async () => {
@@ -104,6 +108,7 @@ export default function MyEnquiriesScreen() {
               style={styles.ctaBtn}
               onPress={() => {
                 void Haptics.selectionAsync();
+                void prefetchBulkFormConfig(queryClient);
                 router.push('/bulk-procurement/enquiry' as Href);
               }}>
               <Text style={styles.ctaBtnText}>New Enquiry</Text>

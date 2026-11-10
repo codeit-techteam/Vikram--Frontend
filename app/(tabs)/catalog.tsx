@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { type Href, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { AppHeader } from '@components/AppHeader';
 import { DrawerShell } from '@components/DrawerShell';
@@ -11,6 +12,7 @@ import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { HomeCategoriesSkeleton } from '@components/catalog/CatalogSkeletons';
 import { ScaledPressable } from '@components/ScaledPressable';
 import { useCategories } from '@hooks/useCategories';
+import { prefetchBulkFormConfig } from '@hooks/useBulkFormConfig';
 import { useTranslation } from '@store/languageStore';
 import type { CatalogCategory } from '@/types/catalog';
 import {
@@ -20,6 +22,7 @@ import {
 
 export default function CatalogScreen() {
   const { t, language } = useTranslation();
+  const queryClient = useQueryClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { categories, isLoading, isRefreshing, error, refresh } = useCategories();
 
@@ -27,6 +30,10 @@ export default function CatalogScreen() {
     () => filterMarketplaceCategories(categories),
     [categories],
   );
+
+  useEffect(() => {
+    void prefetchBulkFormConfig(queryClient);
+  }, [queryClient]);
 
   const navigateToCategory = (cat: CatalogCategory) => {
     const name = getCategoryDisplayName(cat, language, t);
@@ -42,6 +49,7 @@ export default function CatalogScreen() {
 
   const handleBulkEnquiry = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void prefetchBulkFormConfig(queryClient);
     router.push('/bulk-procurement/enquiry' as Href);
   };
 

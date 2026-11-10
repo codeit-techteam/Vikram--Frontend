@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
@@ -12,6 +12,7 @@ import { IconButton } from '@components/ui/IconButton';
 import { DrawerShell } from '@components/DrawerShell';
 import { CatalogErrorState } from '@components/catalog/CatalogErrorState';
 import { EmptyOrdersState } from '@components/orders/EmptyOrdersState';
+import { GuestOrdersState } from '@components/orders/GuestOrdersState';
 import { OrderCard } from '@components/orders/OrderCard';
 import { OrderCardSkeleton, OrdersListSkeleton } from '@components/orders/OrderSkeleton';
 import { ScaledPressable } from '@components/ScaledPressable';
@@ -87,14 +88,16 @@ export const OrdersScreen = memo(function OrdersScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<OrderFilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn && !s.isGuest);
   const isFocused = useSafeIsFocused();
+  const lastFocusRefreshAt = useRef(0);
 
   useEffect(() => {
-    if (!isFocused || isLoggedIn) return;
-    requireAuth('Please log in to view your orders.');
-  }, [isFocused, isLoggedIn]);
+    const handle = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
 
   const {
     orders,
@@ -108,14 +111,17 @@ export const OrdersScreen = memo(function OrdersScreen() {
     cancelOrder,
     isCancelling,
     prefetchOrder,
-  } = useOrders(activeFilter, searchQuery);
+  } = useOrders(activeFilter, debouncedSearch);
 
   useEffect(() => {
     if (!isFocused || !isLoggedIn) return;
-    // Catch any updates missed while another tab was open / socket briefly down.
-    if (!realtimeSocket.isConnected()) {
-      void refresh();
-    }
+    // Catch updates missed while another tab was open / socket briefly down.
+    // Throttle so unstable effect deps cannot spam GET /orders.
+    if (realtimeSocket.isConnected()) return;
+    const now = Date.now();
+    if (now - lastFocusRefreshAt.current < 15_000) return;
+    lastFocusRefreshAt.current = now;
+    void refresh();
   }, [isFocused, isLoggedIn, refresh]);
 
   const { reorder, isReordering, reorderingOrderId } = useReorder();
@@ -189,19 +195,23 @@ export const OrdersScreen = memo(function OrdersScreen() {
               <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary }}>
                 My Orders
               </Text>
-              <IconButton
-                accessibilityLabel={showSearch ? 'Close search' : 'Search orders'}
-                surface={false}
-                onPress={() => {
-                  setShowSearch((v) => !v);
-                  void Haptics.selectionAsync();
-                }}>
-                <AppIcon
-                  name={showSearch ? 'close' : 'search'}
-                  size={ICON_SIZE.header}
-                  color={theme.textPrimary}
-                />
-              </IconButton>
+              {isLoggedIn ? (
+                <IconButton
+                  accessibilityLabel={showSearch ? 'Close search' : 'Search orders'}
+                  surface={false}
+                  onPress={() => {
+                    setShowSearch((v) => !v);
+                    void Haptics.selectionAsync();
+                  }}>
+                  <AppIcon
+                    name={showSearch ? 'close' : 'search'}
+                    size={ICON_SIZE.header}
+                    color={theme.textPrimary}
+                  />
+                </IconButton>
+              ) : (
+                <View style={{ width: ICON_SIZE.header + 8 }} />
+              )}
             </View>
           }
         />
@@ -243,7 +253,9 @@ export const OrdersScreen = memo(function OrdersScreen() {
         </Animated.View>
       ) : null}
 
-      {isLoading && orders.length === 0 ? (
+      {!isLoggedIn ? (
+        <GuestOrdersState />
+      ) : isLoading && orders.length === 0 ? (
         <OrdersListSkeleton count={3} />
       ) : error && orders.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 16 }}>

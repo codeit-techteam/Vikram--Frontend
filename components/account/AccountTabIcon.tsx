@@ -5,7 +5,7 @@ import { InitialsAvatar } from '@components/InitialsAvatar';
 import { theme } from '@constants/theme';
 import { useUserStore } from '@store/userStore';
 
-export function AccountTabIcon({ focused }: { focused: boolean; color: string }) {
+export function AccountTabIcon({ focused }: { focused: boolean; color?: string }) {
   const user = useUserStore((s) => s.user);
 
   if (user.avatar) {

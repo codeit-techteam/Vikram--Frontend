@@ -11,8 +11,8 @@ import { useSiteStore } from '@store/useSiteStore';
 
 /**
  * Full logout flow: clears auth tokens + the API session (via `useAuthStore.logout`,
- * which also resets `userStore`/`deliveryStore` and re-enters guest mode), then wipes
- * every other domain store so the next session starts clean.
+ * which also resets `userStore`/`deliveryStore`), then wipes every other domain store
+ * so the next session starts clean. Caller should navigate to `/login`.
  */
 export async function resetAppStores() {
   await useAuthStore.getState().logout();

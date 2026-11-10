@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Required for react-native-css-interop on web — `media` throws when colorScheme.set runs.
+  darkMode: 'class',
   content: [
     './app/**/*.{js,jsx,ts,tsx}',
     './components/**/*.{js,jsx,ts,tsx}',

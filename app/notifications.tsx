@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  ImageBackground,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -44,11 +43,7 @@ const FILTER_KEYS: { key: NotificationFilter; labelKey: StringKey }[] = [
 function ProTipBanner({ t }: { t: (key: StringKey) => string }) {
   return (
     <View style={styles.proTipWrap}>
-      <ImageBackground
-        source={{ uri: 'https://source.unsplash.com/featured/600x200/?construction+site' }}
-        style={styles.proTipBg}
-        imageStyle={{ borderRadius: 16 }}>
-        <View style={styles.proTipOverlay} />
+      <View style={[styles.proTipBg, styles.proTipLocalBg]}>
         <View style={styles.proTipContent}>
           <View style={styles.proTipTag}>
             <Text style={styles.proTipTagText}>{t('proTip')}</Text>
@@ -56,7 +51,7 @@ function ProTipBanner({ t }: { t: (key: StringKey) => string }) {
           <Text style={styles.proTipTitle}>{t('proTipEfficiencyTitle')}</Text>
           <Text style={styles.proTipBody}>{t('proTipEfficiencyBody')}</Text>
         </View>
-      </ImageBackground>
+      </View>
     </View>
   );
 }
@@ -70,10 +65,16 @@ export default function NotificationsScreen() {
   const deletedIds = useNotificationStore((s) => s.deletedIds);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
 
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
   const query = useInfiniteQuery({
-    queryKey: [...NOTIFICATIONS_QUERY_KEY, searchQuery],
+    queryKey: [...NOTIFICATIONS_QUERY_KEY, debouncedSearch],
     enabled: isLoggedIn,
     initialPageParam: 1,
     staleTime: 1000 * 60,
@@ -82,7 +83,7 @@ export default function NotificationsScreen() {
       listNotifications({
         page: pageParam,
         limit: 20,
-        search: searchQuery.trim() || undefined,
+        search: debouncedSearch || undefined,
       }),
     getNextPageParam: (lastPage) =>
       lastPage.meta.hasNextPage ? lastPage.meta.page + 1 : undefined,
@@ -353,9 +354,8 @@ const styles = StyleSheet.create({
     minHeight: 140,
     justifyContent: 'flex-end',
   },
-  proTipOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+  proTipLocalBg: {
+    backgroundColor: '#2C2C2C',
     borderRadius: 16,
   },
   proTipContent: {

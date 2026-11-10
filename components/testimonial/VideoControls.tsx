@@ -99,7 +99,7 @@ export const VideoControls = memo(function VideoControls({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'space-between',
     backgroundColor: 'rgba(0,0,0,0.28)',
   },
