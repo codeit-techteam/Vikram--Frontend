@@ -7,6 +7,11 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Local secrets (EAS stores the cloud copies)
+.env
+.env.local
+.env.*.local
+
 # Native
 .kotlin/
 *.orig.*

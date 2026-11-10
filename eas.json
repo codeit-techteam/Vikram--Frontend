@@ -7,17 +7,13 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "ios": {
         "simulator": true,
         "credentialsSource": "remote"
       },
       "android": {
         "credentialsSource": "remote"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
       }
     },
     "preview": {
@@ -29,25 +25,16 @@
       },
       "ios": {
         "credentialsSource": "remote"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "preview",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
       }
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "android": {
         "credentialsSource": "remote"
       },
       "ios": {
         "credentialsSource": "remote"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://bajriwala-backend-zkuxd.ondigitalocean.app/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCg7PUYhfoXMUPHXLjMv4bEXoCawot3GZI"
       }
     }
   },

@@ -4,8 +4,8 @@
   "main": "expo-router/entry",
   "private": true,
   "scripts": {
-    "postinstall": "node scripts/fix-expo-cors.js && node scripts/fix-css-interop-stringify.js",
-    "start": "node scripts/fix-expo-cors.js && node scripts/fix-css-interop-stringify.js && expo start",
+    "postinstall": "node scripts/fix-expo-cors.js && node scripts/fix-css-interop-stringify.js && node scripts/fix-expo-splash-android.js",
+    "start": "node scripts/fix-expo-cors.js && node scripts/fix-css-interop-stringify.js && node scripts/fix-expo-splash-android.js && expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "node scripts/fix-expo-cors.js && node scripts/fix-css-interop-stringify.js && expo start --web",
