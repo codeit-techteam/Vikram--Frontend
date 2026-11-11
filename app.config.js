@@ -41,7 +41,7 @@ const expoConfig = {
   name: 'Bajriwala',
   slug: 'bajriwala',
   owner: OWNER,
-  version: '1.0.3',
+  version: '1.0.4',
   orientation: 'portrait',
   icon: './assets/icon-ivory.png',
   scheme: 'bajriwala',
@@ -94,6 +94,8 @@ const expoConfig = {
     './plugins/withCrashCatcher',
     // OEM splash exit-handoff mitigation (clear listener only).
     './plugins/withAndroidSplashCrashFix',
+    // Prevent FirebaseInitProvider from killing cold start before UI.
+    './plugins/withDisableFirebaseInitProvider',
     'expo-router',
     'expo-font',
     'expo-secure-store',
