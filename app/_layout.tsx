@@ -26,19 +26,18 @@ import { reconcileCartWithApiHost } from '@lib/reconcileCartWithApiHost';
 import { useAuthStore } from '@store/useAuthStore';
 import { markStartup } from '@utils/startupPerf';
 
-// Android native splash handoff is disabled (OEM crash mitigation). The in-app
-// BrandedSplash is the visible splash. iOS still uses a short native fade.
-if (Platform.OS === 'ios') {
-  SplashScreen.preventAutoHideAsync().catch(() => undefined);
-  try {
-    SplashScreen.setOptions({ duration: 280, fade: true });
-  } catch {
-    // Older native binaries may not support setOptions.
-  }
-} else {
-  // Do not call preventAutoHideAsync / setOptions on Android — those pair with
-  // installSplashScreen() and reintroduce the Motorola process-death path.
-  SplashScreen.hideAsync().catch(() => undefined);
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+try {
+  // iOS: short fade. Android: never enable fade — stock exit animation is
+  // disabled natively by plugins/withAndroidSplashCrashFix.js.
+  SplashScreen.setOptions(
+    Platform.OS === 'ios'
+      ? { duration: 280, fade: true }
+      : { duration: 0, fade: false },
+  );
+} catch {
+  // Older native binaries may not support setOptions.
 }
 
 /** Hard ceiling so a hung hydrate can never leave the native splash forever. */

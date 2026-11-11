@@ -1,7 +1,6 @@
 /**
- * Mirror of plugins/withAndroidSplashCrashFix.js for local node_modules.
- * Makes SplashScreenManager.registerOnActivity a no-op so Android 12+ splash
- * handoff never starts (fixes Motorola "keeps stopping").
+ * Local/EAS postinstall mirror of plugins/withAndroidSplashCrashFix.js.
+ * Keeps installSplashScreen, clears exit listener on API 31+.
  */
 const fs = require('fs');
 const path = require('path');
@@ -26,7 +25,11 @@ const MARKER = 'Patched by scripts/fix-expo-splash-android.js';
 const PATCHED = `package expo.modules.splashscreen
 
 import android.app.Activity
+import android.os.Build
 import android.util.Log
+import android.view.View
+import android.view.ViewTreeObserver.OnPreDrawListener
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.facebook.react.bridge.ReactMarker
 import com.facebook.react.bridge.ReactMarkerConstants
 
@@ -34,15 +37,45 @@ import com.facebook.react.bridge.ReactMarkerConstants
 object SplashScreenManager {
   private const val TAG = "ExpoSplashScreen"
 
-  private var keepSplashScreenOnScreen = false
-  var preventAutoHideCalled: Boolean = true
+  private var keepSplashScreenOnScreen = true
+  var preventAutoHideCalled: Boolean = false
 
-  private val contentAppearedListener = ReactMarker.MarkerListener { _, _, _ -> }
+  private val contentAppearedListener = ReactMarker.MarkerListener { name, _, _ ->
+    if (name == ReactMarkerConstants.CONTENT_APPEARED) {
+      if (!preventAutoHideCalled) {
+        hide()
+      }
+    }
+  }
 
   fun registerOnActivity(mainActivity: Activity) {
-    keepSplashScreenOnScreen = false
-    preventAutoHideCalled = true
-    Log.i(TAG, "SplashScreenManager.registerOnActivity skipped (OEM crash mitigation)")
+    try {
+      val splashScreen = mainActivity.installSplashScreen()
+      ReactMarker.addListener(contentAppearedListener)
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        try {
+          splashScreen.clearOnExitAnimationListener()
+          Log.i(TAG, "Cleared splash exit listener (API \${Build.VERSION.SDK_INT})")
+        } catch (error: Throwable) {
+          Log.w(TAG, "clearOnExitAnimationListener failed", error)
+        }
+      }
+
+      val contentView = mainActivity.findViewById<View>(android.R.id.content) ?: return
+      contentView.viewTreeObserver.addOnPreDrawListener(object : OnPreDrawListener {
+        override fun onPreDraw(): Boolean {
+          if (keepSplashScreenOnScreen) return false
+          if (contentView.viewTreeObserver.isAlive) {
+            contentView.viewTreeObserver.removeOnPreDrawListener(this)
+          }
+          return true
+        }
+      })
+    } catch (error: Throwable) {
+      keepSplashScreenOnScreen = false
+      Log.e(TAG, "registerOnActivity failed; continuing without custom splash", error)
+    }
   }
 
   fun hide() {
@@ -50,7 +83,7 @@ object SplashScreenManager {
   }
 
   fun setSplashScreenOptions(options: SplashScreenOptions) {
-    // no-op
+    // no-op on purpose
   }
 
   fun unregisterContentAppearedListener() {
@@ -64,14 +97,10 @@ function main() {
     console.warn('[fix-expo-splash-android] SplashScreenManager.kt not found, skipping');
     return;
   }
-
   const current = fs.readFileSync(target, 'utf8');
-  if (current.includes('registerOnActivity skipped (OEM crash mitigation)')) {
-    return;
-  }
-
+  if (current.includes('Cleared splash exit listener')) return;
   fs.writeFileSync(target, PATCHED);
-  console.log('[fix-expo-splash-android] SplashScreenManager.kt set to no-op');
+  console.log('[fix-expo-splash-android] SplashScreenManager.kt: clearOnExit only');
 }
 
 main();

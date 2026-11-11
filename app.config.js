@@ -1,21 +1,47 @@
 /**
- * Expo config. Secrets come from:
- * - local `.env` (gitignored) for Metro / expo start
- * - EAS project environment variables for cloud builds
+ * Expo app config (replaces app.json).
  *
- * Never commit Google Maps keys in this file or app.json.
+ * Native Maps keys come from EAS Environment Variables (preview/production).
+ * Hardcoded owner + projectId match @vikramsahrawat09s-team/bajriwala.
  */
+const EAS_PROJECT_ID = '0350eea9-fe5d-4623-b7bd-3d3ddf1ad568';
+const OWNER = 'vikramsahrawat09s-team';
+
 const googleMapsApiKey =
   process.env.GOOGLE_MAPS_API_KEY?.trim() ||
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ||
   '';
 
+const expoPublicApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim() || '';
+const expoPublicAppEnv = process.env.EXPO_PUBLIC_APP_ENV?.trim() || '';
+
+/** Fail EAS builds loudly instead of shipping a broken APK. */
+function assertRequiredEnv() {
+  if (process.env.EAS_BUILD !== 'true') return;
+
+  const missing = [];
+  if (!googleMapsApiKey) {
+    missing.push('GOOGLE_MAPS_API_KEY (or EXPO_PUBLIC_GOOGLE_MAPS_API_KEY)');
+  }
+  if (!expoPublicApiUrl) missing.push('EXPO_PUBLIC_API_URL');
+  if (!expoPublicAppEnv) missing.push('EXPO_PUBLIC_APP_ENV');
+
+  if (missing.length) {
+    throw new Error(
+      `[app.config] Missing required EAS env for this build: ${missing.join(', ')}. ` +
+        `Set them with: eas env:create --environment preview --name NAME --value "..." --visibility plaintext|sensitive`,
+    );
+  }
+}
+
+assertRequiredEnv();
+
 /** @type {import('expo/config').ExpoConfig} */
 const expoConfig = {
   name: 'Bajriwala',
   slug: 'bajriwala',
-  owner: 'vikramsahrawat09s-team',
-  version: '1.0.1',
+  owner: OWNER,
+  version: '1.0.2',
   orientation: 'portrait',
   icon: './assets/icon-ivory.png',
   scheme: 'bajriwala',
@@ -23,13 +49,10 @@ const expoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.bajriwala.app',
-    ...(googleMapsApiKey
-      ? {
-          config: {
-            googleMapsApiKey,
-          },
-        }
-      : {}),
+    config: {
+      // Always set (assertRequiredEnv guarantees non-empty on EAS).
+      googleMapsApiKey,
+    },
     infoPlist: {
       NSSpeechRecognitionUsageDescription:
         'Allow Bajriwala to use speech recognition for voice search.',
@@ -40,18 +63,14 @@ const expoConfig = {
   },
   android: {
     package: 'com.bajriwala.app',
-    versionCode: 2,
+    versionCode: 3,
     googleServicesFile: './google-services.json',
     softwareKeyboardLayoutMode: 'resize',
-    ...(googleMapsApiKey
-      ? {
-          config: {
-            googleMaps: {
-              apiKey: googleMapsApiKey,
-            },
-          },
-        }
-      : {}),
+    config: {
+      googleMaps: {
+        apiKey: googleMapsApiKey,
+      },
+    },
     adaptiveIcon: {
       backgroundColor: '#FCF7E4',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -71,6 +90,7 @@ const expoConfig = {
     bundler: 'metro',
   },
   plugins: [
+    // Keep last-resort OEM splash crash mitigation (clear exit listener only).
     './plugins/withAndroidSplashCrashFix',
     'expo-router',
     'expo-font',
@@ -137,17 +157,9 @@ const expoConfig = {
   extra: {
     router: {},
     eas: {
-      projectId: '0350eea9-fe5d-4623-b7bd-3d3ddf1ad568',
+      projectId: EAS_PROJECT_ID,
     },
   },
 };
 
-module.exports = () => {
-  if (!googleMapsApiKey && process.env.EAS_BUILD === 'true') {
-    console.warn(
-      '[app.config] GOOGLE_MAPS_API_KEY / EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is missing on EAS. Set it in Expo → Environment variables.',
-    );
-  }
-
-  return { expo: expoConfig };
-};
+module.exports = () => ({ expo: expoConfig });
