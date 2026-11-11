@@ -41,7 +41,7 @@ const expoConfig = {
   name: 'Bajriwala',
   slug: 'bajriwala',
   owner: OWNER,
-  version: '1.0.2',
+  version: '1.0.3',
   orientation: 'portrait',
   icon: './assets/icon-ivory.png',
   scheme: 'bajriwala',
@@ -63,7 +63,7 @@ const expoConfig = {
   },
   android: {
     package: 'com.bajriwala.app',
-    versionCode: 3,
+    versionCode: 4,
     googleServicesFile: './google-services.json',
     softwareKeyboardLayoutMode: 'resize',
     config: {
@@ -90,7 +90,9 @@ const expoConfig = {
     bundler: 'metro',
   },
   plugins: [
-    // Keep last-resort OEM splash crash mitigation (clear exit listener only).
+    // Shows last native crash on next launch (no USB / adb required).
+    './plugins/withCrashCatcher',
+    // OEM splash exit-handoff mitigation (clear listener only).
     './plugins/withAndroidSplashCrashFix',
     'expo-router',
     'expo-font',

@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@components/ErrorBoundary';
+import { JsCrashReportGate } from '@components/JsCrashReportGate';
 import { VoiceAssistantSheet } from '@components/VoiceAssistantSheet';
 import { LoginRequiredSheet } from '@components/auth/LoginRequiredSheet';
 import { AddToCartSuccessToast } from '@components/cart/AddToCartSuccessToast';
@@ -82,6 +83,7 @@ export default function RootLayout() {
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
         <ErrorBoundary>
+          <JsCrashReportGate>
           <QueryProvider>
             <RealtimeProvider>
               <PushNotificationProvider>
@@ -160,6 +162,7 @@ export default function RootLayout() {
               </PushNotificationProvider>
             </RealtimeProvider>
           </QueryProvider>
+          </JsCrashReportGate>
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
