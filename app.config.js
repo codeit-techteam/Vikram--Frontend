@@ -15,7 +15,7 @@ const expoConfig = {
   name: 'Bajriwala',
   slug: 'bajriwala',
   owner: 'vikramsahrawat09s-team',
-  version: '1.0.0',
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon-ivory.png',
   scheme: 'bajriwala',
@@ -23,9 +23,13 @@ const expoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.bajriwala.app',
-    config: {
-      googleMapsApiKey,
-    },
+    ...(googleMapsApiKey
+      ? {
+          config: {
+            googleMapsApiKey,
+          },
+        }
+      : {}),
     infoPlist: {
       NSSpeechRecognitionUsageDescription:
         'Allow Bajriwala to use speech recognition for voice search.',
@@ -36,13 +40,18 @@ const expoConfig = {
   },
   android: {
     package: 'com.bajriwala.app',
+    versionCode: 2,
     googleServicesFile: './google-services.json',
     softwareKeyboardLayoutMode: 'resize',
-    config: {
-      googleMaps: {
-        apiKey: googleMapsApiKey,
-      },
-    },
+    ...(googleMapsApiKey
+      ? {
+          config: {
+            googleMaps: {
+              apiKey: googleMapsApiKey,
+            },
+          },
+        }
+      : {}),
     adaptiveIcon: {
       backgroundColor: '#FCF7E4',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -62,6 +71,7 @@ const expoConfig = {
     bundler: 'metro',
   },
   plugins: [
+    './plugins/withAndroidSplashCrashFix',
     'expo-router',
     'expo-font',
     'expo-secure-store',

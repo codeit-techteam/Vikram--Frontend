@@ -26,21 +26,19 @@ import { reconcileCartWithApiHost } from '@lib/reconcileCartWithApiHost';
 import { useAuthStore } from '@store/useAuthStore';
 import { markStartup } from '@utils/startupPerf';
 
-SplashScreen.preventAutoHideAsync().catch(() => undefined);
-
-try {
-  // Android stock expo-splash-screen ignores `fade` and always runs an exit
-  // animation that casts to SplashScreenView. That cast throws on API 31+
-  // (ClassCastException / SurfaceControl.checkNotReleased) and Android then
-  // shows "keeps stopping". scripts/fix-expo-splash-android.js honors
-  // fade:false and removes the splash without that cast.
-  SplashScreen.setOptions(
-    Platform.OS === 'ios'
-      ? { duration: 280, fade: true }
-      : { duration: 0, fade: false },
-  );
-} catch {
-  // Older native binaries may not support setOptions.
+// Android native splash handoff is disabled (OEM crash mitigation). The in-app
+// BrandedSplash is the visible splash. iOS still uses a short native fade.
+if (Platform.OS === 'ios') {
+  SplashScreen.preventAutoHideAsync().catch(() => undefined);
+  try {
+    SplashScreen.setOptions({ duration: 280, fade: true });
+  } catch {
+    // Older native binaries may not support setOptions.
+  }
+} else {
+  // Do not call preventAutoHideAsync / setOptions on Android — those pair with
+  // installSplashScreen() and reintroduce the Motorola process-death path.
+  SplashScreen.hideAsync().catch(() => undefined);
 }
 
 /** Hard ceiling so a hung hydrate can never leave the native splash forever. */
