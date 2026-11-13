@@ -22,8 +22,8 @@ export function GstVerificationCard({
   onSave,
   onEdit,
   isSaving,
-  saveLabel = 'Save GST Details',
-  editLabel = 'Edit GST',
+  saveLabel = 'Confirm & Save GST Account',
+  editLabel = 'Edit GSTIN',
 }: GstVerificationCardProps) {
   return (
     <Animated.View entering={FadeInDown.duration(300)}>
@@ -44,17 +44,36 @@ export function GstVerificationCard({
         <Text style={{ fontSize: 20, fontWeight: '800', color: theme.textPrimary }}>
           Verify GST Details
         </Text>
-        <View style={{ marginTop: 8 }}>
-          <VerifiedBadge variant="verified" label="Verified" />
-        </View>
+        {result.verified !== false && result.status === 'verified' ? (
+          <View style={{ marginTop: 8 }}>
+            <VerifiedBadge variant="verified" label="Verified" />
+          </View>
+        ) : (
+          <Text style={{ marginTop: 8, fontSize: 13, color: theme.error, fontWeight: '600' }}>
+            Verification required before saving
+          </Text>
+        )}
       </View>
 
-      <GstBusinessInfo data={result} />
+      <GstBusinessInfo
+        data={{
+          gstNumber: result.gstNumber,
+          businessName: result.businessName,
+          registeredAddress: result.registeredAddress,
+          state: result.state,
+          status: result.status,
+          tradeName: result.tradeName,
+          businessType: result.businessType,
+          taxpayerType: result.taxpayerType,
+          registrationStatus: result.registrationStatus,
+          registrationDate: result.registrationDate,
+        }}
+      />
 
       <Animated.View entering={FadeInDown.delay(100).duration(250)} style={{ marginTop: 20 }}>
         <ScaledPressable
           onPress={onSave}
-          disabled={isSaving}
+          disabled={isSaving || result.verified === false || result.status !== 'verified'}
           style={{
             backgroundColor: theme.primary,
             borderRadius: borderRadius.lg,

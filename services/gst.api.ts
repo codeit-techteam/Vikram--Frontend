@@ -1,209 +1,70 @@
-import { AUTH_TOKEN_KEY, api } from '@services/api';
-import { getProfile, updateProfile, type CustomerProfile } from '@services/customer.api';
-import { storage } from '@lib/storage';
+import { api } from '@services/api';
 import type { ApiResponse } from '@/types';
-import type { GstDetails, GstValidationResult, SaveGstPayload } from '@/types/gst';
+import type {
+  CreateGstAccountPayload,
+  GstAccount,
+  GstDetails,
+  GstVerificationResult,
+  UpdateGstAccountPayload,
+} from '@/types/gst';
+import { accountToGstDetails } from '@/types/gst';
 
-const GST_BASE = '/gst';
+const GST_BASE = '/customer/gst';
 
-const MOCK_GST_LOOKUP: Record<string, Omit<GstDetails, 'status'>> = {
-  '19ABCDE1234F1Z5': {
-    gstNumber: '19ABCDE1234F1Z5',
-    businessName: 'Registered Business Entity',
-    registeredAddress: 'Registered office address will appear after verification',
-    state: 'West Bengal',
-    pan: 'ABCDE1234F',
-  },
-  '27AAACR1234F1Z5': {
-    gstNumber: '27AAACR1234F1Z5',
-    businessName: 'Registered Business Entity',
-    registeredAddress: 'Registered office address will appear after verification',
-    state: 'Maharashtra',
-    pan: 'AAACR1234F',
-  },
-};
-
-function buildMockValidation(gstNumber: string): GstValidationResult {
-  const normalized = gstNumber.trim().toUpperCase();
-  const mock = MOCK_GST_LOOKUP[normalized];
-
-  if (mock) {
-    return { ...mock, status: 'verified', isValid: true, updatedAt: new Date().toISOString() };
-  }
-
-  const stateCode = normalized.slice(0, 2);
-  const pan = normalized.slice(2, 12);
-
-  return {
-    gstNumber: normalized,
-    businessName: 'Registered Business Entity',
-    registeredAddress: 'Registered office address will appear after verification',
-    state: stateCode === '27' ? 'Maharashtra' : stateCode === '19' ? 'West Bengal' : 'India',
-    pan,
-    status: 'verified',
-    isValid: true,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-export function mapProfileToGstDetails(profile: CustomerProfile): GstDetails | null {
-  const gstObj =
-    profile.gst && typeof profile.gst === 'object'
-      ? (profile.gst as {
-          gstin?: string | null;
-          companyName?: string | null;
-          verified?: boolean;
-          verifiedAt?: string | null;
-          jurisdiction?: string | null;
-          pan?: string | null;
-        })
-      : null;
-
-  const gstin =
-    profile.gstNumber ??
-    (typeof profile.gst === 'string' ? profile.gst : undefined) ??
-    gstObj?.gstin ??
-    null;
-
-  if (!gstin) return null;
-
-  return {
-    gstNumber: gstin,
-    businessName:
-      gstObj?.companyName ??
-      profile.legalEntityName ??
-      profile.companyName ??
-      '',
-    registeredAddress: profile.registeredAddress ?? '',
-    state: gstObj?.jurisdiction?.split('–')[0]?.trim() ?? gstObj?.jurisdiction ?? '',
-    pan: gstObj?.pan ?? profile.panNumber ?? '',
-    status: gstObj?.verified ? 'verified' : 'pending',
-    businessType: profile.businessType ?? '',
-    updatedAt: gstObj?.verifiedAt ?? undefined,
-  };
-}
-
-export async function fetchGST(): Promise<GstDetails | null> {
-  const token = await storage.getItem(AUTH_TOKEN_KEY);
-  if (!token) return null;
-
-  try {
-    const profile = await getProfile();
-    return mapProfileToGstDetails(profile);
-  } catch {
-    return null;
-  }
-}
-
-export async function validateGST(gstNumber: string): Promise<GstValidationResult> {
-  try {
-    const { data } = await api.post<ApiResponse<GstValidationResult>>(`${GST_BASE}/validate`, {
-      gstNumber: gstNumber.trim().toUpperCase(),
-    });
-    return data.data;
-  } catch {
-    return buildMockValidation(gstNumber);
-  }
-}
-
-async function persistViaProfile(payload: SaveGstPayload, verified: boolean): Promise<GstDetails> {
-  const profile = await updateProfile({
-    gstNumber: payload.gstNumber.trim().toUpperCase(),
-    panNumber: payload.pan,
-    companyName: payload.businessName,
-    legalEntityName: payload.businessName,
-    registeredAddress: payload.registeredAddress,
-    jurisdiction: payload.state,
-    gstVerified: verified,
+export async function verifyGstin(gstin: string): Promise<GstVerificationResult> {
+  const normalized = gstin.trim().toUpperCase();
+  const { data } = await api.post<ApiResponse<GstVerificationResult>>(`${GST_BASE}/verify`, {
+    gstin: normalized,
   });
-  return (
-    mapProfileToGstDetails(profile) ?? {
-      ...payload,
-      gstNumber: payload.gstNumber.trim().toUpperCase(),
-      status: verified ? 'verified' : 'pending',
-      updatedAt: new Date().toISOString(),
-    }
+  return data.data;
+}
+
+export async function listGstAccounts(): Promise<GstAccount[]> {
+  const { data } = await api.get<ApiResponse<GstAccount[]>>(`${GST_BASE}/accounts`);
+  return data.data ?? [];
+}
+
+export async function getGstAccount(id: string): Promise<GstAccount> {
+  const { data } = await api.get<ApiResponse<GstAccount>>(`${GST_BASE}/accounts/${id}`);
+  return data.data;
+}
+
+export async function createGstAccount(payload: CreateGstAccountPayload): Promise<GstAccount> {
+  const { data } = await api.post<ApiResponse<GstAccount>>(`${GST_BASE}/accounts`, {
+    gstin: payload.gstin.trim().toUpperCase(),
+    verificationToken: payload.verificationToken,
+    setAsDefault: payload.setAsDefault,
+  });
+  return data.data;
+}
+
+export async function updateGstAccount(
+  id: string,
+  payload: UpdateGstAccountPayload,
+): Promise<GstAccount> {
+  const body: UpdateGstAccountPayload = { ...payload };
+  if (body.gstin) body.gstin = body.gstin.trim().toUpperCase();
+  const { data } = await api.patch<ApiResponse<GstAccount>>(`${GST_BASE}/accounts/${id}`, body);
+  return data.data;
+}
+
+export async function setDefaultGstAccount(id: string): Promise<GstAccount> {
+  const { data } = await api.patch<ApiResponse<GstAccount>>(
+    `${GST_BASE}/accounts/${id}/default`,
   );
+  return data.data;
 }
 
-export async function saveGST(payload: SaveGstPayload): Promise<GstDetails> {
-  try {
-    const { data } = await api.post<ApiResponse<GstDetails>>(GST_BASE, payload);
-    const details = {
-      ...data.data,
-      updatedAt: data.data.updatedAt ?? new Date().toISOString(),
-    };
-    try {
-      await updateProfile({
-        gstNumber: payload.gstNumber.trim().toUpperCase(),
-        panNumber: payload.pan,
-        companyName: payload.businessName,
-        legalEntityName: payload.businessName,
-        registeredAddress: payload.registeredAddress,
-        jurisdiction: payload.state,
-        gstVerified: details.status === 'verified',
-      });
-    } catch {
-      // GST entity saved; profile sync is best-effort.
-    }
-    return details;
-  } catch {
-    try {
-      return await persistViaProfile(payload, true);
-    } catch {
-      return {
-        ...payload,
-        gstNumber: payload.gstNumber.trim().toUpperCase(),
-        status: 'verified',
-        updatedAt: new Date().toISOString(),
-      };
-    }
-  }
+export async function archiveGstAccount(id: string): Promise<GstAccount> {
+  const { data } = await api.delete<ApiResponse<GstAccount>>(`${GST_BASE}/accounts/${id}`);
+  return data.data;
 }
 
-export async function updateGST(payload: SaveGstPayload): Promise<GstDetails> {
-  try {
-    const { data } = await api.put<ApiResponse<GstDetails>>(GST_BASE, payload);
-    const details = {
-      ...data.data,
-      updatedAt: data.data.updatedAt ?? new Date().toISOString(),
-    };
-    try {
-      await updateProfile({
-        gstNumber: payload.gstNumber.trim().toUpperCase(),
-        panNumber: payload.pan,
-        companyName: payload.businessName,
-        legalEntityName: payload.businessName,
-        registeredAddress: payload.registeredAddress,
-        jurisdiction: payload.state,
-        gstVerified: details.status === 'verified',
-      });
-    } catch {
-      // best-effort
-    }
-    return details;
-  } catch {
-    try {
-      return await persistViaProfile(payload, true);
-    } catch {
-      return {
-        ...payload,
-        gstNumber: payload.gstNumber.trim().toUpperCase(),
-        status: 'verified',
-        updatedAt: new Date().toISOString(),
-      };
-    }
-  }
-}
-
-export async function deleteGST(): Promise<void> {
-  try {
-    await api.delete(GST_BASE);
-  } catch {
-    try {
-      await updateProfile({ gstNumber: '', gstVerified: false, panNumber: '' });
-    } catch {
-      // Local remove still proceeds
-    }
-  }
+/** @deprecated Prefer `listGstAccounts` — returns default or first active account as legacy GstDetails. */
+export async function fetchGST(): Promise<GstDetails | null> {
+  const accounts = await listGstAccounts();
+  const active = accounts.filter((a) => !a.isArchived);
+  if (active.length === 0) return null;
+  const pick = active.find((a) => a.isDefault) ?? active[0];
+  return accountToGstDetails(pick);
 }

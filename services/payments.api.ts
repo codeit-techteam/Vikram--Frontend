@@ -132,6 +132,8 @@ type CreateRazorpayOrderPayload = {
   deliveryTermsVersion?: string;
   internalOrderId?: string;
   checkoutMethod?: RazorpayCheckoutMethod;
+  gstInvoiceEnabled?: boolean;
+  gstAccountId?: string;
   idempotencyKey?: string;
 };
 

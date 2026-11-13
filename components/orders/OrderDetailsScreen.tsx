@@ -49,8 +49,8 @@ function formatDeliveredLabel(deliveredAt?: string) {
 
 export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const gstDetails = useGstStore((s) => s.details);
-  const hasGst = useGstStore((s) => s.verified);
+  const profileGstDetails = useGstStore((s) => s.details);
+  const profileGstVerified = useGstStore((s) => s.verified);
   const {
     order,
     isLoading,
@@ -58,6 +58,25 @@ export const OrderDetailsScreen = memo(function OrderDetailsScreen() {
     isCancelling,
     downloadInvoicePdf,
   } = useOrder(orderId);
+  const orderGstSnapshot = order?.gstBillingSnapshot;
+  const hasGst =
+    order?.gstInvoiceEnabled === true ||
+    Boolean(orderGstSnapshot?.gstin) ||
+    (order?.gstInvoiceEnabled == null && profileGstVerified);
+  const gstDetails = orderGstSnapshot?.gstin
+    ? {
+        gstNumber: orderGstSnapshot.gstin,
+        businessName:
+          orderGstSnapshot.legalName ||
+          orderGstSnapshot.tradeName ||
+          profileGstDetails?.businessName ||
+          '',
+        registeredAddress: profileGstDetails?.registeredAddress ?? '',
+        state: orderGstSnapshot.state || profileGstDetails?.state || '',
+        pan: profileGstDetails?.pan ?? '',
+        status: 'verified' as const,
+      }
+    : profileGstDetails;
   const { reorder, isReordering } = useReorder();
   const queryClient = useQueryClient();
   const [downloading, setDownloading] = useState(false);

@@ -170,6 +170,8 @@ export async function placeOrder(payload: {
   openAreaConfirmed?: boolean;
   deliveryTermsAccepted?: boolean;
   deliveryTermsVersion?: string;
+  gstInvoiceEnabled?: boolean;
+  gstAccountId?: string;
   idempotencyKey?: string;
 }): Promise<Record<string, unknown>> {
   const { data } = await api.post<ApiResponse<Record<string, unknown>>>(
@@ -186,6 +188,10 @@ export async function placeOrder(payload: {
       deliveryLeaveAtSecurity: payload.deliveryLeaveAtSecurity,
       deliveryHeavyVehicleAccess: payload.deliveryHeavyVehicleAccess,
       openAreaConfirmed: payload.openAreaConfirmed,
+      deliveryTermsAccepted: payload.deliveryTermsAccepted,
+      deliveryTermsVersion: payload.deliveryTermsVersion,
+      gstInvoiceEnabled: payload.gstInvoiceEnabled,
+      gstAccountId: payload.gstAccountId,
     },
     payload.idempotencyKey
       ? { headers: { 'Idempotency-Key': payload.idempotencyKey } }

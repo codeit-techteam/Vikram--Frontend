@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GstVerificationCard } from '@components/gst/GstVerificationCard';
 import { ScaledPressable } from '@components/ScaledPressable';
-import { validateGST } from '@services/gst.service';
+import { getApiErrorMessage } from '@services/api';
 import { useGstStore } from '@store/gstStore';
 import { borderRadius, theme } from '@constants/theme';
 import { isValidGstFormat } from '@utils/validation';
@@ -45,6 +45,7 @@ export function GstBottomSheet({
 }: GstBottomSheetProps) {
   const sheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
+  const verifyGstin = useGstStore((s) => s.verifyGstin);
   const setVerifying = useGstStore((s) => s.setVerifying);
   const setValidationFailed = useGstStore((s) => s.setValidationFailed);
 
@@ -118,28 +119,30 @@ export function GstBottomSheet({
     setIsValidating(true);
     setVerifying();
     try {
-      const result = await validateGST(normalizedInput);
-      if (!result.isValid) {
-        setValidationFailed('Invalid GST Number');
+      const result = await verifyGstin(normalizedInput);
+      if (!result.verified || !result.isValid) {
+        setValidationFailed('GSTIN could not be verified.');
         return;
       }
       setValidationResult(result);
       setStep('confirm');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      setValidationFailed('Unable to verify GST. Please try again.');
+    } catch (error) {
+      setValidationFailed(getApiErrorMessage(error, 'Unable to verify GST. Please try again.'));
     } finally {
       setIsValidating(false);
     }
-  }, [canContinue, normalizedInput, setVerifying, setValidationFailed]);
+  }, [canContinue, normalizedInput, setVerifying, setValidationFailed, verifyGstin]);
 
   const handleSave = async () => {
-    if (!validationResult) return;
+    if (!validationResult || !validationResult.verificationToken || isSaving) return;
     setIsSaving(true);
     try {
       await onSave(validationResult);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onClose();
+    } catch {
+      setValidationFailed('Unable to save GST account. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -182,7 +185,7 @@ export function GstBottomSheet({
                 <ActivityIndicator color={theme.textPrimary} size="small" />
               ) : (
                 <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>
-                  Continue
+                  Verify GSTIN
                 </Text>
               )}
             </ScaledPressable>

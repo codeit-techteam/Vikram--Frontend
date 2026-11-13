@@ -120,6 +120,16 @@ export interface Order {
   invoiceNumber?: string;
   invoiceStatus?: string;
   invoiceFileName?: string;
+  /** True when this order requested a GST business invoice. */
+  gstInvoiceEnabled?: boolean;
+  gstAccountId?: string | null;
+  gstBillingSnapshot?: {
+    gstin?: string;
+    legalName?: string;
+    tradeName?: string | null;
+    state?: string | null;
+    verificationStatus?: string;
+  } | null;
   timeline: TimelineStep[];
   deliveredEarly?: boolean;
   loyaltyPointsEarned?: number;

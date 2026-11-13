@@ -141,6 +141,7 @@ export default function RootLayout() {
                     <Stack.Screen name="account/invoices" options={{ headerShown: false }} />
                     <Stack.Screen name="account/add-sites" options={{ headerShown: false }} />
                     <Stack.Screen name="account/gst-compliance" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/gst-accounts" options={{ headerShown: false }} />
                     <Stack.Screen name="account/terms" options={{ headerShown: false }} />
                     <Stack.Screen name="bulk-procurement/index" options={{ headerShown: false }} />
                     <Stack.Screen name="bulk-procurement/enquiry" options={{ headerShown: false }} />

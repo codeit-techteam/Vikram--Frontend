@@ -8,6 +8,11 @@ export type GstBusinessInfoData = {
   registeredAddress: string;
   state: string;
   status?: string;
+  tradeName?: string | null;
+  businessType?: string | null;
+  taxpayerType?: string | null;
+  registrationStatus?: string | null;
+  registrationDate?: string | null;
 };
 
 type GstBusinessInfoProps = {
@@ -15,6 +20,7 @@ type GstBusinessInfoProps = {
 };
 
 function DetailRow({ label, value }: { label: string; value: string }) {
+  if (!value?.trim()) return null;
   return (
     <View style={{ marginBottom: 14 }}>
       <Text
@@ -45,11 +51,17 @@ export function GstBusinessInfo({ data }: GstBusinessInfoProps) {
         backgroundColor: theme.bgMain,
         padding: 16,
       }}>
-      <DetailRow label="GST Number" value={data.gstNumber} />
-      <DetailRow label="Business Name" value={data.businessName} />
-      <DetailRow label="GST Registered Address" value={data.registeredAddress} />
+      <DetailRow label="GSTIN" value={data.gstNumber} />
+      <DetailRow label="Legal Name" value={data.businessName} />
+      <DetailRow label="Trade Name" value={data.tradeName ?? ''} />
+      <DetailRow label="Business Type" value={data.businessType ?? ''} />
+      <DetailRow
+        label="Registration Status"
+        value={data.registrationStatus ?? data.status ?? 'Verified'}
+      />
+      <DetailRow label="Registered Address" value={data.registeredAddress} />
       <DetailRow label="State" value={data.state} />
-      <DetailRow label="Status" value={data.status ?? 'Verified'} />
+      <DetailRow label="Registration Date" value={data.registrationDate ?? ''} />
     </View>
   );
 }

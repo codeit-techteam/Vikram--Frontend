@@ -43,7 +43,11 @@ export default function OrderSuccessScreen() {
   const { order: apiOrder } = useOrder(orderId);
   const displayId = orderNumber || apiOrder?.orderNumber || orderId || order?.id || '';
   const isPaidOnline = paidOnline === '1';
-  const hasGst = useGstStore((s) => s.verified);
+  const profileGstVerified = useGstStore((s) => s.verified);
+  const hasGst =
+    apiOrder?.gstInvoiceEnabled === true ||
+    Boolean(apiOrder?.gstBillingSnapshot?.gstin) ||
+    (apiOrder?.gstInvoiceEnabled == null && profileGstVerified);
   const scheduledLabel =
     apiOrder?.deliveryPreference?.scheduledDateLabel &&
     apiOrder.deliveryPreference.scheduledSlotLabel

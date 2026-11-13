@@ -64,6 +64,7 @@ export default function AccountScreen() {
   const user = useUserStore((st) => st.user);
   const setAvatar = useUserStore((st) => st.setAvatar);
   const gstDetails = useGstStore((st) => st.details);
+  const loadGstAccounts = useGstStore((st) => st.loadAccounts);
   const profileSites = useDeliveryStore((st) => st.profileSites);
   const updateProfileSite = useDeliveryStore((st) => st.updateProfileSite);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
@@ -121,6 +122,11 @@ export default function AccountScreen() {
       prevLang.current = language;
     }
   }, [language, screenOpacity]);
+
+  useEffect(() => {
+    if (!isLoggedIn || isGuest) return;
+    void loadGstAccounts();
+  }, [isLoggedIn, isGuest, loadGstAccounts]);
 
   const handleAvatarPress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -328,14 +334,14 @@ export default function AccountScreen() {
 
                   <View className="mt-4 flex-row gap-2">
                     <ScaledPressable
-                      onPress={() => router.push('/account/business-details' as Href)}
+                      onPress={() => router.push('/account/gst-accounts' as Href)}
                       className="h-11 flex-1 items-center justify-center rounded-pill bg-primary">
-                      <Text className="text-sm font-bold text-onPrimary">{t('editDetails')}</Text>
+                      <Text className="text-sm font-bold text-onPrimary">Manage GST</Text>
                     </ScaledPressable>
                     <ScaledPressable
-                      onPress={() => router.push('/account/gst-compliance' as Href)}
+                      onPress={() => router.push('/account/gst-accounts' as Href)}
                       className="h-11 flex-1 items-center justify-center rounded-pill border border-border bg-background">
-                      <Text className="text-sm font-bold text-text">View Certificate</Text>
+                      <Text className="text-sm font-bold text-text">All Accounts</Text>
                     </ScaledPressable>
                   </View>
                 </View>
@@ -353,7 +359,7 @@ export default function AccountScreen() {
                     Complete your GST details to receive GST invoices and business benefits.
                   </Text>
                   <ScaledPressable
-                    onPress={() => router.push('/account/business-details' as Href)}
+                    onPress={() => router.push('/account/gst-accounts' as Href)}
                     className="mt-4 h-11 items-center justify-center rounded-pill bg-primary">
                     <Text className="text-sm font-bold text-onPrimary">{t('addGstDetails')}</Text>
                   </ScaledPressable>

@@ -496,6 +496,12 @@ export function normalizeApiOrder(raw: Record<string, unknown>): Order {
     invoiceNumber: raw.invoiceNumber ? String(raw.invoiceNumber) : undefined,
     invoiceStatus: raw.invoiceStatus ? String(raw.invoiceStatus) : undefined,
     invoiceFileName: raw.invoiceFileName ? String(raw.invoiceFileName) : undefined,
+    gstInvoiceEnabled: Boolean(raw.gstInvoiceEnabled),
+    gstAccountId: raw.gstAccountId ? String(raw.gstAccountId) : null,
+    gstBillingSnapshot:
+      raw.gstBillingSnapshot && typeof raw.gstBillingSnapshot === 'object'
+        ? (raw.gstBillingSnapshot as Order['gstBillingSnapshot'])
+        : null,
     timeline,
     deliveredEarly: Boolean(raw.deliveredEarly),
     loyaltyPointsEarned: raw.loyaltyPointsEarned

@@ -183,22 +183,24 @@ function applyProfileStores(profile: CustomerProfile, current: SessionCustomer |
     gstObj?.gstin ??
     null;
 
-  if (gstin) {
-    const details: GstDetails = {
-      gstNumber: gstin,
-      businessName:
-        gstObj?.companyName ?? profile.legalEntityName ?? profile.companyName ?? '',
-      registeredAddress: profile.registeredAddress ?? '',
-      state: gstObj?.jurisdiction?.split('–')[0]?.trim() ?? '',
-      pan: gstObj?.pan ?? profile.panNumber ?? '',
-      status: gstObj?.verified ? 'verified' : 'pending',
-      businessType: profile.businessType ?? '',
-      updatedAt: gstObj?.verifiedAt ?? undefined,
-    };
-    useGstStore.getState().setFromProfile(details);
-  } else {
-    useGstStore.getState().setFromProfile(null);
-  }
+  void useGstStore.getState().loadAccounts().catch(() => {
+    if (gstin) {
+      const details: GstDetails = {
+        gstNumber: gstin,
+        businessName:
+          gstObj?.companyName ?? profile.legalEntityName ?? profile.companyName ?? '',
+        registeredAddress: profile.registeredAddress ?? '',
+        state: gstObj?.jurisdiction?.split('–')[0]?.trim() ?? '',
+        pan: gstObj?.pan ?? profile.panNumber ?? '',
+        status: gstObj?.verified ? 'verified' : 'pending',
+        businessType: profile.businessType ?? '',
+        updatedAt: gstObj?.verifiedAt ?? undefined,
+      };
+      useGstStore.getState().setFromProfile(details);
+    } else {
+      useGstStore.getState().setFromProfile(null);
+    }
+  });
 
   const nextCustomer: SessionCustomer = current
     ? {

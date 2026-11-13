@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
-import { Alert, ActivityIndicator, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  ActivityIndicator,
+  BackHandler,
+  Platform,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +35,7 @@ import { PaymentMethodCard } from '@components/checkout/PaymentMethodCard';
 import { RazorpayWebCheckout } from '@components/checkout/RazorpayWebCheckout';
 import { SitesPickerSheet } from '@components/checkout/SitesPickerSheet';
 import { useSites } from '@hooks/useSites';
+import { GstAccountSelectSheet } from '@components/gst/GstAccountSelectSheet';
 import { GstBottomSheet } from '@components/gst/GstBottomSheet';
 import { GstInvoiceCard } from '@components/gst/GstInvoiceCard';
 import { GstSuccessBanner } from '@components/gst/GstSuccessBanner';
@@ -62,7 +73,7 @@ import {
   type CheckoutPreview,
 } from '@services/checkout.api';
 import { formatEtaLabel, holdDeliverySlot, type DeliveryEtaResult } from '@services/delivery.api';
-import { safeGoBack } from '@utils/navigation';
+import { leaveCheckout } from '@utils/navigation';
 import { logCheckoutEvent } from '@utils/checkoutLogger';
 import { describeClosedDays } from '@utils/deliverySchedule';
 import { childAbortController, withDeadline } from '@utils/withDeadline';
@@ -98,7 +109,7 @@ import {
   type RazorpayCheckoutSuccess,
 } from '@lib/openRazorpayCheckout';
 import { clearPendingPayment, savePendingPayment } from '@lib/pendingPayment';
-import type { GstValidationResult } from '@/types/gst';
+import { accountToGstDetails, isGstAccountVerified, type GstValidationResult } from '@/types/gst';
 import type {
   DeliveryPreferenceType,
   DeliverySlotOption,
@@ -113,7 +124,8 @@ function createIdempotencyKey(): string {
 }
 
 type ActiveSheet =
-  | { type: 'gst' }
+  | { type: 'gst_add' }
+  | { type: 'gst_select' }
   | null;
 
 /** Whole quote chain (cart sync + preview + optional loyalty preview) must settle within this. */
@@ -198,8 +210,14 @@ export default function CheckoutScreen() {
 
   const gstDetails = useGstStore((s) => s.details);
   const gstUiState = useGstStore((s) => s.uiState);
+  const gstAccounts = useGstStore((s) => s.accounts);
+  const checkoutInvoiceEnabled = useGstStore((s) => s.checkoutInvoiceEnabled);
+  const selectedCheckoutGstAccountId = useGstStore((s) => s.selectedCheckoutGstAccountId);
   const showSuccessBanner = useGstStore((s) => s.showSuccessBanner);
   const saveGstDetails = useGstStore((s) => s.saveGstDetails);
+  const loadGstAccounts = useGstStore((s) => s.loadAccounts);
+  const selectCheckoutAccount = useGstStore((s) => s.selectCheckoutAccount);
+  const setCheckoutInvoiceEnabled = useGstStore((s) => s.setCheckoutInvoiceEnabled);
   const triggerSuccessBanner = useGstStore((s) => s.triggerSuccessBanner);
   const dismissSuccessBanner = useGstStore((s) => s.dismissSuccessBanner);
 
@@ -267,7 +285,30 @@ export default function CheckoutScreen() {
   useEffect(() => {
     if (!isLoggedIn) return;
     void refreshLoyalty();
-  }, [isLoggedIn, refreshLoyalty]);
+    void loadGstAccounts();
+  }, [isLoggedIn, refreshLoyalty, loadGstAccounts]);
+
+  const confirmLeaveCheckout = useCallback(() => {
+    Alert.alert('Leave Checkout?', 'Your cart items will be saved.', [
+      { text: 'Stay', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: () => leaveCheckout(),
+      },
+    ]);
+  }, []);
+
+  // Consume Android hardware back on Checkout so the tab-root exit-app handler
+  // (and the system default) never kill the process from this screen.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      confirmLeaveCheckout();
+      return true;
+    });
+    return () => sub.remove();
+  }, [confirmLeaveCheckout]);
 
   useEffect(() => {
     if (hasDestinationCoords) {
@@ -618,6 +659,25 @@ export default function CheckoutScreen() {
 
   const slotRequirementMet = preferenceType === 'ASAP' || Boolean(selectedSlotId);
   const hasServerQuote = Boolean(checkoutPreview) && !quoteIsStale;
+
+  const activeGstAccounts = useMemo(
+    () => gstAccounts.filter((a) => !a.isArchived),
+    [gstAccounts],
+  );
+
+  const checkoutGstDetails = useMemo(() => {
+    if (!checkoutInvoiceEnabled || !selectedCheckoutGstAccountId) return null;
+    const account = activeGstAccounts.find((a) => a.id === selectedCheckoutGstAccountId);
+    if (!account || !isGstAccountVerified(account)) return null;
+    return accountToGstDetails(account);
+  }, [activeGstAccounts, checkoutInvoiceEnabled, selectedCheckoutGstAccountId]);
+
+  const hasGstApplied = Boolean(checkoutInvoiceEnabled && checkoutGstDetails);
+
+  const gstCheckoutReady =
+    !checkoutInvoiceEnabled ||
+    (Boolean(selectedCheckoutGstAccountId) && Boolean(checkoutGstDetails));
+
   const canPlaceOrder =
     items.length > 0 &&
     hasServerQuote &&
@@ -629,12 +689,11 @@ export default function CheckoutScreen() {
     !paying &&
     slotRequirementMet &&
     deliveryTermsAccepted &&
+    gstCheckoutReady &&
     (!requiresOpenArea || openAreaConfirmed === true);
 
   const loyaltyEligible =
     availablePoints > 0 && localSubtotal >= minRedeemOrderValue;
-
-  const hasGstApplied = useGstStore((s) => s.verified);
 
   const preDiscountTotal = useMemo(
     () =>
@@ -779,17 +838,41 @@ export default function CheckoutScreen() {
   };
 
   const handleGstSave = async (result: GstValidationResult) => {
-    const payload = {
-      gstNumber: result.gstNumber,
-      businessName: result.businessName,
-      registeredAddress: result.registeredAddress,
-      state: result.state,
-      pan: result.pan,
-    };
-    await saveGstDetails(payload);
+    await saveGstDetails(result);
+    setCheckoutInvoiceEnabled(true);
     triggerSuccessBanner();
     setActiveSheet(null);
   };
+
+  const handleGstInvoiceToggle = (enabled: boolean) => {
+    if (!enabled) {
+      setCheckoutInvoiceEnabled(false);
+      return;
+    }
+    setCheckoutInvoiceEnabled(true);
+    const activeCount = activeGstAccounts.length;
+    if (activeCount === 0) {
+      setActiveSheet({ type: 'gst_add' });
+      return;
+    }
+    if (activeCount === 1) {
+      selectCheckoutAccount(activeGstAccounts[0].id);
+      return;
+    }
+    if (!selectedCheckoutGstAccountId) {
+      setActiveSheet({ type: 'gst_select' });
+    }
+  };
+
+  const gstOrderFields = useCallback(() => {
+    if (!checkoutInvoiceEnabled || !selectedCheckoutGstAccountId) {
+      return { gstInvoiceEnabled: false as const };
+    }
+    return {
+      gstInvoiceEnabled: true as const,
+      gstAccountId: selectedCheckoutGstAccountId,
+    };
+  }, [checkoutInvoiceEnabled, selectedCheckoutGstAccountId]);
 
   const finishPlacedOrder = async (input: {
     orderId: string;
@@ -1103,6 +1186,7 @@ export default function CheckoutScreen() {
           scheduledSlotId: selectedSlotId ?? undefined,
           deliveryCustomerRemark: remark,
           ...deliveryPayload,
+          ...gstOrderFields(),
           checkoutMethod: paymentMethod === 'upi' ? ('upi' as const) : ('card' as const),
           idempotencyKey,
         };
@@ -1135,6 +1219,7 @@ export default function CheckoutScreen() {
         scheduledSlotId: selectedSlotId ?? undefined,
         deliveryCustomerRemark: remark,
         ...deliveryPayload,
+        ...gstOrderFields(),
         idempotencyKey,
       });
       placeIdempotencyKeyRef.current = null;
@@ -1167,12 +1252,7 @@ export default function CheckoutScreen() {
       <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <BackHeader
         title={t('checkout')}
-        onBack={() => {
-          Alert.alert('Leave Checkout?', 'Your cart items will be saved.', [
-            { text: 'Stay', style: 'cancel' },
-            { text: 'Leave', onPress: () => safeGoBack() },
-          ]);
-        }}
+        onBack={confirmLeaveCheckout}
         rightElement={
           <ScaledPressable hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="qr-code-outline" size={20} color="#1A1A1A" />
@@ -1456,23 +1536,56 @@ export default function CheckoutScreen() {
           discountAmount={gstBusinessDiscount}
         />
 
-        {hasGstApplied && gstDetails ? (
-          <>
-            <GstVerifiedCard
-              details={gstDetails}
-              appliedTitle={t('gstInvoiceApplied')}
-              editLabel={t('editGst')}
-              discountPercent={gstDiscountPercent}
-              discountAmount={gstBusinessDiscount}
-              onPress={() => setActiveSheet({ type: 'gst' })}
+        <View className="mb-3 flex-row items-center justify-between rounded-card border border-border bg-surface px-4 py-3">
+          <View className="mr-3 flex-1">
+            <Text className="text-sm font-bold text-text">{t('gstInvoiceCardTitle')}</Text>
+            <Text className="mt-0.5 text-xs text-text-secondary">{t('gstInvoiceAppliedNote')}</Text>
+          </View>
+          <Switch
+            value={checkoutInvoiceEnabled}
+            onValueChange={handleGstInvoiceToggle}
+            trackColor={{ false: '#E5E5E5', true: '#FEB623' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+
+        {checkoutInvoiceEnabled ? (
+          hasGstApplied && checkoutGstDetails ? (
+            <>
+              <GstVerifiedCard
+                details={checkoutGstDetails}
+                appliedTitle={t('gstInvoiceApplied')}
+                editLabel={activeGstAccounts.length > 1 ? 'Change' : t('editGst')}
+                discountPercent={gstDiscountPercent}
+                discountAmount={gstBusinessDiscount}
+                onPress={() => {
+                  if (activeGstAccounts.length > 1) {
+                    setActiveSheet({ type: 'gst_select' });
+                  } else {
+                    setActiveSheet({ type: 'gst_add' });
+                  }
+                }}
+              />
+              <BusinessBenefits />
+            </>
+          ) : (
+            <GstInvoiceCard
+              title={t('gstInvoiceCardTitle')}
+              subtitle="Select or add a verified GST account to continue."
+              onPress={() => {
+                if (activeGstAccounts.length === 0) {
+                  setActiveSheet({ type: 'gst_add' });
+                } else {
+                  setActiveSheet({ type: 'gst_select' });
+                }
+              }}
             />
-            <BusinessBenefits />
-          </>
+          )
         ) : (
           <GstInvoiceCard
             title={t('gstInvoiceCardTitle')}
             subtitle={t('gstInvoiceCardSubtitle')}
-            onPress={() => setActiveSheet({ type: 'gst' })}
+            onPress={() => handleGstInvoiceToggle(true)}
           />
         )}
 
@@ -1584,17 +1697,36 @@ export default function CheckoutScreen() {
       />
 
       <GstBottomSheet
-        visible={activeSheet?.type === 'gst'}
-        initialGstNumber={gstDetails?.gstNumber ?? ''}
-        isEditMode={hasGstApplied}
+        visible={activeSheet?.type === 'gst_add'}
+        initialGstNumber=""
         onClose={() => {
           setActiveSheet(null);
-          const { uiState, verified, setUiState } = useGstStore.getState();
-          if (uiState === 'FAILED' || uiState === 'VERIFYING') {
-            setUiState(verified ? 'VERIFIED' : 'NOT_ADDED');
+          const state = useGstStore.getState();
+          if (
+            state.checkoutInvoiceEnabled &&
+            !state.selectedCheckoutGstAccountId &&
+            state.accounts.filter((a) => !a.isArchived).length === 0
+          ) {
+            state.setCheckoutInvoiceEnabled(false);
+          }
+          if (state.uiState === 'FAILED' || state.uiState === 'VERIFYING') {
+            state.setUiState(state.accounts.some((a) => !a.isArchived) ? 'VERIFIED' : 'NOT_ADDED');
           }
         }}
         onSave={handleGstSave}
+      />
+
+      <GstAccountSelectSheet
+        visible={activeSheet?.type === 'gst_select'}
+        accounts={activeGstAccounts}
+        selectedId={selectedCheckoutGstAccountId}
+        onSelect={(id) => {
+          selectCheckoutAccount(id);
+          setCheckoutInvoiceEnabled(true);
+          setActiveSheet(null);
+        }}
+        onAddNew={() => setActiveSheet({ type: 'gst_add' })}
+        onClose={() => setActiveSheet(null)}
       />
 
       <SitesPickerSheet
